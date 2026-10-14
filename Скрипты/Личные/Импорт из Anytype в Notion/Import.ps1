@@ -91,16 +91,34 @@ try {
         }
     }
 
-    Write-Host ""
-    $imported = @($logs | Where-Object { $_ -match 'VERIFIED and archived:' })
-    if ($imported.Count -gt 0) {
-        Write-Host ""
-        Write-Host "ССЫЛКИ НА ЗАМЕТКИ NOTION:" -ForegroundColor Cyan
-        foreach ($line in $imported) {
-            if ($line -match 'Notion page:\s*([0-9a-fA-F-]{36})') {
-                $id = $Matches[1] -replace '-', ''
-                Write-Host "https://www.notion.so/$id" -ForegroundColor Green
+    # Extract successful page URLs from the current importer's RESULT PAGE lines.
+    $pages = @()
+    foreach ($line in $logs) {
+        if ($line -match 'RESULT PAGE:\s*(.*?)\s*\| blocks:.*?\| Notion:\s*(https://app\.notion\.com/p/[0-9a-fA-F]{32})') {
+            $pages += [PSCustomObject]@{
+                Title = $Matches[1].Trim()
+                Url = $Matches[2]
             }
+        }
+    }
+    if ($pages.Count -gt 0) {
+        Write-Host ""
+        Write-Host "СТРАНИЦЫ NOTION:" -ForegroundColor Cyan
+        for ($j = 0; $j -lt $pages.Count; $j++) {
+            Write-Host ("{0}. {1}" -f ($j + 1), $pages[$j].Title) -ForegroundColor Green
+            Write-Host ("   {0}" -f $pages[$j].Url)
+        }
+        Write-Host ""
+        $selection = (Read-Host "Открыть в браузере: номер, ВСЕ или Enter для пропуска").Trim()
+        if ($selection -match '^\d+$') {
+            $number = [int]$selection
+            if ($number -ge 1 -and $number -le $pages.Count) {
+                Start-Process $pages[$number - 1].Url
+            } else {
+                Write-Host "Такого номера нет." -ForegroundColor Yellow
+            }
+        } elseif ($selection -match '^(?i:все|all)$') {
+            foreach ($page in $pages) { Start-Process $page.Url }
         }
     }
     Write-Host "Подробности:"
