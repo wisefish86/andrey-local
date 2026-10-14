@@ -1,0 +1,15 @@
+# Local credentials and private material
+.env
+.env.*
+!.env.example
+*.pem
+*.p12
+*.pfx
+*.key
+*.kdbx
+*.bak
+*.log
+id_rsa
+id_ed25519
+__pycache__/
+*.pyc
