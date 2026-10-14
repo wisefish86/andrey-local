@@ -14,5 +14,3 @@ id_ed25519
 __pycache__/
 *.pyc
 
-# Generated inventory reports (file paths may contain private information)
-Скрипты/Личные/Порядок в файлах/Results/
