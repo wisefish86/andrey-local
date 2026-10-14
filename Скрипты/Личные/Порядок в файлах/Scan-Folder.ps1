@@ -1,53 +1,68 @@
-# Read-only inventory, Windows PowerShell 5.1+
+# Read-only folder inventory for Windows PowerShell 5.1+
+# ASCII-only source avoids Windows PowerShell 5.1 UTF-8-without-BOM issues.
 param([Parameter(Mandatory=$true)][string]$Root)
 $ErrorActionPreference = 'Stop'
 try {
-  $item = Get-Item -LiteralPath $Root -Force
-  if (-not $item.PSIsContainer) { throw 'Folder required' }
-  $rootPath = $item.FullName.TrimEnd([char]92)
-  $out = Join-Path $PSScriptRoot ('Results\scan_' + (Get-Date -Format 'yyyyMMdd_HHmmss'))
-  New-Item -ItemType Directory -Force -Path $out | Out-Null
+  $rootItem = Get-Item -LiteralPath $Root -Force -ErrorAction Stop
+  if (-not $rootItem.PSIsContainer) { throw 'Please drag a folder, not a file.' }
+  $rootPath = $rootItem.FullName.TrimEnd([char]92)
+  $rootName = $rootItem.Name
+  if ([string]::IsNullOrWhiteSpace($rootName)) { $rootName = 'Drive' }
+  $safeName = [regex]::Replace($rootName, '[^\p{L}\p{N}._ -]', '_').Trim(' ','.')
+  if (-not $safeName) { $safeName = 'Folder' }
+  if ($safeName.Length -gt 65) { $safeName = $safeName.Substring(0,65) }
+  $outDir = Join-Path $PSScriptRoot 'Results'
+  New-Item -ItemType Directory -Force -Path $outDir | Out-Null
+  $outFile = Join-Path $outDir ($safeName + '_' + (Get-Date -Format 'yyyyMMdd_HHmmss') + '.json')
+
   $exclude = @('.git','node_modules','.venv','venv','__pycache__','.idea','.vs','$RECYCLE.BIN','System Volume Information')
   $queue = New-Object System.Collections.Queue
   $queue.Enqueue($rootPath)
-  $files = New-Object 'System.Collections.Generic.List[object]'
-  $folders = New-Object 'System.Collections.Generic.List[object]'
-  $errors = New-Object 'System.Collections.Generic.List[string]'
-  $bytes = [long]0
+  $entries = New-Object 'System.Collections.Generic.List[object]'
+  $scanErrors = New-Object 'System.Collections.Generic.List[string]'
+  $folderCount = 0
+  $fileCount = 0
+  $totalBytes = [long]0
   while ($queue.Count -gt 0) {
     $dir = [string]$queue.Dequeue()
-    $relDir = if ($dir -eq $rootPath) { '.' } else { $dir.Substring($rootPath.Length).TrimStart([char]92) }
-    $folders.Add([pscustomobject]@{RelativePath=$relDir;FullPath=$dir})
-    try { $items = @(Get-ChildItem -LiteralPath $dir -Force -ErrorAction Stop) }
-    catch { $errors.Add($dir + ' : ' + $_.Exception.Message); continue }
-    foreach ($f in $items) {
-      if (($f.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) { continue }
-      if ($f.PSIsContainer) {
-        if ($exclude -notcontains $f.Name) { $queue.Enqueue($f.FullName) }
-        continue
+    $relativeDir = if ($dir -eq $rootPath) { '.' } else { $dir.Substring($rootPath.Length).TrimStart([char]92) }
+    $folderCount++
+    $entries.Add([pscustomobject]@{Type='folder';Path=$relativeDir})
+    try { $children = @(Get-ChildItem -LiteralPath $dir -Force -ErrorAction Stop) }
+    catch { $scanErrors.Add($dir + ': ' + $_.Exception.Message); continue }
+    foreach ($entry in $children) {
+      if (($entry.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) { continue }
+      if ($entry.PSIsContainer) {
+        if ($exclude -notcontains $entry.Name) { $queue.Enqueue($entry.FullName) }
+      } else {
+        $fileCount++
+        $totalBytes += [long]$entry.Length
+        $entries.Add([pscustomobject]@{
+          Type='file'
+          Path=$entry.FullName.Substring($rootPath.Length).TrimStart([char]92)
+          Bytes=[long]$entry.Length
+          Created=$entry.CreationTime.ToString('yyyy-MM-ddTHH:mm:ss')
+          Modified=$entry.LastWriteTime.ToString('yyyy-MM-ddTHH:mm:ss')
+        })
       }
-      $bytes += [long]$f.Length
-      $files.Add([pscustomobject]@{
-        RelativePath=$f.FullName.Substring($rootPath.Length).TrimStart([char]92)
-        FileName=$f.Name
-        Extension=$f.Extension.ToLowerInvariant()
-        SizeBytes=[long]$f.Length
-        Created=$f.CreationTime.ToString('yyyy-MM-dd HH:mm:ss')
-        Modified=$f.LastWriteTime.ToString('yyyy-MM-dd HH:mm:ss')
-        ParentFolder=$relDir
-      })
     }
   }
-  # BOM for compatibility with Excel on Windows.
-  $files | Export-Csv -LiteralPath (Join-Path $out 'files.csv') -NoTypeInformation -Delimiter ';' -Encoding UTF8
-  $folders | Export-Csv -LiteralPath (Join-Path $out 'folders.csv') -NoTypeInformation -Delimiter ';' -Encoding UTF8
-  $lines = @('# Folder inventory','','Root: ' + $rootPath,'Date: ' + (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'),'Files: ' + $files.Count,'Folders: ' + $folders.Count,'Total MB: ' + [math]::Round($bytes / 1MB,2),'','## Extensions')
-  foreach ($g in ($files | Group-Object Extension | Sort-Object Count -Descending | Select-Object -First 30)) { $lines += ('- ' + $g.Name + ': ' + $g.Count) }
-  $lines += @('','## Notes','Read-only scan: file content and hashes are not accessed.','Service directories and reparse points are skipped.','Access errors: ' + $errors.Count)
-  [IO.File]::WriteAllLines((Join-Path $out 'summary.md'),[string[]]$lines,(New-Object Text.UTF8Encoding($true)))
-  if ($errors.Count) { [IO.File]::WriteAllLines((Join-Path $out 'errors.txt'),[string[]]$errors,(New-Object Text.UTF8Encoding($true))) }
-  Write-Host ('Done: files ' + $files.Count + ', folders ' + $folders.Count) -ForegroundColor Green
-  Start-Process explorer.exe -ArgumentList ('"' + $out + '"')
+  $report = [ordered]@{
+    SchemaVersion=2
+    ScannedFolder=$rootName
+    RootPath=$rootPath
+    ScannedAt=(Get-Date -Format 'yyyy-MM-ddTHH:mm:ss')
+    FileCount=$fileCount
+    FolderCount=$folderCount
+    TotalBytes=$totalBytes
+    Entries=@($entries.ToArray())
+    Errors=@($scanErrors.ToArray())
+  }
+  $json = ConvertTo-Json -InputObject $report -Depth 6
+  [IO.File]::WriteAllText($outFile,$json,(New-Object System.Text.UTF8Encoding($true)))
+  Write-Host ('Done. Files: ' + $fileCount + '; folders: ' + $folderCount) -ForegroundColor Green
+  Write-Host ('Report: ' + $outFile)
+  Start-Process explorer.exe -ArgumentList ('"' + $outDir + '"')
 } catch {
   Write-Host ('Error: ' + $_.Exception.Message) -ForegroundColor Red
   exit 1
