@@ -1,0 +1,2033 @@
+﻿{
+    "SchemaVersion":  2,
+    "ScannedFolder":  "- Automation",
+    "RootPath":  "C:\\- Automation",
+    "ScannedAt":  "2026-10-15T00:13:37",
+    "FileCount":  245,
+    "FolderCount":  76,
+    "TotalBytes":  353733343,
+    "Entries":  [
+                    {
+                        "Type":  "folder",
+                        "Path":  "."
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "!watermark.jpg",
+                        "Bytes":  94866,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-09-16T20:15:45"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "Копировать на основе списка артикулов.txt",
+                        "Bytes":  2121,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2025-01-16T16:19:29"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "ссылки на найденные ячейки.xls",
+                        "Bytes":  28672,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-09-21T09:11:44"
+                    },
+                    {
+                        "Type":  "folder",
+                        "Path":  "AIData"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "AIData\\Album-J-00-00.png",
+                        "Bytes":  203830,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-05-05T14:50:05"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "AIData\\Book-J-00-00.png",
+                        "Bytes":  301959,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-05-05T14:51:17"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "AIData\\Cover-2.png",
+                        "Bytes":  193813,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-04-21T09:25:52"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "AIData\\Cover.png",
+                        "Bytes":  259077,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-04-21T08:52:33"
+                    },
+                    {
+                        "Type":  "folder",
+                        "Path":  "PDF"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PDF\\J-164.pdf",
+                        "Bytes":  5139782,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2025-04-08T20:11:20"
+                    },
+                    {
+                        "Type":  "folder",
+                        "Path":  "PNG, JPG"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PNG, JPG\\1. Save as JPG 65% [all sizes].exe",
+                        "Bytes":  350440,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2024-09-09T12:22:23"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PNG, JPG\\2. Add postfix \u0027-big\u0027 etc. to .jpg files \u0026 move it.bat",
+                        "Bytes":  873,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2024-09-09T15:57:28"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PNG, JPG\\Convert to PNG.exe",
+                        "Bytes":  345246,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2023-05-05T12:33:17"
+                    },
+                    {
+                        "Type":  "folder",
+                        "Path":  "PSD templates"
+                    },
+                    {
+                        "Type":  "folder",
+                        "Path":  "Scripts"
+                    },
+                    {
+                        "Type":  "folder",
+                        "Path":  "Инструкции"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "Инструкции\\- Команда для добавления префикса к файлам.txt",
+                        "Bytes":  569,
+                        "Created":  "2026-01-26T08:06:23",
+                        "Modified":  "2022-09-21T08:32:46"
+                    },
+                    {
+                        "Type":  "folder",
+                        "Path":  "Разделить на книжные и альбомные"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "Разделить на книжные и альбомные\\Разделить на книжные и альбомные.pyw",
+                        "Bytes":  1694,
+                        "Created":  "2026-01-26T08:06:23",
+                        "Modified":  "2025-01-23T09:58:31"
+                    },
+                    {
+                        "Type":  "folder",
+                        "Path":  "Улучшение после сканирования"
+                    },
+                    {
+                        "Type":  "folder",
+                        "Path":  "AIData\\Scripts"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "AIData\\Scripts\\VariableImporter.jsx",
+                        "Bytes":  166874,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-04-25T11:26:51"
+                    },
+                    {
+                        "Type":  "folder",
+                        "Path":  "PDF\\PDF add link"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PDF\\PDF add link\\Добавить верхний и нижний колонтитул.lnk",
+                        "Bytes":  1571,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2023-05-18T10:52:23"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PDF\\PDF add link\\Журналы (Верх. лев. кол.).presets",
+                        "Bytes":  1688,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2025-11-12T10:53:24"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PDF\\PDF add link\\Журналы (Верхн. центр. кол.).presets",
+                        "Bytes":  1555,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2025-11-12T11:04:55"
+                    },
+                    {
+                        "Type":  "folder",
+                        "Path":  "PDF\\PDF lock"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PDF\\PDF lock\\Защитить PDF документ(ы).lnk",
+                        "Bytes":  1519,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2023-05-18T10:58:49"
+                    },
+                    {
+                        "Type":  "folder",
+                        "Path":  "PDF\\PDF metadata"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PDF\\PDF metadata\\- metadata.txt",
+                        "Bytes":  310,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2025-11-12T10:42:20"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PDF\\PDF metadata\\Запускаем AutoMetadata.appref-ms",
+                        "Bytes":  346,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2023-03-07T11:06:21"
+                    },
+                    {
+                        "Type":  "folder",
+                        "Path":  "PDF\\PDF to PNG"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PDF\\PDF to PNG\\- 4. Распределить PNG по папкам.txt",
+                        "Bytes":  0,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-05-06T08:46:33"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PDF\\PDF to PNG\\- Экспортировать 1 лист PDF в PNG 150dpi (можно перетянуть PDF сюда).lnk",
+                        "Bytes":  1381,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2023-03-07T09:08:05"
+                    },
+                    {
+                        "Type":  "folder",
+                        "Path":  "PDF\\PDF watermark"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PDF\\PDF watermark\\!watermark.png",
+                        "Bytes":  71030,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2019-11-18T13:57:33"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PDF\\PDF watermark\\- Добавить водяные знаки.lnk",
+                        "Bytes":  1226,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-04-21T09:44:34"
+                    },
+                    {
+                        "Type":  "folder",
+                        "Path":  "PDF\\PDF → растр"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PDF\\PDF → растр\\test.pdf",
+                        "Bytes":  1927664,
+                        "Created":  "2026-02-19T18:08:35",
+                        "Modified":  "2026-02-19T17:38:46"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PDF\\PDF → растр\\test_raster.pdf",
+                        "Bytes":  622348,
+                        "Created":  "2026-02-20T09:18:25",
+                        "Modified":  "2026-02-20T09:03:54"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PDF\\PDF → растр\\Растеризация PDF для защиты от печати.bat",
+                        "Bytes":  916,
+                        "Created":  "2026-02-19T17:53:52",
+                        "Modified":  "2026-02-20T09:03:50"
+                    },
+                    {
+                        "Type":  "folder",
+                        "Path":  "PNG, JPG\\- - All previews"
+                    },
+                    {
+                        "Type":  "folder",
+                        "Path":  "PNG, JPG\\- big"
+                    },
+                    {
+                        "Type":  "folder",
+                        "Path":  "PNG, JPG\\- small"
+                    },
+                    {
+                        "Type":  "folder",
+                        "Path":  "PNG, JPG\\- thumb"
+                    },
+                    {
+                        "Type":  "folder",
+                        "Path":  "PNG, JPG\\JPG compressed"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PNG, JPG\\JPG compressed\\- Poster-prev (PSD to JPG 65% 50% size).exe",
+                        "Bytes":  342982,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-10-13T19:28:12"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PNG, JPG\\JPG compressed\\- Save as JPEG 65%.exe",
+                        "Bytes":  342892,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-09-27T15:58:51"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PNG, JPG\\JPG compressed\\- Save JPEG 60% and resize 2000px width.exe",
+                        "Bytes":  346478,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2025-06-18T13:58:35"
+                    },
+                    {
+                        "Type":  "folder",
+                        "Path":  "PNG, JPG\\PNG"
+                    },
+                    {
+                        "Type":  "folder",
+                        "Path":  "PNG, JPG\\PSD в JPG"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PNG, JPG\\PSD в JPG\\- 2. Удалить PSD.txt",
+                        "Bytes":  0,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-05-06T09:19:16"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PNG, JPG\\PSD в JPG\\- Poster 50% size (PSD to JPG 65%).exe",
+                        "Bytes":  345452,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2023-03-01T12:13:15"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PNG, JPG\\PSD в JPG\\- Перейти в \u00273. Создание превью и выгрузки\u0027.lnk",
+                        "Bytes":  1638,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-09-27T15:48:11"
+                    },
+                    {
+                        "Type":  "folder",
+                        "Path":  "PNG, JPG\\PSD в PNG"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PNG, JPG\\PSD в PNG\\- 1. PSD to PNG width 700 px.exe",
+                        "Bytes":  342862,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-09-26T15:37:58"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PNG, JPG\\PSD в PNG\\- 2. Удалить PSD.txt",
+                        "Bytes":  0,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-05-06T09:19:16"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PNG, JPG\\PSD в PNG\\- 3.1. Залить PNG на сервер (папка \u0027cloud\u0027).txt",
+                        "Bytes":  44,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-09-26T15:46:33"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PNG, JPG\\PSD в PNG\\- 3.2. Залить PNG на сервер (папка \u0027yml_photos\u0027).txt",
+                        "Bytes":  49,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-09-26T15:47:50"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PNG, JPG\\PSD в PNG\\- 4. Удалить PNG.txt",
+                        "Bytes":  0,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-09-26T15:50:49"
+                    },
+                    {
+                        "Type":  "folder",
+                        "Path":  "PNG, JPG\\Resize"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PNG, JPG\\Resize\\- Save as PNG small (350px).exe",
+                        "Bytes":  346319,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2024-05-30T10:11:29"
+                    },
+                    {
+                        "Type":  "folder",
+                        "Path":  "PNG, JPG\\Если у изображения нет белых отступов"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PNG, JPG\\Если у изображения нет белых отступов\\- Save as JPG 65% book (all sizes).exe",
+                        "Bytes":  349657,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2023-03-14T19:12:24"
+                    },
+                    {
+                        "Type":  "folder",
+                        "Path":  "PSD templates\\# Архив"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\# Архив\\Album-bkg (old).png",
+                        "Bytes":  734579,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-02-01T07:29:11"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\# Архив\\Album-bkg.png",
+                        "Bytes":  742084,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-02-01T10:32:54"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\# Архив\\Album-bkg.psd",
+                        "Bytes":  4024510,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-02-15T12:12:23"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\# Архив\\album-gear-big.png",
+                        "Bytes":  6565,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-02-02T09:13:07"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\# Архив\\album-gear-big.psd",
+                        "Bytes":  1292078,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-02-02T09:12:46"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\# Архив\\album-gear-small.png",
+                        "Bytes":  3936,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-02-02T09:14:08"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\# Архив\\album-gear-small.psd",
+                        "Bytes":  381327,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-02-01T10:46:43"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\# Архив\\album-gear-thumb.png",
+                        "Bytes":  1680,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-02-02T09:14:38"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\# Архив\\album-gear-thumb.psd",
+                        "Bytes":  85488,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-02-01T10:47:20"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\# Архив\\bkg-700.png",
+                        "Bytes":  33860,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-02-24T11:20:16"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\# Архив\\Book-bkg.png",
+                        "Bytes":  967089,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-02-09T14:35:35"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\# Архив\\gear.png",
+                        "Bytes":  13977,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-02-01T10:24:22"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\# Архив\\Журналы.png",
+                        "Bytes":  67322,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-02-01T10:28:09"
+                    },
+                    {
+                        "Type":  "folder",
+                        "Path":  "PSD templates\\Google Таблицы"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Google Таблицы\\delete_FILL0_wght400_GRAD0_opsz24.png",
+                        "Bytes":  241,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-10-07T13:56:29"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Google Таблицы\\select_all_FILL0_wght400_GRAD0_opsz24.png",
+                        "Bytes":  259,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-10-07T13:49:16"
+                    },
+                    {
+                        "Type":  "folder",
+                        "Path":  "PSD templates\\SVG"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\SVG\\crop_free_FILL0_wght400_GRAD0_opsz24.svg",
+                        "Bytes":  712,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-10-20T09:28:01"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\SVG\\description_FILL0_wght400_GRAD0_opsz24.svg",
+                        "Bytes":  577,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-08-30T12:15:03"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\SVG\\filter_2_FILL0_wght400_GRAD0_opsz24.svg",
+                        "Bytes":  683,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-08-30T12:21:59"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\SVG\\print_FILL0_wght400_GRAD0_opsz24.svg",
+                        "Bytes":  617,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-08-30T12:20:39"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\SVG\\settings_FILL0_wght400_GRAD0_opsz24.svg",
+                        "Bytes":  1568,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-08-30T12:05:03"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\SVG\\tools_power_drill_FILL0_wght400_GRAD0_opsz24.svg",
+                        "Bytes":  911,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-10-20T09:37:09"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\SVG\\verified_user_FILL0_wght400_GRAD0_opsz24.svg",
+                        "Bytes":  597,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-08-30T12:10:36"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\SVG\\zoom_out_map_FILL0_wght400_GRAD0_opsz24.svg",
+                        "Bytes":  1010,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-08-30T12:17:14"
+                    },
+                    {
+                        "Type":  "folder",
+                        "Path":  "PSD templates\\Наложение водяного знака"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Наложение водяного знака\\- Перетяни ПЛАКАТ для наложения WM.exe",
+                        "Bytes":  344389,
+                        "Created":  "2026-09-16T10:45:43",
+                        "Modified":  "2026-09-16T11:54:04"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Наложение водяного знака\\- Перетяни СТЕНД для наложения WM.exe",
+                        "Bytes":  344385,
+                        "Created":  "2026-09-16T11:54:21",
+                        "Modified":  "2026-09-16T11:54:22"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Наложение водяного знака\\- Шаблон вотермарка (водяного знака, watermark).psd",
+                        "Bytes":  91978309,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2026-09-11T20:07:40"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Наложение водяного знака\\OT-43 (1200х1000).png",
+                        "Bytes":  11493183,
+                        "Created":  "2026-10-13T12:25:08",
+                        "Modified":  "2025-08-12T15:16:04"
+                    },
+                    {
+                        "Type":  "folder",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\Подготовка PDF.lnk",
+                        "Bytes":  868,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2023-03-07T10:48:59"
+                    },
+                    {
+                        "Type":  "folder",
+                        "Path":  "PSD templates\\Шаблон для превью к плакатам"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к плакатам\\- 12. -- Написать новость при редизайне или новинке (Новости о плакатах).lnk",
+                        "Bytes":  1502,
+                        "Created":  "2026-01-26T08:06:23",
+                        "Modified":  "2022-10-19T11:56:36"
+                    },
+                    {
+                        "Type":  "folder",
+                        "Path":  "PSD templates\\Шаблон для превью к стендам"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к стендам\\PS.svg",
+                        "Bytes":  12099,
+                        "Created":  "2026-01-26T08:06:23",
+                        "Modified":  "2022-10-27T08:21:36"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к стендам\\Стенды все.csv",
+                        "Bytes":  2249354,
+                        "Created":  "2026-01-26T08:06:23",
+                        "Modified":  "2022-10-21T11:41:25"
+                    },
+                    {
+                        "Type":  "folder",
+                        "Path":  "Scripts\\PowerShell и Cmd"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "Scripts\\PowerShell и Cmd\\- Для пакетной замены _ на -.txt",
+                        "Bytes":  186,
+                        "Created":  "2026-01-26T08:06:23",
+                        "Modified":  "2022-05-05T08:57:46"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "Scripts\\PowerShell и Cmd\\filelist.txt",
+                        "Bytes":  352,
+                        "Created":  "2026-01-26T08:06:23",
+                        "Modified":  "2022-09-21T07:37:36"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "Scripts\\PowerShell и Cmd\\В строке поиска Проводника набрать \u0027cmd\u0027 или \u0027powershell\u0027.txt",
+                        "Bytes":  19,
+                        "Created":  "2026-01-26T08:06:23",
+                        "Modified":  "2022-05-04T16:19:00"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "Scripts\\PowerShell и Cmd\\Вывести список файлов.txt",
+                        "Bytes":  153,
+                        "Created":  "2026-01-26T08:06:23",
+                        "Modified":  "2022-05-06T12:59:38"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "Scripts\\PowerShell и Cmd\\Переименовать.bat",
+                        "Bytes":  18,
+                        "Created":  "2026-01-26T08:06:23",
+                        "Modified":  "2022-05-05T09:21:35"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "Scripts\\PowerShell и Cmd\\Сохранить список файлов (без echo).bat",
+                        "Bytes":  39,
+                        "Created":  "2026-01-26T08:06:23",
+                        "Modified":  "2022-10-15T22:04:27"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "Scripts\\PowerShell и Cmd\\Сохранить список файлов (без пути).ps1",
+                        "Bytes":  146,
+                        "Created":  "2026-01-26T08:06:23",
+                        "Modified":  "2022-10-15T22:13:59"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "Scripts\\PowerShell и Cmd\\Сохранить список файлов.bat",
+                        "Bytes":  71,
+                        "Created":  "2026-01-26T08:06:23",
+                        "Modified":  "2022-04-25T08:53:02"
+                    },
+                    {
+                        "Type":  "folder",
+                        "Path":  "Scripts\\Replace SmartObject Content"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "Scripts\\Replace SmartObject Content\\Replace SmartObject Content and Save as PSD.js",
+                        "Bytes":  2322,
+                        "Created":  "2026-01-26T08:06:23",
+                        "Modified":  "2022-05-04T17:33:13"
+                    },
+                    {
+                        "Type":  "folder",
+                        "Path":  "Улучшение после сканирования\\1. Уменьшил шум"
+                    },
+                    {
+                        "Type":  "folder",
+                        "Path":  "Улучшение после сканирования\\2. Увеличил в Topaz"
+                    },
+                    {
+                        "Type":  "folder",
+                        "Path":  "Улучшение после сканирования\\3. Убрал косяки"
+                    },
+                    {
+                        "Type":  "folder",
+                        "Path":  "Улучшение после сканирования\\4. Нарезал"
+                    },
+                    {
+                        "Type":  "folder",
+                        "Path":  "PDF\\PDF to PNG\\album"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PDF\\PDF to PNG\\album\\- 1. Resize magazines (album 1052x744).exe",
+                        "Bytes":  341266,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-09-26T14:57:18"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PDF\\PDF to PNG\\album\\- 2. Перенести файлы в Мокап альбомный.lnk",
+                        "Bytes":  1655,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2023-03-07T09:35:41"
+                    },
+                    {
+                        "Type":  "folder",
+                        "Path":  "PDF\\PDF to PNG\\book"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PDF\\PDF to PNG\\book\\- 1. Resize magazines (book 744x1052).exe",
+                        "Bytes":  343768,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2023-09-11T10:35:30"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PDF\\PDF to PNG\\book\\- 2. Перенести файлы в Мокап книжный.lnk",
+                        "Bytes":  1637,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2023-03-07T09:35:41"
+                    },
+                    {
+                        "Type":  "folder",
+                        "Path":  "PNG, JPG\\Resize\\old"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PNG, JPG\\Resize\\old\\- 1. переместить исходные картинки сюда.txt",
+                        "Bytes":  0,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2021-07-07T11:41:14"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PNG, JPG\\Resize\\old\\- 2. Save as JPG 65% [all sizes].exe",
+                        "Bytes":  350440,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2023-12-04T09:02:47"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PNG, JPG\\Resize\\old\\- 3. добавить подпись размера через Total Commander.txt",
+                        "Bytes":  0,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2021-07-07T11:44:47"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PNG, JPG\\Resize\\old\\- Save as JPG 65% [all sizes, big only compress].exe",
+                        "Bytes":  349500,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2023-05-10T09:42:40"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PNG, JPG\\Resize\\old\\Save as JPG 65% [all sizes]+доб. поля big.exe",
+                        "Bytes":  349836,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2023-03-27T12:48:07"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PNG, JPG\\Resize\\old\\Save as PNG (all sizes) album, white frame.exe",
+                        "Bytes":  349908,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2023-02-27T11:52:38"
+                    },
+                    {
+                        "Type":  "folder",
+                        "Path":  "PSD templates\\Наложение водяного знака\\# Водяные знаки Компас"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Наложение водяного знака\\# Водяные знаки Компас\\!watermark2.png",
+                        "Bytes":  108885,
+                        "Created":  "2026-09-11T19:41:23",
+                        "Modified":  "2026-09-11T19:40:34"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Наложение водяного знака\\# Водяные знаки Компас\\- лого (утвержд).png",
+                        "Bytes":  199002,
+                        "Created":  "2026-09-11T20:03:10",
+                        "Modified":  "2026-09-11T20:04:57"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Наложение водяного знака\\# Водяные знаки Компас\\- лого.png",
+                        "Bytes":  335033,
+                        "Created":  "2026-09-16T10:02:43",
+                        "Modified":  "2026-09-16T10:02:37"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Наложение водяного знака\\# Водяные знаки Компас\\kompas-watermark-1.eps",
+                        "Bytes":  125831,
+                        "Created":  "2023-10-12T09:40:13",
+                        "Modified":  "2019-11-26T15:25:52"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Наложение водяного знака\\# Водяные знаки Компас\\kompas-watermark-1.png",
+                        "Bytes":  17705,
+                        "Created":  "2023-10-12T09:40:13",
+                        "Modified":  "2019-11-26T15:27:55"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Наложение водяного знака\\# Водяные знаки Компас\\лого белый.psd",
+                        "Bytes":  2858047,
+                        "Created":  "2026-09-11T19:57:00",
+                        "Modified":  "2026-09-11T19:57:02"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Наложение водяного знака\\# Водяные знаки Компас\\М-01 Дорожные знаки (16v).eps",
+                        "Bytes":  326630,
+                        "Created":  "2023-10-12T09:40:13",
+                        "Modified":  "2019-11-26T15:24:13"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Наложение водяного знака\\# Водяные знаки Компас\\Ресурс 1.svg",
+                        "Bytes":  1670,
+                        "Created":  "2023-10-12T09:40:13",
+                        "Modified":  "2023-02-21T14:22:18"
+                    },
+                    {
+                        "Type":  "folder",
+                        "Path":  "PSD templates\\Наложение водяного знака\\# Скрипты Photoshop"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Наложение водяного знака\\# Скрипты Photoshop\\- Компас WM (плакаты ресайз + в JPG) [droplet].jsx",
+                        "Bytes":  9306,
+                        "Created":  "2026-09-17T17:19:42",
+                        "Modified":  "2026-09-17T17:26:59"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Наложение водяного знака\\# Скрипты Photoshop\\- Компас WM (стенды ресайз + в JPG) [droplet].jsx",
+                        "Bytes":  3214,
+                        "Created":  "2026-09-17T17:19:42",
+                        "Modified":  "2026-09-17T17:26:43"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Наложение водяного знака\\# Скрипты Photoshop\\● Не забыть обновить скрипт здесь (Scripts).lnk",
+                        "Bytes":  1414,
+                        "Created":  "2026-09-16T10:57:24",
+                        "Modified":  "2026-09-16T10:57:24"
+                    },
+                    {
+                        "Type":  "folder",
+                        "Path":  "PSD templates\\Наложение водяного знака\\- Сделать читаемую версию"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Наложение водяного знака\\- Сделать читаемую версию\\GO-47-WM.jpg",
+                        "Bytes":  2337166,
+                        "Created":  "2026-10-09T15:26:51",
+                        "Modified":  "2026-10-09T15:26:55"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Наложение водяного знака\\- Сделать читаемую версию\\OT-42-(1200х1000)-WM.jpg",
+                        "Bytes":  9356104,
+                        "Created":  "2026-10-09T15:26:52",
+                        "Modified":  "2026-10-09T15:26:58"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Наложение водяного знака\\- Сделать читаемую версию\\OT-43-(1200х1000)-WM.jpg",
+                        "Bytes":  4742275,
+                        "Created":  "2026-10-09T15:26:53",
+                        "Modified":  "2026-10-09T15:26:56"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Наложение водяного знака\\- Сделать читаемую версию\\TM-21-wm.jpg",
+                        "Bytes":  3726536,
+                        "Created":  "2026-10-09T15:26:50",
+                        "Modified":  "2026-10-09T15:26:56"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Наложение водяного знака\\- Сделать читаемую версию\\С-107-1-wm.jpg",
+                        "Bytes":  601535,
+                        "Created":  "2026-10-09T15:26:52",
+                        "Modified":  "2026-10-09T15:26:55"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Наложение водяного знака\\- Сделать читаемую версию\\С-107-2-wm.jpg",
+                        "Bytes":  737345,
+                        "Created":  "2026-10-09T15:27:00",
+                        "Modified":  "2026-10-09T15:27:00"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Наложение водяного знака\\- Сделать читаемую версию\\С-83-1-wm.jpg",
+                        "Bytes":  457146,
+                        "Created":  "2026-10-09T14:47:17",
+                        "Modified":  "2026-10-09T14:47:17"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Наложение водяного знака\\- Сделать читаемую версию\\С-83-2-wm.jpg",
+                        "Bytes":  523053,
+                        "Created":  "2026-10-09T14:47:20",
+                        "Modified":  "2026-10-09T14:47:20"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Наложение водяного знака\\- Сделать читаемую версию\\С-83-3-wm.jpg",
+                        "Bytes":  490313,
+                        "Created":  "2026-10-09T14:47:22",
+                        "Modified":  "2026-10-09T14:47:22"
+                    },
+                    {
+                        "Type":  "folder",
+                        "Path":  "PSD templates\\Наложение водяного знака\\Watermark"
+                    },
+                    {
+                        "Type":  "folder",
+                        "Path":  "PSD templates\\Наложение водяного знака\\Плакаты с WM"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Наложение водяного знака\\Плакаты с WM\\M-123-1-WM.jpg",
+                        "Bytes":  750093,
+                        "Created":  "2026-09-17T17:33:13",
+                        "Modified":  "2026-09-17T17:33:13"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Наложение водяного знака\\Плакаты с WM\\M-123-2-WM.jpg",
+                        "Bytes":  774817,
+                        "Created":  "2026-09-17T17:33:16",
+                        "Modified":  "2026-09-17T17:33:16"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Наложение водяного знака\\Плакаты с WM\\M-26.2-1-WM.jpg",
+                        "Bytes":  1116010,
+                        "Created":  "2026-09-17T17:33:17",
+                        "Modified":  "2026-09-17T17:33:17"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Наложение водяного знака\\Плакаты с WM\\M-26.2-2-WM.jpg",
+                        "Bytes":  1170124,
+                        "Created":  "2026-09-17T17:33:19",
+                        "Modified":  "2026-09-17T17:33:19"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Наложение водяного знака\\Плакаты с WM\\M-26.2-3-WM.jpg",
+                        "Bytes":  1165526,
+                        "Created":  "2026-09-17T17:33:21",
+                        "Modified":  "2026-09-17T17:33:22"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Наложение водяного знака\\Плакаты с WM\\Агит-03-WM.jpg",
+                        "Bytes":  430605,
+                        "Created":  "2026-09-23T13:32:20",
+                        "Modified":  "2026-09-23T13:32:20"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Наложение водяного знака\\Плакаты с WM\\Агит-06-WM.jpg",
+                        "Bytes":  422498,
+                        "Created":  "2026-09-23T13:32:22",
+                        "Modified":  "2026-09-23T13:32:22"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Наложение водяного знака\\Плакаты с WM\\М-69-WM.jpg",
+                        "Bytes":  847329,
+                        "Created":  "2026-09-17T17:33:23",
+                        "Modified":  "2026-09-17T17:33:23"
+                    },
+                    {
+                        "Type":  "folder",
+                        "Path":  "PSD templates\\Наложение водяного знака\\Стенды с WM"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Наложение водяного знака\\Стенды с WM\\EB-12-(1200х1000)-WM.jpg",
+                        "Bytes":  7656048,
+                        "Created":  "2026-10-13T12:27:22",
+                        "Modified":  "2026-10-13T12:27:15"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Наложение водяного знака\\Стенды с WM\\EB-13-WM.jpg",
+                        "Bytes":  9485718,
+                        "Created":  "2026-10-09T14:31:40",
+                        "Modified":  "2026-10-09T14:31:42"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Наложение водяного знака\\Стенды с WM\\OT-10-WM.jpg",
+                        "Bytes":  2474184,
+                        "Created":  "2026-10-09T14:40:58",
+                        "Modified":  "2026-10-09T14:40:59"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Наложение водяного знака\\Стенды с WM\\OT-11wm.jpg",
+                        "Bytes":  2716565,
+                        "Created":  "2026-10-09T14:46:51",
+                        "Modified":  "2026-10-09T14:46:51"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Наложение водяного знака\\Стенды с WM\\OT-37-(1500х1000)-WM.jpg",
+                        "Bytes":  12278849,
+                        "Created":  "2026-10-09T14:05:05",
+                        "Modified":  "2026-10-09T14:05:06"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Наложение водяного знака\\Стенды с WM\\OT-41-wm.jpg",
+                        "Bytes":  6092612,
+                        "Created":  "2026-10-09T14:46:52",
+                        "Modified":  "2026-10-09T14:46:53"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Наложение водяного знака\\Стенды с WM\\OT-43-(1200х1000)-WM.jpg",
+                        "Bytes":  3860401,
+                        "Created":  "2026-10-13T12:25:39",
+                        "Modified":  "2026-10-13T12:25:40"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Наложение водяного знака\\Стенды с WM\\PB-01-new-WM.jpg",
+                        "Bytes":  2805697,
+                        "Created":  "2026-10-09T14:39:03",
+                        "Modified":  "2026-10-09T14:39:04"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Наложение водяного знака\\Стенды с WM\\PB-29-(1200х1000)-WM.jpg",
+                        "Bytes":  4886121,
+                        "Created":  "2026-10-09T14:46:54",
+                        "Modified":  "2026-10-09T14:46:55"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Наложение водяного знака\\Стенды с WM\\PM-05-WM.jpg",
+                        "Bytes":  2534251,
+                        "Created":  "2026-10-09T14:28:20",
+                        "Modified":  "2026-10-09T14:28:03"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Наложение водяного знака\\Стенды с WM\\PM-08-(1200х1000)-WM.jpg",
+                        "Bytes":  8405031,
+                        "Created":  "2026-10-09T14:46:55",
+                        "Modified":  "2026-10-09T14:46:55"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Наложение водяного знака\\Стенды с WM\\TM-10-WM.jpg",
+                        "Bytes":  2911932,
+                        "Created":  "2026-10-09T14:46:57",
+                        "Modified":  "2026-10-09T14:46:58"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Наложение водяного знака\\Стенды с WM\\TM-44-(1200х1000)-WM.jpg",
+                        "Bytes":  3119411,
+                        "Created":  "2026-10-09T14:46:59",
+                        "Modified":  "2026-10-09T14:46:59"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Наложение водяного знака\\Стенды с WM\\TM-45-wm.jpg",
+                        "Bytes":  1464501,
+                        "Created":  "2026-10-09T14:47:01",
+                        "Modified":  "2026-10-09T14:47:01"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Наложение водяного знака\\Стенды с WM\\TM-47-(1200х1000)-WM.jpg",
+                        "Bytes":  4476139,
+                        "Created":  "2026-10-09T14:47:06",
+                        "Modified":  "2026-10-09T14:47:06"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Наложение водяного знака\\Стенды с WM\\VU-04wm.png",
+                        "Bytes":  1288391,
+                        "Created":  "2026-10-09T14:47:07",
+                        "Modified":  "2026-10-09T14:47:07"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Наложение водяного знака\\Стенды с WM\\ОТ-06wm.jpg",
+                        "Bytes":  2584155,
+                        "Created":  "2026-10-09T14:47:14",
+                        "Modified":  "2026-10-09T14:47:14"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Наложение водяного знака\\Стенды с WM\\ОТ-08wm.jpg",
+                        "Bytes":  2467991,
+                        "Created":  "2026-10-09T14:47:14",
+                        "Modified":  "2026-10-09T14:47:14"
+                    },
+                    {
+                        "Type":  "folder",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\# Архив"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\# Архив\\Album-empty.png",
+                        "Bytes":  203830,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-09-23T10:00:32"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\# Архив\\Book-empty.png",
+                        "Bytes":  305662,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-09-23T10:01:24"
+                    },
+                    {
+                        "Type":  "folder",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\- - Шаблон для журнала (new)"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\- - Шаблон для журнала (new)\\! Заменить точки в арткуле на знак процентов.txt",
+                        "Bytes":  0,
+                        "Created":  "2026-01-26T08:06:23",
+                        "Modified":  "2022-09-21T16:05:02"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\- - Шаблон для журнала (new)\\- Экспорт PNG из фотошоп 700 пикс. по ширине.txt",
+                        "Bytes":  0,
+                        "Created":  "2026-01-26T08:06:23",
+                        "Modified":  "2022-05-05T15:18:16"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\- - Шаблон для журнала (new)\\1. PDF to PNG.lnk",
+                        "Bytes":  1000,
+                        "Created":  "2026-01-26T08:06:23",
+                        "Modified":  "2022-09-21T10:07:03"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\- - Шаблон для журнала (new)\\2. Перенести отмокапленные PNG в AIData.lnk",
+                        "Bytes":  893,
+                        "Created":  "2026-01-26T08:06:23",
+                        "Modified":  "2022-07-28T12:44:43"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\- - Шаблон для журнала (new)\\3. Заполнить AI Data (журналы) (Гугл Таблица).url",
+                        "Bytes":  190,
+                        "Created":  "2026-01-26T08:06:23",
+                        "Modified":  "2022-07-28T12:27:13"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\- - Шаблон для журнала (new)\\3.1. Сохранить таблицу в этом каталоге (Файл - Скачать - Формат CSV).png",
+                        "Bytes":  66642,
+                        "Created":  "2026-01-26T08:06:23",
+                        "Modified":  "2022-07-28T13:05:15"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\- - Шаблон для журнала (new)\\3.2. Открыть \u0027Jurnal.ai\u0027.txt",
+                        "Bytes":  0,
+                        "Created":  "2026-01-26T08:06:23",
+                        "Modified":  "2022-07-28T13:20:16"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\- - Шаблон для журнала (new)\\3.3. Переменные в Illustrator (инструкция).lnk",
+                        "Bytes":  1622,
+                        "Created":  "2026-01-26T08:06:23",
+                        "Modified":  "2022-05-03T10:10:11"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\- - Шаблон для журнала (new)\\4. Переместить PNG из Temp в \u0027- Экспортир. PNG\u0027.lnk",
+                        "Bytes":  756,
+                        "Created":  "2026-01-26T08:06:23",
+                        "Modified":  "2022-07-28T13:18:24"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\- - Шаблон для журнала (new)\\5. Добавить PDF вотермарки.lnk",
+                        "Bytes":  1020,
+                        "Created":  "2026-01-26T08:06:23",
+                        "Modified":  "2022-07-28T12:12:53"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\- - Шаблон для журнала (new)\\6. Залить PDF на сервер (путь внутри).txt",
+                        "Bytes":  42,
+                        "Created":  "2026-01-26T08:06:23",
+                        "Modified":  "2022-07-28T13:43:05"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\- - Шаблон для журнала (new)\\7. Вырезать PNG из AIData.lnk",
+                        "Bytes":  893,
+                        "Created":  "2026-01-26T08:06:23",
+                        "Modified":  "2022-07-28T13:47:56"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\- - Шаблон для журнала (new)\\9. Залить PNG для ЯМ на сервер.txt",
+                        "Bytes":  42,
+                        "Created":  "2026-01-26T08:06:23",
+                        "Modified":  "2022-07-28T13:43:05"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\- - Шаблон для журнала (new)\\AI Data (журналы).csv",
+                        "Bytes":  2078,
+                        "Created":  "2026-01-26T08:06:23",
+                        "Modified":  "2022-07-28T13:04:12"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\- - Шаблон для журнала (new)\\J-46-2-48.png",
+                        "Bytes":  230204,
+                        "Created":  "2026-01-26T08:06:23",
+                        "Modified":  "2022-09-23T09:59:53"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\- - Шаблон для журнала (new)\\Jurnal.ai",
+                        "Bytes":  470055,
+                        "Created":  "2026-01-26T08:06:23",
+                        "Modified":  "2022-09-21T16:50:06"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\- - Шаблон для журнала (new)\\Ж 08.2 Журнал учета присвоения группы 1 по электробезопасности.pdf",
+                        "Bytes":  2003115,
+                        "Created":  "2026-01-26T08:06:23",
+                        "Modified":  "2022-09-16T15:29:23"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\- - Шаблон для журнала (new)\\Получение ссылки на локальный файл.txt",
+                        "Bytes":  0,
+                        "Created":  "2026-01-26T08:06:23",
+                        "Modified":  "2022-09-16T16:03:24"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\- - Шаблон для журнала (new)\\Последовательность обработки журналов.txt",
+                        "Bytes":  2293,
+                        "Created":  "2026-01-26T08:06:23",
+                        "Modified":  "2022-09-09T13:18:04"
+                    },
+                    {
+                        "Type":  "folder",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\Создание мокапа (альбомный)"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\Создание мокапа (альбомный)\\- 1. Создать альбом. мокап (J-ART-SHEETS).psd",
+                        "Bytes":  6303528,
+                        "Created":  "2026-01-26T08:06:23",
+                        "Modified":  "2022-05-06T08:13:41"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\Создание мокапа (альбомный)\\- 2. Replace SmartObject Content and Save as PSD.js",
+                        "Bytes":  2322,
+                        "Created":  "2026-01-26T08:06:23",
+                        "Modified":  "2022-05-04T17:33:13"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\Создание мокапа (альбомный)\\- 3. Перенести сгенерированные PSD в папку \u0027PSD в PNG\u0027.lnk",
+                        "Bytes":  1034,
+                        "Created":  "2026-01-26T08:06:23",
+                        "Modified":  "2022-09-26T15:21:17"
+                    },
+                    {
+                        "Type":  "folder",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\Создание мокапа (книжный)"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\Создание мокапа (книжный)\\- 1. Создать книжн. мокап (J-ART-SHEETS).psd",
+                        "Bytes":  11592127,
+                        "Created":  "2026-01-26T08:06:23",
+                        "Modified":  "2022-05-06T09:08:24"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\Создание мокапа (книжный)\\- 2. Replace SmartObject Content and Save as PSD.js",
+                        "Bytes":  2322,
+                        "Created":  "2026-01-26T08:06:23",
+                        "Modified":  "2022-05-04T17:33:13"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\Создание мокапа (книжный)\\- 3. Перенести сгенерированные PSD в папку \u0027PSD в PNG\u0027.lnk",
+                        "Bytes":  1034,
+                        "Created":  "2026-01-26T08:06:23",
+                        "Modified":  "2022-09-26T15:21:17"
+                    },
+                    {
+                        "Type":  "folder",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\Создание превью и выгрузки"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\Создание превью и выгрузки\\J-46_2-48-big.png",
+                        "Bytes":  262979,
+                        "Created":  "2026-01-26T08:06:23",
+                        "Modified":  "2022-09-27T15:51:27"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\Создание превью и выгрузки\\J-46_2-48-small.png",
+                        "Bytes":  69881,
+                        "Created":  "2026-01-26T08:06:23",
+                        "Modified":  "2022-09-27T15:51:27"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\Создание превью и выгрузки\\J-46_2-48-thumb.png",
+                        "Bytes":  9909,
+                        "Created":  "2026-01-26T08:06:23",
+                        "Modified":  "2022-09-27T15:51:27"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\Создание превью и выгрузки\\Копировать файлы в \u0027JPG compressed\u0027.lnk",
+                        "Bytes":  1135,
+                        "Created":  "2026-01-26T08:06:23",
+                        "Modified":  "2022-09-27T15:56:12"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\Создание превью и выгрузки\\Созданные превью перенести в Журналы.lnk",
+                        "Bytes":  1410,
+                        "Created":  "2026-01-26T08:06:23",
+                        "Modified":  "2022-09-27T08:44:17"
+                    },
+                    {
+                        "Type":  "folder",
+                        "Path":  "PSD templates\\Шаблон для превью к плакатам\\- 1. Подготовить PNG"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к плакатам\\- 1. Подготовить PNG\\- 1. Rotate album PNGs.pyw",
+                        "Bytes":  1624,
+                        "Created":  "2026-01-26T08:06:23",
+                        "Modified":  "2026-08-31T19:02:48"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к плакатам\\- 1. Подготовить PNG\\- 2. Resize Poster (1000x1333).exe",
+                        "Bytes":  343680,
+                        "Created":  "2026-01-26T08:06:23",
+                        "Modified":  "2023-03-01T11:56:17"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к плакатам\\- 1. Подготовить PNG\\- 3. Переместить в \u0027Poster-prev.psd\u0027.txt",
+                        "Bytes":  0,
+                        "Created":  "2026-01-26T08:06:23",
+                        "Modified":  "2022-10-19T11:58:22"
+                    },
+                    {
+                        "Type":  "folder",
+                        "Path":  "PSD templates\\Наложение водяного знака\\# Скрипты Photoshop\\# Бэкапы скриптов"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Наложение водяного знака\\# Скрипты Photoshop\\# Бэкапы скриптов\\- Компас WM (плакаты ресайз + в JPG) [droplet].jsx",
+                        "Bytes":  9306,
+                        "Created":  "2026-09-17T16:08:42",
+                        "Modified":  "2026-09-16T11:51:36"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Наложение водяного знака\\# Скрипты Photoshop\\# Бэкапы скриптов\\- Компас WM (стенды ресайз + в JPG) [droplet].jsx",
+                        "Bytes":  3211,
+                        "Created":  "2026-09-17T16:08:42",
+                        "Modified":  "2026-09-16T13:23:51"
+                    },
+                    {
+                        "Type":  "folder",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\# Архив\\Шаблон для журнала"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\# Архив\\Шаблон для журнала\\- Экспорт PNG из фотошоп 700 пикс. по ширине.txt",
+                        "Bytes":  0,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-05-05T15:18:16"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\# Архив\\Шаблон для журнала\\1. PDF to PNG.lnk",
+                        "Bytes":  1000,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-09-21T10:07:03"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\# Архив\\Шаблон для журнала\\2. Перенести отмокапленные PNG в AIData.lnk",
+                        "Bytes":  893,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-07-28T12:44:43"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\# Архив\\Шаблон для журнала\\3. Заполнить AI Data (журналы) (Гугл Таблица).url",
+                        "Bytes":  190,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-07-28T12:27:13"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\# Архив\\Шаблон для журнала\\3.1. Сохранить таблицу в этом каталоге (Файл - Скачать - Формат CSV).png",
+                        "Bytes":  66642,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-07-28T13:05:15"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\# Архив\\Шаблон для журнала\\3.2. Открыть \u0027Jurnal.ai\u0027.txt",
+                        "Bytes":  0,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-07-28T13:20:16"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\# Архив\\Шаблон для журнала\\3.3. Переменные в Illustrator (инструкция).lnk",
+                        "Bytes":  1622,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-05-03T10:10:11"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\# Архив\\Шаблон для журнала\\4. Переместить PNG из Temp в \u0027- Экспортир. PNG\u0027.lnk",
+                        "Bytes":  756,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-07-28T13:18:24"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\# Архив\\Шаблон для журнала\\5. Добавить PDF вотермарки.lnk",
+                        "Bytes":  1020,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-07-28T12:12:53"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\# Архив\\Шаблон для журнала\\6. Залить PDF на сервер (путь внутри).txt",
+                        "Bytes":  42,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-07-28T13:43:05"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\# Архив\\Шаблон для журнала\\7. Вырезать PNG из AIData.lnk",
+                        "Bytes":  893,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-07-28T13:47:56"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\# Архив\\Шаблон для журнала\\9. Залить PNG для ЯМ на сервер.txt",
+                        "Bytes":  42,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-07-28T13:43:05"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\# Архив\\Шаблон для журнала\\AI Data (журналы).csv",
+                        "Bytes":  2078,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-07-28T13:04:12"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\# Архив\\Шаблон для журнала\\Jurnal.ai",
+                        "Bytes":  466636,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-07-28T13:28:58"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\# Архив\\Шаблон для журнала\\Ж 08.2 Журнал учета присвоения группы 1 по электробезопасности.pdf",
+                        "Bytes":  2003115,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-09-16T15:29:23"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\# Архив\\Шаблон для журнала\\Получение ссылки на локальный файл.txt",
+                        "Bytes":  0,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-09-16T16:03:24"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\# Архив\\Шаблон для журнала\\Последовательность обработки журналов.txt",
+                        "Bytes":  2293,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-09-09T13:18:04"
+                    },
+                    {
+                        "Type":  "folder",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\# Архив\\Шаблон для журнала (new)"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\# Архив\\Шаблон для журнала (new)\\! Заменить точки в арткуле на знак процентов.txt",
+                        "Bytes":  0,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-09-21T16:05:02"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\# Архив\\Шаблон для журнала (new)\\- Экспорт PNG из фотошоп 700 пикс. по ширине.txt",
+                        "Bytes":  0,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-05-05T15:18:16"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\# Архив\\Шаблон для журнала (new)\\1. PDF to PNG.lnk",
+                        "Bytes":  1000,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-09-21T10:07:03"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\# Архив\\Шаблон для журнала (new)\\2. Перенести отмокапленные PNG в AIData.lnk",
+                        "Bytes":  893,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-07-28T12:44:43"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\# Архив\\Шаблон для журнала (new)\\3. Заполнить AI Data (журналы) (Гугл Таблица).url",
+                        "Bytes":  190,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-07-28T12:27:13"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\# Архив\\Шаблон для журнала (new)\\3.1. Сохранить таблицу в этом каталоге (Файл - Скачать - Формат CSV).png",
+                        "Bytes":  66642,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-07-28T13:05:15"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\# Архив\\Шаблон для журнала (new)\\3.2. Открыть \u0027Jurnal.ai\u0027.txt",
+                        "Bytes":  0,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-07-28T13:20:16"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\# Архив\\Шаблон для журнала (new)\\3.3. Переменные в Illustrator (инструкция).lnk",
+                        "Bytes":  1622,
+                        "Created":  "2026-01-26T08:06:23",
+                        "Modified":  "2022-05-03T10:10:11"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\# Архив\\Шаблон для журнала (new)\\4. Переместить PNG из Temp в \u0027- Экспортир. PNG\u0027.lnk",
+                        "Bytes":  756,
+                        "Created":  "2026-01-26T08:06:23",
+                        "Modified":  "2022-07-28T13:18:24"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\# Архив\\Шаблон для журнала (new)\\5. Добавить PDF вотермарки.lnk",
+                        "Bytes":  1020,
+                        "Created":  "2026-01-26T08:06:23",
+                        "Modified":  "2022-07-28T12:12:53"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\# Архив\\Шаблон для журнала (new)\\6. Залить PDF на сервер (путь внутри).txt",
+                        "Bytes":  42,
+                        "Created":  "2026-01-26T08:06:23",
+                        "Modified":  "2022-07-28T13:43:05"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\# Архив\\Шаблон для журнала (new)\\7. Вырезать PNG из AIData.lnk",
+                        "Bytes":  893,
+                        "Created":  "2026-01-26T08:06:23",
+                        "Modified":  "2022-07-28T13:47:56"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\# Архив\\Шаблон для журнала (new)\\9. Залить PNG для ЯМ на сервер.txt",
+                        "Bytes":  42,
+                        "Created":  "2026-01-26T08:06:23",
+                        "Modified":  "2022-07-28T13:43:05"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\# Архив\\Шаблон для журнала (new)\\AI Data (журналы).csv",
+                        "Bytes":  2078,
+                        "Created":  "2026-01-26T08:06:23",
+                        "Modified":  "2022-07-28T13:04:12"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\# Архив\\Шаблон для журнала (new)\\J-46#2-48.png",
+                        "Bytes":  230204,
+                        "Created":  "2026-01-26T08:06:23",
+                        "Modified":  "2022-09-23T09:59:53"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\# Архив\\Шаблон для журнала (new)\\Jurnal.ai",
+                        "Bytes":  470055,
+                        "Created":  "2026-01-26T08:06:23",
+                        "Modified":  "2022-09-21T16:50:06"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\# Архив\\Шаблон для журнала (new)\\Ж 08.2 Журнал учета присвоения группы 1 по электробезопасности.pdf",
+                        "Bytes":  2003115,
+                        "Created":  "2026-01-26T08:06:23",
+                        "Modified":  "2022-09-16T15:29:23"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\# Архив\\Шаблон для журнала (new)\\Получение ссылки на локальный файл.txt",
+                        "Bytes":  0,
+                        "Created":  "2026-01-26T08:06:23",
+                        "Modified":  "2022-09-16T16:03:24"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\# Архив\\Шаблон для журнала (new)\\Последовательность обработки журналов.txt",
+                        "Bytes":  2293,
+                        "Created":  "2026-01-26T08:06:23",
+                        "Modified":  "2022-09-09T13:18:04"
+                    },
+                    {
+                        "Type":  "folder",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\- - Шаблон для журнала (new)\\- Сжатые JPEG на сайт"
+                    },
+                    {
+                        "Type":  "folder",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\- - Шаблон для журнала (new)\\- Экспортир. PNG"
+                    },
+                    {
+                        "Type":  "folder",
+                        "Path":  "PSD templates\\Шаблон для превью к плакатам\\- 1. Подготовить PNG\\Poster-prev.psd"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к плакатам\\- 1. Подготовить PNG\\Poster-prev.psd\\- 1. Добавить \u0027-big\u0027 перед номером листа у PNG превью.pyw",
+                        "Bytes":  2019,
+                        "Created":  "2026-08-31T19:20:12",
+                        "Modified":  "2026-08-31T19:19:16"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к плакатам\\- 1. Подготовить PNG\\Poster-prev.psd\\- 2. Poster-AAA-big-N.psd",
+                        "Bytes":  52620613,
+                        "Created":  "2026-01-26T08:06:23",
+                        "Modified":  "2025-05-30T12:58:38"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к плакатам\\- 1. Подготовить PNG\\Poster-prev.psd\\- 3. [PNG] Replace SmartObject Content and Save as PNG.js",
+                        "Bytes":  3784,
+                        "Created":  "2026-08-31T19:30:45",
+                        "Modified":  "2025-05-30T12:00:35"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к плакатам\\- 1. Подготовить PNG\\Poster-prev.psd\\- 4. Копировать превью 1-х страниц в \u0027PNG (1st sheet)\u0027.pyw",
+                        "Bytes":  3071,
+                        "Created":  "2026-08-31T19:32:51",
+                        "Modified":  "2026-09-03T12:12:23"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к плакатам\\- 1. Подготовить PNG\\Poster-prev.psd\\- 5. Удалить PNG файлы.pyw",
+                        "Bytes":  3150,
+                        "Created":  "2026-09-03T12:21:29",
+                        "Modified":  "2026-09-03T12:23:04"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к плакатам\\- 1. Подготовить PNG\\Poster-prev.psd\\- 6. [Перетянуть папку \u0027PNG\u0027] Save as JPG 65% [all sizes].lnk",
+                        "Bytes":  1392,
+                        "Created":  "2026-09-03T12:51:04",
+                        "Modified":  "2026-09-03T12:51:04"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к плакатам\\- 1. Подготовить PNG\\Poster-prev.psd\\- 7. Переместить сжатые JPEG в одроим. папку.pyw",
+                        "Bytes":  4700,
+                        "Created":  "2026-09-03T12:31:07",
+                        "Modified":  "2026-09-03T12:58:18"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к плакатам\\- 1. Подготовить PNG\\Poster-prev.psd\\- 8. Залить PNG из папки \u0027PNG (1st sheet)\u0027 на сервер в каталог \u0027cloud\u0027.txt",
+                        "Bytes":  0,
+                        "Created":  "2026-01-26T08:06:23",
+                        "Modified":  "2022-10-19T11:50:05"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к плакатам\\- 1. Подготовить PNG\\Poster-prev.psd\\- 9. Переместить превью и удалить залитые на сервер.pyw",
+                        "Bytes":  6846,
+                        "Created":  "2026-09-03T12:43:36",
+                        "Modified":  "2026-09-03T12:44:55"
+                    },
+                    {
+                        "Type":  "folder",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\# Архив\\Шаблон для журнала\\- Сжатые JPEG на сайт"
+                    },
+                    {
+                        "Type":  "folder",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\# Архив\\Шаблон для журнала\\- Экспортир. PNG"
+                    },
+                    {
+                        "Type":  "folder",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\# Архив\\Шаблон для журнала\\мокап альбомный"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\# Архив\\Шаблон для журнала\\мокап альбомный\\- 1. Конвертировать PDF в PNG.lnk",
+                        "Bytes":  1039,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-05-06T09:12:03"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\# Архив\\Шаблон для журнала\\мокап альбомный\\- 1.2. Дать PNG файлам названия по шаблону J-ART-SHEETS.png",
+                        "Bytes":  301959,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-05-05T14:51:17"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\# Архив\\Шаблон для журнала\\мокап альбомный\\- 2. J-ART-SHEETS.psd",
+                        "Bytes":  6303528,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-05-06T08:13:41"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\# Архив\\Шаблон для журнала\\мокап альбомный\\- 2. Инструкция для мокапа.txt",
+                        "Bytes":  739,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-05-06T09:26:48"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\# Архив\\Шаблон для журнала\\мокап альбомный\\- 3. Replace SmartObject Content and Save as PSD.js",
+                        "Bytes":  2322,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-05-04T17:33:13"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\# Архив\\Шаблон для журнала\\мокап альбомный\\- 4. Перенести сгенерированные PSD в папку \u0027PSD в PNG\u0027.txt",
+                        "Bytes":  0,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-05-06T09:19:52"
+                    },
+                    {
+                        "Type":  "folder",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\# Архив\\Шаблон для журнала\\мокап книжный"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\# Архив\\Шаблон для журнала\\мокап книжный\\- 1. Конвертировать PDF в PNG.lnk",
+                        "Bytes":  1039,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-05-06T09:12:03"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\# Архив\\Шаблон для журнала\\мокап книжный\\- 1.2. Дать PNG файлам названия по шаблону J-ART-SHEETS.png",
+                        "Bytes":  301959,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-05-05T14:51:17"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\# Архив\\Шаблон для журнала\\мокап книжный\\- 2. J-ART-SHEETS.psd",
+                        "Bytes":  11592127,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-05-06T09:08:24"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\# Архив\\Шаблон для журнала\\мокап книжный\\- 2. Инструкция для мокапа.txt",
+                        "Bytes":  737,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-05-06T10:02:57"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\# Архив\\Шаблон для журнала\\мокап книжный\\- 3. Replace SmartObject Content and Save as PSD.js",
+                        "Bytes":  2322,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-05-04T17:33:13"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\# Архив\\Шаблон для журнала\\мокап книжный\\- 4. Перенести сгенерированные PSD в папку \u0027PSD в PNG\u0027.txt",
+                        "Bytes":  0,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-05-06T09:19:52"
+                    },
+                    {
+                        "Type":  "folder",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\# Архив\\Шаблон для журнала\\Работа с PDF к журналам"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\# Архив\\Шаблон для журнала\\Работа с PDF к журналам\\PDF watermark.lnk",
+                        "Bytes":  1050,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-07-28T12:09:03"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\# Архив\\Шаблон для журнала\\Работа с PDF к журналам\\XLS - Журналы.xlsx",
+                        "Bytes":  672418,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-09-16T17:27:05"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\# Архив\\Шаблон для журнала\\Работа с PDF к журналам\\Журналы все CSV.csv",
+                        "Bytes":  9814037,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-09-06T13:51:23"
+                    },
+                    {
+                        "Type":  "folder",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\# Архив\\Шаблон для журнала (new)\\- Сжатые JPEG на сайт"
+                    },
+                    {
+                        "Type":  "folder",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\# Архив\\Шаблон для журнала (new)\\- Экспортир. PNG"
+                    },
+                    {
+                        "Type":  "folder",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\- - Шаблон для журнала (new)\\- Сжатые JPEG на сайт\\Small для БУЗы"
+                    },
+                    {
+                        "Type":  "folder",
+                        "Path":  "PSD templates\\Шаблон для превью к плакатам\\- 1. Подготовить PNG\\Poster-prev.psd\\# old scripts"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к плакатам\\- 1. Подготовить PNG\\Poster-prev.psd\\# old scripts\\- [JPEG sRGB] Replace SmartObject Content and Save as JPEG 50% size 65% comp.js",
+                        "Bytes":  3855,
+                        "Created":  "2026-01-26T08:06:23",
+                        "Modified":  "2025-01-27T11:41:57"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к плакатам\\- 1. Подготовить PNG\\Poster-prev.psd\\# old scripts\\- [JPEG] Replace SmartObject Content and Save as JPEG 50% size 65% comp.js",
+                        "Bytes":  3508,
+                        "Created":  "2026-01-26T08:06:23",
+                        "Modified":  "2025-01-27T11:05:19"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к плакатам\\- 1. Подготовить PNG\\Poster-prev.psd\\# old scripts\\- [PNG 1 sheet] Replace SmartObject Content and Save as JPEG 50%.js",
+                        "Bytes":  3768,
+                        "Created":  "2026-01-26T08:06:23",
+                        "Modified":  "2025-05-30T12:13:01"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к плакатам\\- 1. Подготовить PNG\\Poster-prev.psd\\# old scripts\\- [PNG test] Replace SmartObject Content and Save as JPEG 50% — копия.js",
+                        "Bytes":  3596,
+                        "Created":  "2026-01-26T08:06:23",
+                        "Modified":  "2025-05-30T12:21:29"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к плакатам\\- 1. Подготовить PNG\\Poster-prev.psd\\# old scripts\\- [PNG] Replace SmartObject Content and Save as JPEG 50%.js",
+                        "Bytes":  3784,
+                        "Created":  "2026-01-26T08:06:23",
+                        "Modified":  "2025-05-30T12:00:35"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к плакатам\\- 1. Подготовить PNG\\Poster-prev.psd\\# old scripts\\- [PSD] Replace SmartObject Content and Save as PSD.js",
+                        "Bytes":  2322,
+                        "Created":  "2026-01-26T08:06:23",
+                        "Modified":  "2022-05-04T17:33:13"
+                    },
+                    {
+                        "Type":  "folder",
+                        "Path":  "PSD templates\\Шаблон для превью к плакатам\\- 1. Подготовить PNG\\Poster-prev.psd\\JPEG"
+                    },
+                    {
+                        "Type":  "folder",
+                        "Path":  "PSD templates\\Шаблон для превью к плакатам\\- 1. Подготовить PNG\\Poster-prev.psd\\PNG"
+                    },
+                    {
+                        "Type":  "folder",
+                        "Path":  "PSD templates\\Шаблон для превью к плакатам\\- 1. Подготовить PNG\\Poster-prev.psd\\PNG (1st sheet)"
+                    },
+                    {
+                        "Type":  "folder",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\# Архив\\Шаблон для журнала\\- Сжатые JPEG на сайт\\Small для БУЗы"
+                    },
+                    {
+                        "Type":  "folder",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\# Архив\\Шаблон для журнала\\мокап альбомный\\PSD в PNG"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\# Архив\\Шаблон для журнала\\мокап альбомный\\PSD в PNG\\- 1. PSD to PNG width 700 px.exe",
+                        "Bytes":  342958,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-05-06T09:18:34"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\# Архив\\Шаблон для журнала\\мокап альбомный\\PSD в PNG\\- 2. Удалить PSD.txt",
+                        "Bytes":  0,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-05-06T09:19:16"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\# Архив\\Шаблон для журнала\\мокап альбомный\\PSD в PNG\\- 3. Перенести PNG в папку AIData.lnk",
+                        "Bytes":  905,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-07-28T12:48:49"
+                    },
+                    {
+                        "Type":  "folder",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\# Архив\\Шаблон для журнала\\мокап книжный\\PSD в PNG"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\# Архив\\Шаблон для журнала\\мокап книжный\\PSD в PNG\\- 1. PSD to PNG width 700 px.exe",
+                        "Bytes":  342958,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-05-06T09:18:34"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\# Архив\\Шаблон для журнала\\мокап книжный\\PSD в PNG\\- 2. Удалить PSD.txt",
+                        "Bytes":  0,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-05-06T09:19:16"
+                    },
+                    {
+                        "Type":  "file",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\# Архив\\Шаблон для журнала\\мокап книжный\\PSD в PNG\\- 3. Перенести PNG в папку AIData.lnk",
+                        "Bytes":  905,
+                        "Created":  "2026-01-26T08:06:22",
+                        "Modified":  "2022-07-28T12:47:45"
+                    },
+                    {
+                        "Type":  "folder",
+                        "Path":  "PSD templates\\Шаблон для превью к журналам\\# Архив\\Шаблон для журнала (new)\\- Сжатые JPEG на сайт\\Small для БУЗы"
+                    }
+                ],
+    "Errors":  [
+
+               ]
+}
