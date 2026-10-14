@@ -5,7 +5,7 @@ try {
   $item = Get-Item -LiteralPath $Root -Force
   if (-not $item.PSIsContainer) { throw 'Folder required' }
   $rootPath = $item.FullName.TrimEnd([char]92)
-  $out = Join-Path $PSScriptRoot ('Результаты\scan_' + (Get-Date -Format 'yyyyMMdd_HHmmss'))
+  $out = Join-Path $PSScriptRoot ('Results\scan_' + (Get-Date -Format 'yyyyMMdd_HHmmss'))
   New-Item -ItemType Directory -Force -Path $out | Out-Null
   $exclude = @('.git','node_modules','.venv','venv','__pycache__','.idea','.vs','$RECYCLE.BIN','System Volume Information')
   $queue = New-Object System.Collections.Queue
@@ -41,14 +41,14 @@ try {
   # BOM for compatibility with Excel on Windows.
   $files | Export-Csv -LiteralPath (Join-Path $out 'files.csv') -NoTypeInformation -Delimiter ';' -Encoding UTF8
   $folders | Export-Csv -LiteralPath (Join-Path $out 'folders.csv') -NoTypeInformation -Delimiter ';' -Encoding UTF8
-  $lines = @('# Инвентаризация папки','','Корень: ' + $rootPath,'Дата: ' + (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'),'Файлов: ' + $files.Count,'Папок: ' + $folders.Count,'Общий размер: ' + [math]::Round($bytes / 1MB,2) + ' МБ','','## Расширения')
+  $lines = @('# Folder inventory','','Root: ' + $rootPath,'Date: ' + (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'),'Files: ' + $files.Count,'Folders: ' + $folders.Count,'Total MB: ' + [math]::Round($bytes / 1MB,2),'','## Extensions')
   foreach ($g in ($files | Group-Object Extension | Sort-Object Count -Descending | Select-Object -First 30)) { $lines += ('- ' + $g.Name + ': ' + $g.Count) }
-  $lines += @('','## Примечания','Только чтение метаданных; файлы не изменяются. Содержимое и хеши не читаются.','Пропущены служебные папки и символьные ссылки.','Ошибок доступа: ' + $errors.Count)
+  $lines += @('','## Notes','Read-only scan: file content and hashes are not accessed.','Service directories and reparse points are skipped.','Access errors: ' + $errors.Count)
   [IO.File]::WriteAllLines((Join-Path $out 'summary.md'),[string[]]$lines,(New-Object Text.UTF8Encoding($true)))
   if ($errors.Count) { [IO.File]::WriteAllLines((Join-Path $out 'errors.txt'),[string[]]$errors,(New-Object Text.UTF8Encoding($true))) }
-  Write-Host ('Готово: файлов ' + $files.Count + ', папок ' + $folders.Count) -ForegroundColor Green
+  Write-Host ('Done: files ' + $files.Count + ', folders ' + $folders.Count) -ForegroundColor Green
   Start-Process explorer.exe -ArgumentList ('"' + $out + '"')
 } catch {
-  Write-Host ('Ошибка: ' + $_.Exception.Message) -ForegroundColor Red
+  Write-Host ('Error: ' + $_.Exception.Message) -ForegroundColor Red
   exit 1
 }
