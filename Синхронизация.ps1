@@ -34,6 +34,13 @@ Invoke-Git fetch origin main
 $changes = @(& $git status --porcelain --untracked-files=all)
 if ($LASTEXITCODE -ne 0) { throw 'Cannot inspect local changes' }
 
+if (-not $changes.Count) {
+    # Update ignore rules first, then recheck: new files may become visible.
+    Invoke-Git pull --ff-only origin main
+    $changes = @(& $git status --porcelain --untracked-files=all)
+    if ($LASTEXITCODE -ne 0) { throw 'Cannot inspect local changes after pull' }
+}
+
 if ($changes.Count) {
     Write-Host 'Local changes to review before publishing:' -ForegroundColor Yellow
     $changes | ForEach-Object { Write-Host $_ }
