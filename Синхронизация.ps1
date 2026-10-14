@@ -38,7 +38,7 @@ if ($changes.Count) {
     Write-Host 'Local changes to review before publishing:' -ForegroundColor Yellow
     $changes | ForEach-Object { Write-Host $_ }
     Write-Host 'WARNING: this repository is PUBLIC.' -ForegroundColor Yellow
-    $answer = Read-Host 'Type YES to publish these changes'
+    $answer = Read-Host 'Confirm public upload (1 / U / YES / DA)'
     if ($answer.Trim().ToLowerInvariant() -notin @('1', 'u', 'г', 'yes', 'y', 'да', 'д')) {
         Write-Host 'Nothing published; remote changes not applied.'
         return
@@ -50,8 +50,8 @@ if ($changes.Count) {
         throw 'Remove sensitive files before publishing.'
     }
     Invoke-Git add -A
-    Invoke-Git diff --cached --check
-    & $git diff --cached --quiet
+    Invoke-Git --no-pager diff --cached --check
+    & $git --no-pager diff --cached --quiet
     if ($LASTEXITCODE -eq 1) {
         Invoke-Git commit -m 'Sync local files'
     } elseif ($LASTEXITCODE -ne 0) {
