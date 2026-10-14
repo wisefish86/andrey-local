@@ -28,9 +28,10 @@ if ($LASTEXITCODE -ne 0 -or $origin -notmatch 'wisefish86/andrey-local(\.git)?$'
 }
 $branch = (& $git branch --show-current).Trim()
 if ($branch -ne 'main') { throw "Expected branch main, found: $branch" }
-Invoke-Git -c core.quotepath=false fetch origin main
+Invoke-Git config --local core.quotepath false
+Invoke-Git fetch origin main
 
-$changes = @(& $git -c core.quotepath=false status --porcelain --untracked-files=all)
+$changes = @(& $git status --porcelain --untracked-files=all)
 if ($LASTEXITCODE -ne 0) { throw 'Cannot inspect local changes' }
 
 if ($changes.Count) {
@@ -42,7 +43,7 @@ if ($changes.Count) {
         Write-Host 'Nothing published; remote changes not applied.'
         return
     }
-    $paths = @(& $git -c core.quotepath=false ls-files --others --exclude-standard)
+    $paths = @(& $git ls-files --others --exclude-standard)
     $risky = @($paths | Where-Object { $_ -match '(?i)(^|/)(\.env.*|id_rsa|id_ed25519|.*\.(key|pem|pfx|p12|kdbx)|.*\.bak)$' })
     if ($risky.Count) {
         $risky | ForEach-Object { Write-Host "Private-looking file: $_" -ForegroundColor Red }
