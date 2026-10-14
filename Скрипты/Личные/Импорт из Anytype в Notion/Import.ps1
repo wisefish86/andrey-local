@@ -2,9 +2,18 @@
 $repo = "wisefish86/singer-andreway"
 $workflow = "import-anytype-v2.yml"
 
+$script:openedPage = $false
+
 function Finish {
+    if ($script:openedPage) { return }
     Write-Host ""
     Read-Host "Нажмите Enter, чтобы закрыть окно"
+}
+
+function Open-NotionPage([string]$url) {
+    # Launch through Windows Explorer so Notion desktop logs do not flood this console.
+    Start-Process -FilePath "explorer.exe" -ArgumentList @($url) -ErrorAction Stop
+    $script:openedPage = $true
 }
 
 Write-Host "====================================" -ForegroundColor Cyan
@@ -113,12 +122,12 @@ try {
         if ($selection -match '^\d+$') {
             $number = [int]$selection
             if ($number -ge 1 -and $number -le $pages.Count) {
-                Start-Process $pages[$number - 1].Url
+                Open-NotionPage $pages[$number - 1].Url
             } else {
                 Write-Host "Такого номера нет." -ForegroundColor Yellow
             }
         } elseif ($selection -match '^(?i:все|all)$') {
-            foreach ($page in $pages) { Start-Process $page.Url }
+            foreach ($page in $pages) { Open-NotionPage $page.Url }
         }
     }
     Write-Host "Подробности:"
