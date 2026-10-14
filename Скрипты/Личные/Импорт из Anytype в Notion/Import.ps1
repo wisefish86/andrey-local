@@ -86,12 +86,32 @@ try {
         }
     }
 
+    # Show incomplete imports prominently even when GitHub Actions itself succeeded.
+    $totalLine = @($logs | Where-Object { $_ -match 'RESULT TOTAL:.*imported:\s*(\d+)\s*\|\s*retained:\s*(\d+)' } | Select-Object -Last 1)
+    $retainedCount = 0
+    if ($totalLine.Count -gt 0 -and $totalLine[0] -match 'retained:\s*(\d+)') {
+        $retainedCount = [int]$Matches[1]
+    }
+    if ($retainedCount -gt 0) {
+        Write-Host ""
+        Write-Host ("НЕ ИМПОРТИРОВАНО АРХИВОВ: {0}. Они остались в 01_Inbox." -f $retainedCount) -ForegroundColor Red
+        foreach ($item in @($logs | Where-Object { $_ -match 'RESULT SKIPPED:' })) {
+            $message = ($item -split "`t")[-1]
+            Write-Host $message -ForegroundColor Red
+        }
+    }
+    Write-Host ""
+
     if ($watchCode -eq 0 -and $summary -match 'ZIP archives found: 0') {
         Write-Host ""
         Write-Host "Папка 01_Inbox пуста. Импортировать нечего." -ForegroundColor Yellow
     } elseif ($watchCode -eq 0) {
         Write-Host ""
-        Write-Host "УСПЕШНО: обработка завершена!" -ForegroundColor Green
+        if ($retainedCount -gt 0) {
+            Write-Host "Обработка завершена с пропущенными архивами." -ForegroundColor Yellow
+        } else {
+            Write-Host "УСПЕШНО: обработка завершена!" -ForegroundColor Green
+        }
     } else {
         Write-Host ""
         Write-Host "ОШИБКА: не всё удалось импортировать." -ForegroundColor Red
