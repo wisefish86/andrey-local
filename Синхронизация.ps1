@@ -39,7 +39,7 @@ if ($changes.Count) {
     $changes | ForEach-Object { Write-Host $_ }
     Write-Host 'WARNING: this repository is PUBLIC.' -ForegroundColor Yellow
     $answer = Read-Host 'Type YES to publish these changes'
-    if ($answer -cne 'YES') {
+    if ($answer.ToLowerInvariant() -notin @('yes', 'y', 'да', 'д')) {
         Write-Host 'Nothing published; remote changes not applied.'
         return
     }
