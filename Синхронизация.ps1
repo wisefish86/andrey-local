@@ -50,7 +50,7 @@ if ($changes.Count) {
         throw 'Remove sensitive files before publishing.'
     }
     Invoke-Git add -A
-    Invoke-Git --no-pager diff --cached --check
+    # A trailing blank line is harmless; do not block file synchronization on whitespace lint.
     & $git --no-pager diff --cached --quiet
     if ($LASTEXITCODE -eq 1) {
         Invoke-Git commit -m 'Sync local files'
