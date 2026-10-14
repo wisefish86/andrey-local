@@ -1,0 +1,3 @@
+# ZIP exports stay local: this public repository must not publish Anytype notes.
+*
+!.gitignore
