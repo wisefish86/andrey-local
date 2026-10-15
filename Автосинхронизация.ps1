@@ -56,6 +56,15 @@ try {
   } else {
     Invoke-Git pull --ff-only origin main
   }
+  # Update local launch shortcuts after Git sync. Never execute discovered scripts.
+  $catalog = Join-Path $PSScriptRoot 'Скрипты\Система ярлыков\Обновить-ярлыки.ps1'
+  if (Test-Path -LiteralPath $catalog -PathType Leaf) {
+    try {
+      & $catalog | Out-Null
+    } catch {
+      Write-SyncLog "[$(Get-Date -Format s)] SHORTCUT ERROR $($_.Exception.Message)"
+    }
+  }
   Write-SyncLog "[$(Get-Date -Format s)] OK"
 } catch {
   Write-SyncLog "[$(Get-Date -Format s)] ERROR $($_.Exception.Message)"
