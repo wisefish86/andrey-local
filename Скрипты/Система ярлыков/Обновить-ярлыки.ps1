@@ -66,6 +66,7 @@ $names = @{
   '[скрипт] Добавление водяного знака и конв. в WebP 75%.bat' = 'Добавить водяной знак и конвертировать в WebP'
   '[скрипт] Конвертировать в WebP 75%.bat' = 'Конвертировать в WebP 75%'
 }
+$errorsFound = 0
 foreach ($file in $items) {
   # A companion BAT owns the user-facing shortcut for a GUI script.
   if ($file.Extension -eq '.pyw') {
@@ -92,17 +93,33 @@ foreach ($file in $items) {
     $previous = $wsh.CreateShortcut($shortcutPath)
     if ($previous.Description -ne $signature) { continue }
   }
-  $shortcut = $wsh.CreateShortcut($shortcutPath)
-  $shortcut.Description = $signature
-  $shortcut.WorkingDirectory = $file.DirectoryName
-  $shortcut.TargetPath = $file.FullName
-  $shortcut.Arguments = ''
-  $icon = Resolve-Icon $file.BaseName $category
-  if ($icon) { $shortcut.IconLocation = $icon }
-  else {
-    $shortcut.IconLocation = $file.FullName + ',0'
+  try {
+    $shortcut = $wsh.CreateShortcut($shortcutPath)
+    $shortcut.Description = $signature
+    $shortcut.WorkingDirectory = $file.DirectoryName
+    $shortcut.Arguments = ''
+    try {
+      $shortcut.TargetPath = $file.FullName
+    } catch {
+      # WSH rejects certain BAT paths (ArgumentException 0x80070057).
+      # cmd.exe is a stable executable target; Explorer appends drag-and-drop
+      # paths to the shortcut command line, preserving the file arguments.
+      if ($file.Extension -ne '.bat') { throw }
+      $shortcut.TargetPath = $env:ComSpec
+      $shortcut.Arguments = '/d /s /c ""' + $file.FullName + '"'
+      Write-Warning ("Using cmd.exe for shortcut: " + $file.FullName)
+    }
+    $icon = Resolve-Icon $file.BaseName $category
+    if ($icon) { $shortcut.IconLocation = $icon }
+    elseif ($file.Extension -eq '.bat') { $shortcut.IconLocation = $env:ComSpec + ',0' }
+    else { $shortcut.IconLocation = $file.FullName + ',0' }
+    $shortcut.Save()
+    Write-Host ("Created/updated: " + $shortcutPath)
+  } catch {
+    $errorsFound += 1
+    Write-Warning ("SHORTCUT ERROR: " + $file.FullName + " -> " + $_.Exception.Message)
   }
-  $shortcut.Save()
 }
 # Never delete any existing shortcuts. Old and custom links are maintained by the user.
+if ($errorsFound -gt 0) { throw "$errorsFound shortcut(s) failed; see SHORTCUT ERROR lines above." }
 if (-not $WhatIf) { Write-Host "Shortcuts updated in: $output" }
