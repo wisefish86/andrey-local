@@ -24,7 +24,7 @@
     "order-approval": "send",
     "order-print": "printer",
     "order-archive": "archive",
-    "order-cleanup": "trash-2"
+    "order-cleanup": "trash"
   },
   "rules": [
     {
