@@ -5,7 +5,6 @@ $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $output = Join-Path $root 'Ярлыки'
 $signature = 'Managed by AndreyLocal Shortcut Catalog v1'
-$known = @{}
 $iconsRoot = Join-Path $root 'Ресурсы\Иконки'
 $configPath = Join-Path $iconsRoot 'icon-map.json'
 $config = Get-Content -LiteralPath $configPath -Raw -Encoding UTF8 | ConvertFrom-Json
@@ -71,7 +70,6 @@ foreach ($file in $items) {
   $title = if ($names.ContainsKey($file.Name)) { $names[$file.Name] } else { $file.BaseName }
   $title = Make-SafeName $title
   $shortcutPath = Join-Path $folder ($title + '.lnk')
-  $known[$shortcutPath.ToLowerInvariant()] = $true
   if ($WhatIf) { Write-Host "Would update: $shortcutPath"; continue }
   if (-not (Test-Path -LiteralPath $folder)) { New-Item -ItemType Directory -Path $folder -Force | Out-Null }
   # Do not overwrite a shortcut that was created or customized by the user.
@@ -91,18 +89,5 @@ foreach ($file in $items) {
   }
   $shortcut.Save()
 }
-# Remove obsolete generated links, including old PS1 links and renamed BAT links.
-# Never touch shortcuts without our exact management signature.
-if (Test-Path -LiteralPath $output) {
-  Get-ChildItem -LiteralPath $output -Filter '*.lnk' -File -Recurse | ForEach-Object {
-    $link = $_
-    if (-not $known.ContainsKey($link.FullName.ToLowerInvariant())) {
-      $existing = $wsh.CreateShortcut($link.FullName)
-      if ($existing.Description -eq $signature) {
-        if ($WhatIf) { Write-Host "Would remove obsolete managed shortcut: $($link.FullName)" }
-        else { Remove-Item -LiteralPath $link.FullName -Force }
-      }
-    }
-  }
-}
+# Never delete any existing shortcuts. Old and custom links are maintained by the user.
 if (-not $WhatIf) { Write-Host "Shortcuts updated in: $output" }
