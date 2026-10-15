@@ -7,17 +7,28 @@ $output = Join-Path $root 'Ярлыки'
 $signature = 'Managed by AndreyLocal Shortcut Catalog v1'
 $known = @{}
 $iconsRoot = Join-Path $root 'Ресурсы\Иконки'
-$shellIcons = Join-Path $env:SystemRoot 'System32\shell32.dll'
+$configPath = Join-Path $iconsRoot 'icon-map.json'
+$config = Get-Content -LiteralPath $configPath -Raw -Encoding UTF8 | ConvertFrom-Json
+$iconDirectory = Join-Path $iconsRoot 'ICO'
+$warningLog = Join-Path $root '.shortcut-icons.log'
 if (-not $WhatIf -and -not (Test-Path -LiteralPath $output)) { New-Item -ItemType Directory -Path $output -Force | Out-Null }
 $wsh = New-Object -ComObject WScript.Shell
 
 function Make-SafeName([string]$name) {
   return ($name -replace '[<>:"/\\|?*]', '_').Trim().TrimEnd('.')
 }
-function Resolve-Icon([string]$stem) {
-  $ico = Join-Path $iconsRoot ($stem + '.ico')
-  if (Test-Path -LiteralPath $ico -PathType Leaf) { return $ico }
-  return ($shellIcons + ',3')
+function Resolve-Icon([string]$stem, [string]$folderName) {
+  $lookup = ($stem + ' ' + $folderName).ToLowerInvariant()
+  $matched = 'script-default'
+  foreach ($rule in $config.rules) {
+    if ($lookup.Contains([string]$rule.contains)) { $matched = [string]$rule.icon; break }
+  }
+  $candidate = Join-Path $iconDirectory ($matched + '.ico')
+  if (Test-Path -LiteralPath $candidate -PathType Leaf) { return $candidate }
+  $fallback = Join-Path $iconDirectory 'script-default.ico'
+  if (Test-Path -LiteralPath $fallback -PathType Leaf) { return $fallback }
+  # Never substitute the folder icon: skip assignment until ICO assets arrive.
+  return $null
 }
 
 # Only discover files in known locations; never scan inbox/reference/archive or generated output.
@@ -60,7 +71,13 @@ foreach ($file in $items) {
     $shortcut.TargetPath = $file.FullName
     $shortcut.Arguments = ''
   }
-  $shortcut.IconLocation = Resolve-Icon $file.BaseName
+  $icon = Resolve-Icon $file.BaseName $category
+  if ($icon) { $shortcut.IconLocation = $icon }
+  elseif ($file.Extension -eq '.ps1') {
+    $shortcut.IconLocation = (Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe') + ',0'
+  } else {
+    $shortcut.IconLocation = $file.FullName + ',0'
+  }
   $shortcut.Save()
 }
 # Intentionally never delete stale/custom shortcuts. Review obsolete ones manually.
