@@ -61,6 +61,7 @@ $names = @{
   '[заказы] 3. Подготовка к печати.bat' = '03 — Подготовить к печати (перетащить)'
   '[заказы] 4. Архивация и отправка на производство.bat' = '04 — Архивировать и отправить на производство (перетащить)'
   '[заказы] 5. Удаление лишнего.bat' = '05 — Удалить лишнее (перетащить)'
+  '[скрипт] Удалить из названия файлов ֎ если они в подпапках.bat' = 'Удалить символ из имён файлов в подпапках'
   'run_csv_cleaner.bat' = 'Очистить CSV от лишних столбцов'
   'PDF-сборщик (перетяни файлы).bat' = 'Собрать PDF-превью (перетащить)'
   '[скрипт] Добавление водяного знака и конв. в WebP 75%.bat' = 'Добавить водяной знак и конвертировать в WebP'
@@ -85,7 +86,14 @@ foreach ($file in $items) {
   $folder = Join-Path $output $category
   $title = if ($names.ContainsKey($file.Name)) { $names[$file.Name] } else { $file.BaseName }
   $title = Make-SafeName $title
+  # Windows Shell Link COM may replace nonstandard Unicode symbols with '?'.
+  $title = $title.Replace([string][char]0x058E, ' - ').Replace('?', '_')
   $shortcutPath = Join-Path $folder ($title + '.lnk')
+  # Convenience launcher in the root of the shortcut catalog; same underlying BAT.
+  if ($file.Name -eq 'Обновить ярлыки.bat') {
+    $folder = $output
+    $shortcutPath = Join-Path $folder ($title + '.lnk')
+  }
   if ($WhatIf) { Write-Host "Would update: $shortcutPath"; continue }
   if (-not (Test-Path -LiteralPath $folder)) { New-Item -ItemType Directory -Path $folder -Force | Out-Null }
   # Do not overwrite a shortcut that was created or customized by the user.
