@@ -106,7 +106,7 @@ foreach ($file in $items) {
       # paths to the shortcut command line, preserving the file arguments.
       if ($file.Extension -ne '.bat') { throw }
       $shortcut.TargetPath = $env:ComSpec
-      $shortcut.Arguments = '/d /s /c ""' + $file.FullName + '"'
+      $shortcut.Arguments = '/d /s /c ""' + $file.FullName + '" "'
       Write-Warning ("Using cmd.exe for shortcut: " + $file.FullName)
     }
     $icon = Resolve-Icon $file.BaseName $category
