@@ -78,8 +78,8 @@ foreach ($file in $items) {
   # A short, actionable catalog section for all five order workflows.
   # The .lnk target remains the original BAT beside its Python script,
   # so drag-and-drop passes the order path via the shortcut to %~1.
-  if ($relativeDir -like 'Скрипты\\Работа\\Заказы\\*') {
-    $category = 'Работа\\Заказы'
+  if ($relativeDir -like 'Скрипты\Работа\Заказы\*') {
+    $category = 'Работа\Заказы'
   }
   $folder = Join-Path $output $category
   $title = if ($names.ContainsKey($file.Name)) { $names[$file.Name] } else { $file.BaseName }
