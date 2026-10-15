@@ -5,7 +5,7 @@ $workflow = "import-anytype-v2.yml"
 $script:openedPage = $false
 
 function Finish {
-    if ($script:openedPage) { return }
+    if ($script:openedPage -and -not $script:importHadErrors) { return }
     Write-Host ""
     Read-Host "Нажмите Enter, чтобы закрыть окно"
 }
@@ -76,49 +76,17 @@ try {
     Write-Host "========== РЕЗУЛЬТАТ ==========" -ForegroundColor Cyan
 
     $logs = & $gh run view $runId --repo $repo --log 2>&1
-    $summary = $logs | Where-Object {
-        $_ -match "ZIP archives found:|VERIFIED and archived:|FAILED, ZIP retained:|RESULT "
-    }
-
-    if ($summary) {
-        $summary | ForEach-Object {
-            ($_ -split "`t")[-1]
-        }
-    }
-
-    # Show incomplete imports prominently even when GitHub Actions itself succeeded.
-    $totalLine = @($logs | Where-Object { $_ -match 'RESULT TOTAL:.*imported:\s*(\d+)\s*\|\s*retained:\s*(\d+)' } | Select-Object -Last 1)
+    # Parse errors first, but print the final verdict only AFTER the page list.
+    $failedLines = @($logs | Where-Object { $_ -match 'RESULT SKIPPED:|FAILED, ZIP retained:' })
+    $totalLine = @($logs | Where-Object { $_ -match 'RESULT TOTAL:.*imported:\s*\d+\s*\|\s*retained:\s*\d+' } | Select-Object -Last 1)
     $retainedCount = 0
-    if ($totalLine.Count -gt 0 -and $totalLine[0] -match 'retained:\s*(\d+)') {
+    $hasTotal = $totalLine.Count -gt 0
+    if ($hasTotal -and $totalLine[0] -match 'retained:\s*(\d+)') {
         $retainedCount = [int]$Matches[1]
     }
-    if ($retainedCount -gt 0) {
-        Write-Host ""
-        Write-Host ("НЕ ИМПОРТИРОВАНО АРХИВОВ: {0}. Они остались в 01_Inbox." -f $retainedCount) -ForegroundColor Red
-        foreach ($item in @($logs | Where-Object { $_ -match 'RESULT SKIPPED:' })) {
-            $message = ($item -split "`t")[-1]
-            Write-Host $message -ForegroundColor Red
-        }
-    }
-    Write-Host ""
-
-    if ($watchCode -eq 0 -and $summary -match 'ZIP archives found: 0') {
-        Write-Host ""
-        Write-Host "Папка 01_Inbox пуста. Импортировать нечего." -ForegroundColor Yellow
-    } elseif ($watchCode -eq 0) {
-        Write-Host ""
-        if ($retainedCount -gt 0) {
-            Write-Host "Обработка завершена с пропущенными архивами." -ForegroundColor Yellow
-        } else {
-            Write-Host "УСПЕШНО: обработка завершена!" -ForegroundColor Green
-        }
-    } else {
-        Write-Host ""
-        Write-Host "ОШИБКА: не всё удалось импортировать." -ForegroundColor Red
-        if (-not $summary) {
-            & $gh run view $runId --repo $repo --log-failed
-        }
-    }
+    $emptyInbox = @($logs | Where-Object { $_ -match 'ZIP archives found:\s*0(?:\D|$)' }).Count -gt 0
+    $hadErrors = ($watchCode -ne 0 -or $retainedCount -gt 0 -or $failedLines.Count -gt 0 -or -not $hasTotal)
+    $script:importHadErrors = $hadErrors
 
     # Extract successful page URLs from the current importer's RESULT PAGE lines.
     $pages = @()
@@ -148,6 +116,30 @@ try {
             }
         } elseif ($selection -match '^(?i:все|all)$') {
             foreach ($page in $pages) { Open-NotionPage $page.Url }
+        }
+    }
+    # The very last result is the error report so skipped ZIPs cannot be missed.
+    Write-Host ""
+    Write-Host "========== ИТОГ ИМПОРТА ==========" -ForegroundColor Cyan
+    if ($failedLines.Count -gt 0) {
+        Write-Host ("НЕ ИМПОРТИРОВАНО: {0}. Архивы оставлены в 01_Inbox." -f [Math]::Max($retainedCount, $failedLines.Count)) -ForegroundColor Red
+        foreach ($line in $failedLines) {
+            Write-Host (($line -split "`t")[-1]) -ForegroundColor Red
+        }
+    } elseif ($retainedCount -gt 0) {
+        Write-Host ("НЕ ИМПОРТИРОВАНО: {0}. Проверь журнал запуска." -f $retainedCount) -ForegroundColor Red
+    }
+    if ($watchCode -ne 0) {
+        Write-Host "ОШИБКА: выполнение GitHub Actions завершилось неуспешно." -ForegroundColor Red
+    }
+    if (-not $hasTotal) {
+        Write-Host "ОШИБКА: итоговая статистика отсутствует; полный успех не подтверждён." -ForegroundColor Red
+    }
+    if (-not $hadErrors) {
+        if ($emptyInbox) {
+            Write-Host "Папка 01_Inbox пуста. Импортировать нечего." -ForegroundColor Yellow
+        } else {
+            Write-Host "УСПЕШНО: все найденные архивы обработаны, ошибок нет." -ForegroundColor Green
         }
     }
     Write-Host "Подробности:"
