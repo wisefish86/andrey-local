@@ -1,4 +1,4 @@
-# Generates Windows shortcuts for launchable scripts in this repository.
+﻿# Generates Windows shortcuts for launchable scripts in this repository.
 # Only manages shortcuts marked with the description signature; never executes targets.
 param([switch]$WhatIf)
 $ErrorActionPreference = 'Stop'
