@@ -13,7 +13,7 @@
     "scan": "folder-search",
     "files": "files",
     "automation": "workflow",
-    "github": "github",
+    "github": "git-branch",
     "notion": "notebook-tabs",
     "tools": "wrench"
   },
