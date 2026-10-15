@@ -1,0 +1,62 @@
+{
+  "version": 1,
+  "style": {
+    "source": "lucide",
+    "color": "#087e65",
+    "background": "#e8faf4",
+    "strokeWidth": 2.5
+  },
+  "icons": {
+    "script-default": "file-code-2",
+    "sync": "refresh-cw",
+    "import": "download",
+    "scan": "folder-search",
+    "files": "files",
+    "automation": "workflow",
+    "github": "github",
+    "notion": "notebook-tabs",
+    "tools": "wrench"
+  },
+  "rules": [
+    {
+      "contains": "синхрон",
+      "icon": "sync"
+    },
+    {
+      "contains": "import",
+      "icon": "import"
+    },
+    {
+      "contains": "импорт",
+      "icon": "import"
+    },
+    {
+      "contains": "сканир",
+      "icon": "scan"
+    },
+    {
+      "contains": "scan",
+      "icon": "scan"
+    },
+    {
+      "contains": "файл",
+      "icon": "files"
+    },
+    {
+      "contains": "порядок",
+      "icon": "files"
+    },
+    {
+      "contains": "notion",
+      "icon": "notion"
+    },
+    {
+      "contains": "github",
+      "icon": "github"
+    },
+    {
+      "contains": "автомат",
+      "icon": "automation"
+    }
+  ]
+}
