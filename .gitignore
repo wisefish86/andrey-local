@@ -17,3 +17,6 @@ __pycache__/
 
 # Automated sync diagnostics
 .auto-sync.log
+
+# Local generated Windows shortcuts (machine-specific absolute paths)
+/Ярлыки/
