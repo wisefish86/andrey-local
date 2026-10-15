@@ -19,7 +19,12 @@
     "keyboard": "keyboard",
     "volume": "volume-2",
     "video": "clapperboard",
-    "marker": "file-plus"
+    "marker": "file-plus",
+    "order-start": "rocket",
+    "order-approval": "send",
+    "order-print": "printer",
+    "order-archive": "archive",
+    "order-cleanup": "trash-2"
   },
   "rules": [
     {
@@ -75,6 +80,11 @@
     "Запустить замену раскладки": "keyboard",
     "Открыть панель громкости": "volume",
     "Создать файл-маркер ЯД": "marker",
-    "Нормализация аудио видео": "video"
+    "Нормализация аудио видео": "video",
+    "[заказы] 1. Начало работы": "order-start",
+    "[заказы] 2. Отправка макета на согласование": "order-approval",
+    "[заказы] 3. Подготовка к печати": "order-print",
+    "[заказы] 4. Архивация и отправка на производство": "order-archive",
+    "[заказы] 5. Удаление лишнего": "order-cleanup"
   }
 }
