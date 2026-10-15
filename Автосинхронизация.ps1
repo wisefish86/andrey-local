@@ -1,10 +1,17 @@
-﻿# Unattended sync for PUBLIC andrey-local. Never auto-publish outside inbox/.
+﻿# Unattended sync for PUBLIC andrey-local. Sync tracked project content and new files across the repository.
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 Set-Location -LiteralPath $PSScriptRoot
 $log = Join-Path $PSScriptRoot '.auto-sync.log'
 $lock = New-Object System.Threading.Mutex($false, 'Local\AndreyLocalAutoGitSync')
 if (-not $lock.WaitOne(0)) { exit 0 }
+function Write-SyncLog([string]$entry) {
+  $lines = @()
+  if (Test-Path -LiteralPath $log) {
+    $lines = @(Get-Content -LiteralPath $log -Tail 9 -ErrorAction SilentlyContinue)
+  }
+  @($lines) + @($entry) | Set-Content -LiteralPath $log -Encoding UTF8
+}
 try {
   $git = (Get-Command git -ErrorAction SilentlyContinue).Source
   if (-not $git) {
@@ -21,13 +28,27 @@ try {
   Git fetch origin main
   $status = @(& $git -c core.quotepath=false status --porcelain --untracked-files=all)
   if ($LASTEXITCODE -ne 0) { throw 'Cannot check status' }
-  $outside = @($status | Where-Object { $_.Length -lt 4 -or $_.Substring(3).Trim('"') -notmatch '^inbox/' })
-  if ($outside.Count) { throw "Local edits outside inbox: $($outside -join '; ')" }
-  $incoming = @($status | Where-Object { $_.Length -ge 4 -and $_.Substring(3).Trim('"') -match '^inbox/' })
+  $incoming = @($status | Where-Object { $_.Length -ge 4 })
   foreach ($line in $incoming) {
     $path = $line.Substring(3).Trim('"')
-    if ($line.Substring(0,2) -match 'D') { throw "Automated deletion blocked: $path" }
-    if ($path -match '(?i)(^|/)(\.env[^/]*|id_rsa|id_ed25519|.*\.(key|pem|pfx|p12|kdbx|bak|exe|dll|ps1|bat|cmd|sh|sqlite|db))$') { throw "Sensitive/executable file blocked: $path" }
+    if ($path -match '(?i)(^|/)(\.env[^/]*|id_rsa|id_ed25519|.*\.(key|pem|pfx|p12|kdbx))    $full = Join-Path $PSScriptRoot ($path.Replace('/', [IO.Path]::DirectorySeparatorChar))
+    if ((Test-Path -LiteralPath $full -PathType Leaf) -and (Get-Item -LiteralPath $full).Length -gt 10MB) { throw "File exceeds 10 MB: $path" }
+  }
+  if ($incoming.Count) {
+    Git add -A
+    & $git diff --cached --quiet
+    if ($LASTEXITCODE -eq 1) { Git commit -m 'Auto-sync local repository files' }
+    elseif ($LASTEXITCODE -ne 0) { throw 'Cannot inspect staged changes' }
+    Git pull --rebase origin main
+    Git push origin main
+  } else { Git pull --ff-only origin main }
+  Write-SyncLog "[$(Get-Date -Format s)] OK"
+} catch {
+  Write-SyncLog "[$(Get-Date -Format s)] ERROR $($_.Exception.Message)"
+  Write-Error $_
+  exit 1
+} finally { $lock.ReleaseMutex(); $lock.Dispose() }
+) { throw "Sensitive file name: $path" }
     if ($path -notmatch '(?i)\.(css|js|json|html|txt|md|png|jpg|jpeg|gif|webp|svg|pdf|zip|htz)$') { throw "Unknown file extension blocked: $path" }
     $full = Join-Path $PSScriptRoot ($path.Replace('/', [IO.Path]::DirectorySeparatorChar))
     if ((Test-Path -LiteralPath $full -PathType Leaf) -and (Get-Item -LiteralPath $full).Length -gt 10MB) { throw "File exceeds 10 MB: $path" }
