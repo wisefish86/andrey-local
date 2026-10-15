@@ -1,3 +1,5 @@
-# Incoming files for review
+# На разбор — назначение пока неизвестно
 
-Place small non-sensitive files here when project or destination is unclear. Processing is requested in ChatGPT; no automatic code execution or movement to canonical locations.
+Сюда можно поместить небольшие файлы, если пока непонятно, к какому проекту они относятся.
+
+Напиши в чате «разбери inbox/review», и я изучу содержимое через GitHub, предложу постоянное место и проверю возможные дубли. **Автоматического перемещения и запуска файлов здесь нет.**
