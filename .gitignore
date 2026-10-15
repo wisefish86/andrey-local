@@ -20,3 +20,6 @@ __pycache__/
 
 # Local generated Windows shortcuts (machine-specific absolute paths)
 /Ярлыки/
+
+# Private local workspace — never upload through Git
+/Локальное/
