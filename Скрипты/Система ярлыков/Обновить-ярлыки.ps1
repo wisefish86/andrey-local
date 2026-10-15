@@ -20,8 +20,14 @@ function Make-SafeName([string]$name) {
 function Resolve-Icon([string]$stem, [string]$folderName) {
   $lookup = ($stem + ' ' + $folderName).ToLowerInvariant()
   $matched = 'script-default'
-  foreach ($rule in $config.rules) {
-    if ($lookup.Contains([string]$rule.contains)) { $matched = [string]$rule.icon; break }
+  # Explicit assignments take priority over broad keyword matching.
+  $exact = $config.assignments.PSObject.Properties[$stem]
+  if ($null -ne $exact) {
+    $matched = [string]$exact.Value
+  } else {
+    foreach ($rule in $config.rules) {
+      if ($lookup.Contains([string]$rule.contains)) { $matched = [string]$rule.icon; break }
+    }
   }
   $candidate = Join-Path $iconDirectory ($matched + '.ico')
   if (Test-Path -LiteralPath $candidate -PathType Leaf) { return $candidate }
