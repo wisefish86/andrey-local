@@ -69,4 +69,12 @@ if ($changes.Count) {
 } else {
     Invoke-Git pull --ff-only origin main
 }
+# Refresh local shortcut catalog after repository sync. Shortcuts stay in andrey-local/Ярлыки.
+$catalog = Join-Path $PSScriptRoot 'Скрипты\Система ярлыков\Обновить-ярлыки.ps1'
+if (Test-Path -LiteralPath $catalog -PathType Leaf) {
+    Write-Host 'Updating Windows shortcuts...' -ForegroundColor Cyan
+    & $catalog
+} else {
+    Write-Warning "Shortcut generator not found: $catalog"
+}
 Write-Host 'Synchronization complete.' -ForegroundColor Green
