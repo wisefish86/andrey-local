@@ -23,3 +23,6 @@ __pycache__/
 
 # Private local workspace — never upload through Git
 /Локальное/
+
+# Local Anytype import archives: keep ZIP files and nested ZIP files on this PC only
+/Скрипты/Личные/Импорт из Anytype в Notion/**/*.zip
