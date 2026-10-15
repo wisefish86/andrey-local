@@ -8,6 +8,7 @@ $signature = 'Managed by AndreyLocal Shortcut Catalog v1'
 $known = @{}
 $iconsRoot = Join-Path $root 'Ресурсы\Иконки'
 $shellIcons = Join-Path $env:SystemRoot 'System32\shell32.dll'
+if (-not $WhatIf -and -not (Test-Path -LiteralPath $output)) { New-Item -ItemType Directory -Path $output -Force | Out-Null }
 $wsh = New-Object -ComObject WScript.Shell
 
 function Make-SafeName([string]$name) {
