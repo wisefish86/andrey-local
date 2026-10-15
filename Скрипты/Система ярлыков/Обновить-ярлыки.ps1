@@ -2,7 +2,7 @@
 # Only manages shortcuts marked with the description signature; never executes targets.
 param([switch]$WhatIf)
 $ErrorActionPreference = 'Stop'
-$root = Split-Path -Parent $PSScriptRoot
+$root = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $output = Join-Path $root 'Ярлыки'
 $signature = 'Managed by AndreyLocal Shortcut Catalog v1'
 $known = @{}
@@ -28,7 +28,7 @@ if (Test-Path -LiteralPath $scriptDir) {
 }
 $items += @(Get-ChildItem -LiteralPath $root -File |
   Where-Object { $_.Extension -in @('.bat', '.cmd') -and $_.Name -notmatch '^(Установить|Авто)' })
-$items = @($items | Sort-Object FullName -Unique)
+$items = @($items | Where-Object { $_.FullName -ne $PSCommandPath } | Sort-Object FullName -Unique)
 
 foreach ($file in $items) {
   # A BAT/CMD wrapper takes precedence over the corresponding PowerShell script.
