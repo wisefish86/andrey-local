@@ -56,6 +56,15 @@ $names = @{
   'Открыть панель громкости.bat' = 'Открыть панель громкости для выступлений'
   'Создать файл-маркер ЯД.bat' = 'Создать маркеры ЯД'
   'Нормализация аудио видео.bat' = 'Нормализовать звук видео'
+  '[заказы] 1. Начало работы.bat' = '01 — Начало работы с заказом (перетащить)'
+  '[заказы] 2. Отправка макета на согласование.bat' = '02 — Отправить макет на согласование (перетащить)'
+  '[заказы] 3. Подготовка к печати.bat' = '03 — Подготовить к печати (перетащить)'
+  '[заказы] 4. Архивация и отправка на производство.bat' = '04 — Архивировать и отправить на производство (перетащить)'
+  '[заказы] 5. Удаление лишнего.bat' = '05 — Удалить лишнее (перетащить)'
+  'run_csv_cleaner.bat' = 'Очистить CSV от лишних столбцов'
+  'PDF-сборщик (перетяни файлы).bat' = 'Собрать PDF-превью (перетащить)'
+  '[скрипт] Добавление водяного знака и конв. в WebP 75%.bat' = 'Добавить водяной знак и конвертировать в WebP'
+  '[скрипт] Конвертировать в WebP 75%.bat' = 'Конвертировать в WebP 75%'
 }
 foreach ($file in $items) {
   # A companion BAT owns the user-facing shortcut for a GUI script.
@@ -66,6 +75,12 @@ foreach ($file in $items) {
   }
   $relativeDir = $file.DirectoryName.Substring($root.Length).TrimStart('\')
   $category = if ($relativeDir -eq '') { 'Системные' } else { $relativeDir }
+  # A short, actionable catalog section for all five order workflows.
+  # The .lnk target remains the original BAT beside its Python script,
+  # so drag-and-drop passes the order path via the shortcut to %~1.
+  if ($relativeDir -like 'Скрипты\\Работа\\Заказы\\*') {
+    $category = 'Работа\\Заказы'
+  }
   $folder = Join-Path $output $category
   $title = if ($names.ContainsKey($file.Name)) { $names[$file.Name] } else { $file.BaseName }
   $title = Make-SafeName $title
