@@ -14,3 +14,6 @@ id_ed25519
 __pycache__/
 *.pyc
 
+
+# Automated sync diagnostics
+.auto-sync.log
