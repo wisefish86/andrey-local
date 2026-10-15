@@ -1,4 +1,4 @@
-# Unattended sync for PUBLIC andrey-local. Never auto-publish outside inbox/.
+﻿# Unattended sync for PUBLIC andrey-local. Never auto-publish outside inbox/.
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 Set-Location -LiteralPath $PSScriptRoot
