@@ -1,0 +1,73 @@
+{
+  "Ничего лишнего (- hit, stock, YML)": {
+    "description": "Удаление лишних столбцов: hit, stock, YML и служебные поля",
+    "delete_columns": [
+      "www",
+      "pos",
+      "ext_properties",
+      "first",
+      "hit",
+      "sale",
+      "stock",
+      "provider_articul",
+      "canon_spec",
+      "balance",
+      "yml_on",
+      "yml_vendor",
+      "yml_name",
+      "yml_description",
+      "yml_photos",
+      "yml_warranty",
+      "yml_param_type",
+      "yml_param_purpose",
+      "yml_delivery_options",
+      "yml_dimensions",
+      "title",
+      "meta",
+      "r_all",
+      "r_meta",
+      "d_all",
+      "d_meta"
+    ]
+  },
+  "Основные (- YML)": {
+    "description": "Удаление основных служебных полей и YML-полей",
+    "delete_columns": [
+      "www",
+      "visible",
+      "pos",
+      "balance",
+      "yml_on",
+      "yml_vendor",
+      "yml_name",
+      "yml_description",
+      "yml_photos",
+      "yml_warranty",
+      "yml_param_type",
+      "yml_param_purpose",
+      "yml_delivery_options",
+      "yml_dimensions",
+      "title",
+      "meta",
+      "r_all",
+      "r_meta",
+      "d_all",
+      "d_meta"
+    ]
+  },
+  "Основные с YML": {
+    "description": "Удаление основных служебных полей, YML-поля остаются",
+    "delete_columns": [
+      "www",
+      "visible",
+      "pos",
+      "balance",
+      "title",
+      "meta",
+      "r_all",
+      "r_meta",
+      "d_all",
+      "d_meta"
+    ]
+  }
+}

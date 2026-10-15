@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Андрей Шевцов — репертуар</title>
+  <meta name="description" content="Выберите песни из репертуара Андрея Шевцова и отправьте список в Telegram.">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="page">
+    <section class="hero">
+      <p class="eyebrow">ЖИВОЙ ВОКАЛ</p>
+      <h1>Репертуар Андрея Шевцова</h1>
+      <p class="lead">Выберите песни, которые хотели бы услышать.</p>
+    </section>
+
+    <section id="toolbar" class="toolbar" aria-label="Фильтры репертуара">
+      <div class="toolbar-topline">
+        <button id="mobile-tags-toggle" class="mobile-tags-toggle" type="button" aria-expanded="false">
+          Фильтры
+        </button>
+      </div>
+      <div id="tags" class="tags"></div>
+      <label class="search">
+        <span class="sr-only">Поиск</span>
+        <input id="search" type="search" placeholder="Поиск по песне или исполнителю">
+      </label>
+    </section>
+
+    <section class="summary">
+      <span id="count">Загрузка…</span>
+      <div class="summary-actions">
+        
+      </div>
+    </section>
+
+    <section id="song-list" class="song-list" aria-live="polite"></section>
+
+    <div id="selection-bar" class="selection-bar" hidden>
+      <div>
+        <strong id="selected-count">Выбрано: 0</strong>
+        
+      </div>
+      <button id="send-telegram" class="telegram-button" type="button">
+        Отправить список
+      </button>
+    </div>
+
+    <template id="song-template">
+      <label class="song-row">
+        <input class="song-checkbox" type="checkbox">
+        <span class="custom-checkbox" aria-hidden="true"></span>
+        <span class="song-text"></span>
+      </label>
+    </template>
+  
+    <div id="send-modal" class="modal" hidden>
+      <div class="modal-backdrop" data-close-modal></div>
+
+      <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="send-modal-title">
+        <button class="modal-close" type="button" aria-label="Закрыть" data-close-modal>×</button>
+
+        <div class="modal-icon">✓</div>
+        <h2 id="send-modal-title">Список песен подготовлен</h2>
+        <p class="modal-lead">
+          Сначала скопируйте список, затем откройте удобный мессенджер,
+          вставьте сообщение в чат и отправьте Андрею.
+        </p>
+
+        <button id="modal-copy" class="modal-copy-button" type="button">
+          Скопировать список
+        </button>
+
+        <div id="modal-copy-status" class="modal-status" aria-live="polite"></div>
+
+        <details class="selected-details">
+          <summary>Показать выбранные песни</summary>
+          <div id="modal-song-list" class="selected-song-list"></div>
+        </details>
+
+        <div class="messenger-title">Куда отправить?</div>
+        <div class="messenger-grid">
+          <a class="messenger-button telegram" href="https://t.me/shevtsov_andrey" target="_blank" rel="noopener">
+            Telegram
+          </a>
+          <a class="messenger-button whatsapp" href="https://wa.me/79181142693" target="_blank" rel="noopener">
+            WhatsApp
+          </a>
+          <a class="messenger-button max" href="https://max.ru/u/f9LHodD0cOJuO0xwTsWmcH790HmZrPc21wP-BOoIgfgdGy5HKaHMK3ejGSQ" target="_blank" rel="noopener">
+            MAX
+          </a>
+        </div>
+
+        <p class="modal-hint">
+          В открывшемся чате нажмите и удерживайте поле сообщения, затем выберите «Вставить».
+        </p>
+      </section>
+    </div>
+
+  </main>
+
+  <script src="songs.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
