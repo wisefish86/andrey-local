@@ -41,7 +41,7 @@ $items = @()
 $scriptDir = Join-Path $root 'Скрипты'
 if (Test-Path -LiteralPath $scriptDir) {
   $items += @(Get-ChildItem -LiteralPath $scriptDir -File -Recurse |
-    Where-Object { $_.Extension -in @('.bat', '.pyw') -and $_.FullName -notmatch '[\\/](Results|__pycache__|Archive|Архив)[\\/]' })
+    Where-Object { $_.Extension -in @('.bat', '.pyw') -and $_.FullName -notmatch '[\\/](Results|__pycache__|Archive|Архив|backup|бэкапы|бэкап|# Починить)[\\/]' -and $_.BaseName -notmatch '(?i)(backup|бэкап|install|установить|test|тест)' })
 }
 $items += @(Get-ChildItem -LiteralPath $root -File |
   Where-Object { $_.Extension -in @('.bat') -and $_.Name -notmatch '^(Установить|Авто)' })
@@ -55,6 +55,12 @@ $names = @{
   'Обновить ярлыки.bat' = 'Обновить каталог ярлыков'
 }
 foreach ($file in $items) {
+  # A companion BAT owns the user-facing shortcut for a GUI script.
+  if ($file.Extension -eq '.pyw') {
+    $neighbors = @(Get-ChildItem -LiteralPath $file.DirectoryName -File -Filter '*.bat' -ErrorAction SilentlyContinue |
+      Where-Object { $_.BaseName -notmatch '(?i)(backup|бэкап|install|установить|test|тест)' })
+    if ($neighbors.Count -gt 0) { continue }
+  }
   $relativeDir = $file.DirectoryName.Substring($root.Length).TrimStart('\')
   $category = if ($relativeDir -eq '') { 'Системные' } else { $relativeDir }
   $folder = Join-Path $output $category
