@@ -15,7 +15,11 @@
     "automation": "workflow",
     "github": "git-branch",
     "notion": "notebook-tabs",
-    "tools": "wrench"
+    "tools": "wrench",
+    "keyboard": "keyboard",
+    "volume": "volume-2",
+    "video": "clapperboard",
+    "marker": "file-plus-2"
   },
   "rules": [
     {
@@ -67,6 +71,10 @@
     "Синхронизация": "sync",
     "Запуск импорта": "notion",
     "Сканировать-папку": "scan",
-    "Обновить ярлыки": "automation"
+    "Обновить ярлыки": "automation",
+    "Запустить замену раскладки": "keyboard",
+    "Открыть панель громкости": "volume",
+    "Создать файл-маркер ЯД": "marker",
+    "Нормализация аудио видео": "video"
   }
 }
