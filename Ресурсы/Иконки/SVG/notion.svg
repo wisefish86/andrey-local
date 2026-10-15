@@ -1,0 +1,11 @@
+<ns0:svg xmlns:ns0="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64"><ns0:rect x="1" y="1" width="62" height="62" rx="14" fill="#e8faf4" /><ns0:svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#087e65" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" x="8" y="8">
+  <ns0:path d="M2 6h4" />
+  <ns0:path d="M2 10h4" />
+  <ns0:path d="M2 14h4" />
+  <ns0:path d="M2 18h4" />
+  <ns0:rect width="16" height="20" x="4" y="2" rx="2" />
+  <ns0:path d="M15 2v20" />
+  <ns0:path d="M15 7h5" />
+  <ns0:path d="M15 12h5" />
+  <ns0:path d="M15 17h5" />
+</ns0:svg></ns0:svg>
