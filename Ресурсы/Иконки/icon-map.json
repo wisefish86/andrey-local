@@ -23,14 +23,6 @@
       "icon": "sync"
     },
     {
-      "contains": "import",
-      "icon": "import"
-    },
-    {
-      "contains": "импорт",
-      "icon": "import"
-    },
-    {
       "contains": "сканир",
       "icon": "scan"
     },
@@ -39,24 +31,42 @@
       "icon": "scan"
     },
     {
-      "contains": "файл",
-      "icon": "files"
-    },
-    {
-      "contains": "порядок",
-      "icon": "files"
-    },
-    {
       "contains": "notion",
       "icon": "notion"
+    },
+    {
+      "contains": "импорт",
+      "icon": "import"
+    },
+    {
+      "contains": "import",
+      "icon": "import"
     },
     {
       "contains": "github",
       "icon": "github"
     },
     {
+      "contains": "порядок",
+      "icon": "files"
+    },
+    {
+      "contains": "файл",
+      "icon": "files"
+    },
+    {
       "contains": "автомат",
       "icon": "automation"
+    },
+    {
+      "contains": "ярлык",
+      "icon": "automation"
     }
-  ]
+  ],
+  "assignments": {
+    "Синхронизация": "sync",
+    "Запуск импорта": "notion",
+    "Сканировать-папку": "scan",
+    "Обновить ярлыки": "automation"
+  }
 }
