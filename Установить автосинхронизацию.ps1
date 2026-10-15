@@ -1,4 +1,4 @@
-# Run once from local andrey-local after fetching these files.
+﻿# Run once from local andrey-local after fetching these files.
 $ErrorActionPreference = 'Stop'
 $taskName = 'AndreyLocal Inbox Auto Sync'
 $scriptPath = Join-Path $PSScriptRoot 'Автосинхронизация.ps1'
