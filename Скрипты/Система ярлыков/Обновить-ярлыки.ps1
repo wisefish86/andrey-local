@@ -10,7 +10,6 @@ $iconsRoot = Join-Path $root 'Ресурсы\Иконки'
 $configPath = Join-Path $iconsRoot 'icon-map.json'
 $config = Get-Content -LiteralPath $configPath -Raw -Encoding UTF8 | ConvertFrom-Json
 $iconDirectory = Join-Path $iconsRoot 'ICO'
-$warningLog = Join-Path $root '.shortcut-icons.log'
 if (-not $WhatIf -and -not (Test-Path -LiteralPath $output)) { New-Item -ItemType Directory -Path $output -Force | Out-Null }
 $wsh = New-Object -ComObject WScript.Shell
 
@@ -42,22 +41,25 @@ $items = @()
 $scriptDir = Join-Path $root 'Скрипты'
 if (Test-Path -LiteralPath $scriptDir) {
   $items += @(Get-ChildItem -LiteralPath $scriptDir -File -Recurse |
-    Where-Object { $_.Extension -in @('.bat', '.cmd', '.pyw', '.ps1') -and $_.FullName -notmatch '[\\/](Results|__pycache__|Archive|Архив)[\\/]' })
+    Where-Object { $_.Extension -in @('.bat', '.pyw') -and $_.FullName -notmatch '[\\/](Results|__pycache__|Archive|Архив)[\\/]' })
 }
 $items += @(Get-ChildItem -LiteralPath $root -File |
-  Where-Object { $_.Extension -in @('.bat', '.cmd') -and $_.Name -notmatch '^(Установить|Авто)' })
+  Where-Object { $_.Extension -in @('.bat') -and $_.Name -notmatch '^(Установить|Авто)' })
 $items = @($items | Where-Object { $_.FullName -ne $PSCommandPath } | Sort-Object FullName -Unique)
 
+# User-facing names are verbs/actions, not internal implementation filenames.
+$names = @{
+  'Синхронизация.bat' = 'Синхронизировать файлы'
+  'Запуск импорта.bat' = 'Импортировать в Notion'
+  'Сканировать-папку.bat' = 'Сканировать папку'
+  'Обновить ярлыки.bat' = 'Обновить каталог ярлыков'
+}
 foreach ($file in $items) {
-  # A BAT/CMD wrapper takes precedence over the corresponding PowerShell script.
-  if ($file.Extension -eq '.ps1') {
-    if ((Test-Path -LiteralPath (Join-Path $file.DirectoryName ($file.BaseName + '.bat'))) -or
-        (Test-Path -LiteralPath (Join-Path $file.DirectoryName ($file.BaseName + '.cmd')))) { continue }
-  }
   $relativeDir = $file.DirectoryName.Substring($root.Length).TrimStart('\')
   $category = if ($relativeDir -eq '') { 'Системные' } else { $relativeDir }
   $folder = Join-Path $output $category
-  $title = Make-SafeName $file.BaseName
+  $title = if ($names.ContainsKey($file.Name)) { $names[$file.Name] } else { $file.BaseName }
+  $title = Make-SafeName $title
   $shortcutPath = Join-Path $folder ($title + '.lnk')
   $known[$shortcutPath.ToLowerInvariant()] = $true
   if ($WhatIf) { Write-Host "Would update: $shortcutPath"; continue }
@@ -70,21 +72,27 @@ foreach ($file in $items) {
   $shortcut = $wsh.CreateShortcut($shortcutPath)
   $shortcut.Description = $signature
   $shortcut.WorkingDirectory = $file.DirectoryName
-  if ($file.Extension -eq '.ps1') {
-    $shortcut.TargetPath = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
-    $shortcut.Arguments = '-NoProfile -ExecutionPolicy Bypass -File "' + $file.FullName + '"'
-  } else {
-    $shortcut.TargetPath = $file.FullName
-    $shortcut.Arguments = ''
-  }
+  $shortcut.TargetPath = $file.FullName
+  $shortcut.Arguments = ''
   $icon = Resolve-Icon $file.BaseName $category
   if ($icon) { $shortcut.IconLocation = $icon }
-  elseif ($file.Extension -eq '.ps1') {
-    $shortcut.IconLocation = (Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe') + ',0'
-  } else {
+  else {
     $shortcut.IconLocation = $file.FullName + ',0'
   }
   $shortcut.Save()
 }
-# Intentionally never delete stale/custom shortcuts. Review obsolete ones manually.
+# Remove obsolete generated links, including old PS1 links and renamed BAT links.
+# Never touch shortcuts without our exact management signature.
+if (Test-Path -LiteralPath $output) {
+  Get-ChildItem -LiteralPath $output -Filter '*.lnk' -File -Recurse | ForEach-Object {
+    $link = $_
+    if (-not $known.ContainsKey($link.FullName.ToLowerInvariant())) {
+      $existing = $wsh.CreateShortcut($link.FullName)
+      if ($existing.Description -eq $signature) {
+        if ($WhatIf) { Write-Host "Would remove obsolete managed shortcut: $($link.FullName)" }
+        else { Remove-Item -LiteralPath $link.FullName -Force }
+      }
+    }
+  }
+}
 if (-not $WhatIf) { Write-Host "Shortcuts updated in: $output" }
