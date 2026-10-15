@@ -1,3 +1,5 @@
 @echo off
-python converter.py
-pause
+setlocal
+cd /d "%~dp0"
+python "%~dp0converter.py"
+if errorlevel 1 pause
