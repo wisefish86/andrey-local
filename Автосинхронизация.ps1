@@ -3,7 +3,7 @@ $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 Set-Location -LiteralPath $PSScriptRoot
 $log = Join-Path $PSScriptRoot '.auto-sync.log'
-$lock = New-Object System.Threading.Mutex($false, 'Local\\AndreyLocalAutoGitSync')
+$lock = New-Object System.Threading.Mutex($false, 'Local\AndreyLocalAutoGitSync')
 if (-not $lock.WaitOne(0)) { exit 0 }
 try {
   $git = (Get-Command git -ErrorAction SilentlyContinue).Source
