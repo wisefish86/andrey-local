@@ -85,8 +85,10 @@ Public Sub ExportSmartPNG()
         Exit Sub
     End If
 
-    suffix = InputBox("Optional file suffix (empty = none):", "Export PNG", "")
-    suffix = SafeSuffix(suffix)
+    Dim suffixInput As Variant
+    suffixInput = Application.InputBox("Optional file suffix (empty = none):", "Export PNG", "", Type:=2)
+    If VarType(suffixInput) = vbBoolean Then Exit Sub
+    suffix = SafeSuffix(CStr(suffixInput))
 
     baseName = d.Name
     dotPos = InStrRev(baseName, ".")
@@ -149,7 +151,9 @@ Public Sub ExportSmartPNG()
     If Len(Dir$(targetPath)) > 0 Then Kill targetPath
     Name tempPath As targetPath
 
-    MsgBox "File saved as:" & vbCrLf & baseName & ".png", vbInformation, "Export PNG"
+    MsgBox "File saved as:" & vbCrLf & baseName & ".png" & vbCrLf & _
+        "Size: " & CLng(pixelW) & " x " & CLng(pixelH) & " px", _
+        vbInformation, "Export PNG"
     Exit Sub
 
 Failed:
