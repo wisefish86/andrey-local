@@ -85,10 +85,11 @@ Public Sub ExportSmartPNG()
         Exit Sub
     End If
 
-    Dim suffixInput As Variant
-    suffixInput = Application.InputBox("Optional file suffix (empty = none):", "Export PNG", "", Type:=2)
-    If VarType(suffixInput) = vbBoolean Then Exit Sub
-    suffix = SafeSuffix(CStr(suffixInput))
+    suffix = InputBox("Optional file suffix (empty = none):", "Export PNG", "")
+    ' VBA InputBox returns a null BSTR pointer on Cancel, but an empty
+    ' non-null string when OK is pressed with the field left blank.
+    If StrPtr(suffix) = 0 Then Exit Sub
+    suffix = SafeSuffix(suffix)
 
     baseName = d.Name
     dotPos = InStrRev(baseName, ".")
