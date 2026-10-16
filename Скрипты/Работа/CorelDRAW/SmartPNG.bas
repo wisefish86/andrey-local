@@ -152,9 +152,11 @@ Public Sub ExportSmartPNG()
     If Len(Dir$(targetPath)) > 0 Then Kill targetPath
     Name tempPath As targetPath
 
-    MsgBox "File saved as:" & vbCrLf & baseName & ".png" & vbCrLf & _
-        "Size: " & CLng(pixelW) & " x " & CLng(pixelH) & " px", _
-        vbInformation, "Export PNG"
+    If MsgBox("File saved as:" & vbCrLf & baseName & ".png" & vbCrLf & _
+        "Size: " & CLng(pixelW) & " x " & CLng(pixelH) & " px" & vbCrLf & vbCrLf & _
+        "Open saved PNG?", vbYesNo + vbInformation, "Export PNG") = vbYes Then
+        CreateObject("Shell.Application").ShellExecute targetPath, "", "", "open", 1
+    End If
     Exit Sub
 
 Failed:
