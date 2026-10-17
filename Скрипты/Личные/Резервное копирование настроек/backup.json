@@ -24,5 +24,10 @@
         }
       ]
     }
-  ]
+  ],
+  "schedule": {
+    "mode": "daily",
+    "time": "21:00",
+    "intervalHours": 3
+  }
 }
