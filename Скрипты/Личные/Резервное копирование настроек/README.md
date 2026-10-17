@@ -20,25 +20,29 @@ This tool copies selected application configuration files to:
 | Espanso | `%APPDATA%\espanso\match\base.yml` | `Программы\Espanso\match\base.yml` |
 | Espanso | `%APPDATA%\espanso\config\default.yml` | `Программы\Espanso\config\default.yml` |
 
-## Run manually
+## Launchers (double-click)
 
-From this folder:
+- `Запустить резервное копирование настроек.bat` — run backup immediately, show a summary dialog, and pause console.
+- `Установить расписание резервного копирования.bat` — install or update the Windows scheduled task from `backup.json`, then pause console.
 
-```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\Backup.ps1" -ShowReport
+Both BAT files invoke PowerShell relative to their own folder, so moving the repository does not require modifying a path inside the BAT. If you move the repository after task installation, rerun the installer BAT so the Task Scheduler points to the new path.
+
+## Schedule in backup.json
+
+```json
+"schedule": {
+  "mode": "daily",
+  "time": "21:00",
+  "intervalHours": 3
+}
 ```
 
-`-ShowReport` displays a final Windows message, including failures.
-Without it, suitable for Task Scheduler, the results are written to console and JSON.
-
-## Daily 21:00 schedule
-
-For quick setup, run **Установить расписание.ps1** once on the Windows PC (sets a daily 21:00 task), or create the task manually in Windows Task Scheduler with a daily trigger at 21:00.
-Program: `powershell.exe`
-Arguments:
-`-NoProfile -ExecutionPolicy Bypass -File "FULL_ABSOLUTE_PATH_TO_Backup.ps1"`
-
-Set **Start only if the following network connection is available** only if needed by your setup, and enable running missed tasks on next startup. Do not use `-ShowReport` for an unattended task: dialog boxes may be invisible. Review the JSON report or Scheduler exit code 2 for individual failed files. The scheduler has **not** been installed remotely.
+- `mode: "daily"`: run once every day at `time`; `intervalHours` is ignored.
+- `mode: "every_hours"`: run every `intervalHours` (integer 1–24), starting at `time`. The repetition trigger is valid for 3650 days and can be renewed by running the installer BAT.
+- After **any** change to the schedule, rerun `Установить расписание резервного копирования.bat`. Editing the JSON alone does **not** update an existing Windows task.
+- The installer does not run the backup. It only registers/updates the daily or hourly task.
+- Missed executions can run later via Task Scheduler's StartWhenAvailable; unattended tasks do not show pop-up dialogs. Inspect `Программы\backup-last-report.json` and Windows Task Scheduler history for failures.
+- The schedule is **not yet installed on your Windows PC** until you run the BAT locally.
 
 ## Extend
 
