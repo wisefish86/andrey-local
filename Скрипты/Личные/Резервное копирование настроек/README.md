@@ -20,6 +20,7 @@ This tool copies selected application configuration files to:
 | Espanso | `%APPDATA%\espanso\match\base.yml` | `Программы\Espanso\match\base.yml` |
 | Espanso | `%APPDATA%\espanso\config\default.yml` | `Программы\Espanso\config\default.yml` |
 | CorelDRAW | all `*.gms` beneath `%APPDATA%\Corel` | `Программы\CorelDRAW\<relative path under Corel>` |
+| Adobe Photoshop | selected actions/settings/preset extensions beneath `%APPDATA%\Adobe\Adobe Photoshop *` | `Программы\Photoshop\<relative path under Adobe>` |
 
 ## CorelDRAW GMS auto-discovery
 
@@ -28,6 +29,18 @@ The `CorelDRAW GMS` entry in `backup.json` searches recursively for `*.gms` unde
 If `CorelDRW.exe` or `CorelDRAW.exe` is running, GMS copying is **deferred** for that run (not considered a failure). Flow Launcher and Espanso are still backed up. The scheduled run will retry next time; no file-trigger macro is needed. The final report has a `Deferred` count and per-source status. If CorelDRAW is always open at 21:00, run manual backup after closing it or use a more frequent schedule.
 
 If `%APPDATA%\Corel` is missing, inaccessible or no GMS files are found, the report records an error; no guessed alternate location is used. These backups are intended to restore into the same version-specific folder after reinstalling CorelDRAW. Close CorelDRAW before restoring.
+
+## Photoshop actions, preferences, presets
+
+The `Adobe Photoshop` discovery entry searches version-independent folders under `%APPDATA%\Adobe`, **only** where the relative path starts with `Adobe Photoshop [version]\`. Original version and subfolders are preserved on Yandex Disk.
+
+Captured file types: `Actions Palette.psp` (loaded actions), `*.atn` (saved action sets), `*.psp` (preferences, brushes, shortcuts, workspaces when stored as PSP), plus common presets `*.abr`, `*.asl`, `*.pat`, `*.grd`, `*.csh`, `*.tpl`, `*.aco`, `*.ase`, `*.kys`, `*.mnu`, `*.csf`, `*.psf`, `*.acv`, `*.jsx`, `*.jsxbin`, `*.json`.
+
+If `Photoshop.exe` is running, the entire Photoshop group is deferred until the next scheduled run. This is important because Photoshop writes many settings when it exits. Missing Photoshop folders or no matching files produce an error in the report; other applications continue backing up.
+
+**Important limitations:** This collects relevant user-profile files, not every installed Photoshop asset. Manually exported `.atn` actions or scripts stored outside `%APPDATA%\Adobe\Adobe Photoshop *` (e.g. under `Program Files`, custom external folders or other Adobe paths) are not included. Add their known paths as explicit `files` entries later. For reliable portability, explicitly save action *sets* to `.atn` from the Actions panel. Restoring `Actions Palette.psp` may help but is not a substitute for exported `.atn` sets.
+
+Adobe reference: https://helpx.adobe.com/photoshop/desktop/get-started/settings-and-preferences/preference-and-preset-file-locations.html and https://helpx.adobe.com/photoshop/desktop/troubleshoot/tool-feature-issues/actions-are-missing.html.
 
 ## Launchers (double-click)
 
