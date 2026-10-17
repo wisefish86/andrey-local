@@ -6,7 +6,7 @@ $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $configuration = Join-Path $scriptDir 'backup.json'
 $started = Get-Date
 $results = New-Object System.Collections.Generic.List[object]
-$copied = 0; $unchanged = 0; $failed = 0
+$copied = 0; $unchanged = 0; $failed = 0; $deferred = 0
 $mutex = New-Object System.Threading.Mutex($false, 'Local\AndreyLocalSettingsBackup')
 $locked = $false
 $destination = $null
@@ -30,7 +30,48 @@ try {
         New-Item -ItemType Directory -Path $destination -Force | Out-Null
     }
     foreach ($group in @($config.items)) {
-        foreach ($entry in @($group.files)) {
+        $entries = New-Object System.Collections.Generic.List[object]
+        foreach ($explicit in @($group.files)) {
+            if ($null -ne $explicit) { $entries.Add($explicit) }
+        }
+        if ($null -ne $group.discovery) {
+            $d = $group.discovery
+            $name = [string]$group.name
+            $runningNames = @($d.skipWhenProcessesRunning | Where-Object { $_ })
+            $isRunning = $false
+            foreach ($processName in $runningNames) {
+                if (Get-Process -Name ([string]$processName) -ErrorAction SilentlyContinue) {
+                    $isRunning = $true
+                    break
+                }
+            }
+            if ($isRunning) {
+                $deferred++
+                $results.Add([pscustomobject]@{Name=$name; File='*.gms'; Status='Deferred'; Error='CorelDRAW is running; wait until it closes.'})
+            } else {
+                try {
+                    $root = [Environment]::ExpandEnvironmentVariables([string]$d.root)
+                    if (-not [IO.Path]::IsPathRooted($root) -or -not (Test-Path -LiteralPath $root -PathType Container)) {
+                        throw "Discovery root not found: $root"
+                    }
+                    $root = [IO.Path]::GetFullPath($root).TrimEnd('\')
+                    $prefix = ([string]$d.targetPrefix).Replace('/', '\').TrimEnd('\')
+                    if ([string]::IsNullOrWhiteSpace($prefix)) { throw 'Discovery targetPrefix is empty.' }
+                    $pattern = [string]$d.pattern
+                    if ($pattern -ne '*.gms') { throw 'Discovery currently supports only *.gms.' }
+                    $found = @(Get-ChildItem -LiteralPath $root -Filter $pattern -File -Recurse -ErrorAction Stop)
+                    if ($found.Count -eq 0) { throw "No GMS files found beneath: $root" }
+                    foreach ($gms in $found) {
+                        $pathPart = $gms.FullName.Substring($root.Length).TrimStart('\')
+                        $entries.Add([pscustomobject]@{source=$gms.FullName; target=($prefix + '\' + $pathPart)})
+                    }
+                } catch {
+                    $failed++
+                    $results.Add([pscustomobject]@{Name=$name; File='*.gms'; Status='ERROR'; Error=$_.Exception.Message})
+                }
+            }
+        }
+        foreach ($entry in $entries) {
             $source = [Environment]::ExpandEnvironmentVariables([string]$entry.source)
             $relative = ([string]$entry.target).Replace('/', '\')
             $name = [string]$group.name
@@ -84,12 +125,12 @@ try {
     }
     $report = [pscustomobject]@{
         Started=$started.ToString('o'); Finished=(Get-Date).ToString('o')
-        Destination=$destination; Copied=$copied; Unchanged=$unchanged; Failed=$failed
+        Destination=$destination; Copied=$copied; Unchanged=$unchanged; Deferred=$deferred; Failed=$failed
         Files=@($results.ToArray())
     }
     $reportFile = Join-Path $destination 'backup-last-report.json'
     $report | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $reportFile -Encoding UTF8
-    $message = "Settings backup complete.`r`nCopied: $copied`r`nUnchanged: $unchanged`r`nErrors: $failed`r`nReport: $reportFile"
+    $message = "Settings backup complete.`r`nCopied: $copied`r`nUnchanged: $unchanged`r`nDeferred: $deferred`r`nErrors: $failed`r`nReport: $reportFile"
     Write-Output $message
     if ($ShowReport) {
         Add-Type -AssemblyName System.Windows.Forms
