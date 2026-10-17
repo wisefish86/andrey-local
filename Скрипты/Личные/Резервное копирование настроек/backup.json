@@ -35,6 +35,39 @@
           "CorelDRAW"
         ]
       }
+    },
+    {
+      "name": "Adobe Photoshop",
+      "discovery": {
+        "root": "%APPDATA%\\Adobe",
+        "pattern": "*",
+        "patterns": [
+          "Actions Palette.psp",
+          "*.atn",
+          "*.psp",
+          "*.abr",
+          "*.asl",
+          "*.pat",
+          "*.grd",
+          "*.csh",
+          "*.tpl",
+          "*.aco",
+          "*.ase",
+          "*.kys",
+          "*.mnu",
+          "*.csf",
+          "*.psf",
+          "*.acv",
+          "*.jsx",
+          "*.jsxbin",
+          "*.json"
+        ],
+        "includePathRegex": "^Adobe Photoshop [^\\\\]+\\\\",
+        "targetPrefix": "Photoshop",
+        "skipWhenProcessesRunning": [
+          "Photoshop"
+        ]
+      }
     }
   ],
   "schedule": {
