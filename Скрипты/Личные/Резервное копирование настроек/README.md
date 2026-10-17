@@ -33,7 +33,7 @@ Without it, suitable for Task Scheduler, the results are written to console and 
 
 ## Daily 21:00 schedule
 
-In Windows Task Scheduler, create a task with a daily trigger at 21:00.
+For quick setup, run **Установить расписание.ps1** once on the Windows PC (sets a daily 21:00 task), or create the task manually in Windows Task Scheduler with a daily trigger at 21:00.
 Program: `powershell.exe`
 Arguments:
 `-NoProfile -ExecutionPolicy Bypass -File "FULL_ABSOLUTE_PATH_TO_Backup.ps1"`
