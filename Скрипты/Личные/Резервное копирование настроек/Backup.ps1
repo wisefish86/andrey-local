@@ -47,7 +47,7 @@ try {
             }
             if ($isRunning) {
                 $deferred++
-                $results.Add([pscustomobject]@{Name=$name; File='*.gms'; Status='Deferred'; Error='CorelDRAW is running; wait until it closes.'})
+                $results.Add([pscustomobject]@{Name=$name; File=([string]$d.pattern); Status='Deferred'; Error='Application is running; wait until it closes.'})
             } else {
                 try {
                     $root = [Environment]::ExpandEnvironmentVariables([string]$d.root)
@@ -58,12 +58,25 @@ try {
                     $prefix = ([string]$d.targetPrefix).Replace('/', '\').TrimEnd('\')
                     if ([string]::IsNullOrWhiteSpace($prefix)) { throw 'Discovery targetPrefix is empty.' }
                     $pattern = [string]$d.pattern
-                    if ($pattern -ne '*.gms') { throw 'Discovery currently supports only *.gms.' }
-                    $found = @(Get-ChildItem -LiteralPath $root -Filter $pattern -File -Recurse -ErrorAction Stop)
-                    if ($found.Count -eq 0) { throw "No GMS files found beneath: $root" }
-                    foreach ($gms in $found) {
-                        $pathPart = $gms.FullName.Substring($root.Length).TrimStart('\')
-                        $entries.Add([pscustomobject]@{source=$gms.FullName; target=($prefix + '\' + $pathPart)})
+                    if ([string]::IsNullOrWhiteSpace($pattern)) { throw 'Discovery pattern is empty.' }
+                    $patterns = @($d.patterns | Where-Object { $_ })
+                    if ($patterns.Count -eq 0) { $patterns = @($pattern) }
+                    $pathRegex = [string]$d.includePathRegex
+                    $found = @(Get-ChildItem -LiteralPath $root -File -Recurse -ErrorAction Stop | Where-Object {
+                        $item = $_
+                        $accepted = $false
+                        foreach ($glob in $patterns) { if ($item.Name -like [string]$glob) { $accepted = $true; break } }
+                        if (-not $accepted) { return $false }
+                        if (-not [string]::IsNullOrWhiteSpace($pathRegex)) {
+                            $rel = $item.FullName.Substring($root.Length).TrimStart('\')
+                            return ($rel -match $pathRegex)
+                        }
+                        return $true
+                    })
+                    if ($found.Count -eq 0) { throw "No matching files found beneath: $root" }
+                    foreach ($foundFile in $found) {
+                        $pathPart = $foundFile.FullName.Substring($root.Length).TrimStart('\')
+                        $entries.Add([pscustomobject]@{source=$foundFile.FullName; target=($prefix + '\' + $pathPart)})
                     }
                 } catch {
                     $failed++
