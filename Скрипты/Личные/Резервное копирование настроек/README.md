@@ -19,6 +19,15 @@ This tool copies selected application configuration files to:
 | Flow Launcher | `%APPDATA%\FlowLauncher\Settings\Favorites.conf` | `Программы\Flow Launcher\Favorites.conf` |
 | Espanso | `%APPDATA%\espanso\match\base.yml` | `Программы\Espanso\match\base.yml` |
 | Espanso | `%APPDATA%\espanso\config\default.yml` | `Программы\Espanso\config\default.yml` |
+| CorelDRAW | all `*.gms` beneath `%APPDATA%\Corel` | `Программы\CorelDRAW\<relative path under Corel>` |
+
+## CorelDRAW GMS auto-discovery
+
+The `CorelDRAW GMS` entry in `backup.json` searches recursively for `*.gms` under `%APPDATA%\Corel`, so the exact CorelDRAW year/version does not need to be configured. It preserves the relative path from that directory (including version and `Draw\GMS`) when copying.
+
+If `CorelDRW.exe` or `CorelDRAW.exe` is running, GMS copying is **deferred** for that run (not considered a failure). Flow Launcher and Espanso are still backed up. The scheduled run will retry next time; no file-trigger macro is needed. The final report has a `Deferred` count and per-source status. If CorelDRAW is always open at 21:00, run manual backup after closing it or use a more frequent schedule.
+
+If `%APPDATA%\Corel` is missing, inaccessible or no GMS files are found, the report records an error; no guessed alternate location is used. These backups are intended to restore into the same version-specific folder after reinstalling CorelDRAW. Close CorelDRAW before restoring.
 
 ## Launchers (double-click)
 
@@ -57,4 +66,4 @@ Close the program before restoring its configuration files. Copy each backed up 
 
 - Bitwarden export: manual, securely encrypted export recommended; do not automatically export unencrypted vaults.
 - Notion workspace export: manual, account-based export; check export completeness.
-- CorelDRAW GMS: separate future entry, only copy after CorelDRAW closes and the exact macro location is verified.
+- CorelDRAW GMS: enabled with dynamic discovery; actual runtime behavior requires verification on the Windows computer.
