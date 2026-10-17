@@ -23,6 +23,18 @@
           "target": "Espanso/config/default.yml"
         }
       ]
+    },
+    {
+      "name": "CorelDRAW GMS",
+      "discovery": {
+        "root": "%APPDATA%\\Corel",
+        "pattern": "*.gms",
+        "targetPrefix": "CorelDRAW",
+        "skipWhenProcessesRunning": [
+          "CorelDRW",
+          "CorelDRAW"
+        ]
+      }
     }
   ],
   "schedule": {
