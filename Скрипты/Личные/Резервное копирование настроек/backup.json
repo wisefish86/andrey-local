@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "destination": "D:\\YandexDisk\\Архив\\Backup\\Программы",
+  "items": [
+    {
+      "name": "Flow Launcher",
+      "files": [
+        {
+          "source": "%APPDATA%\\FlowLauncher\\Settings\\Favorites.conf",
+          "target": "Flow Launcher/Favorites.conf"
+        }
+      ]
+    },
+    {
+      "name": "Espanso",
+      "files": [
+        {
+          "source": "%APPDATA%\\espanso\\match\\base.yml",
+          "target": "Espanso/match/base.yml"
+        },
+        {
+          "source": "%APPDATA%\\espanso\\config\\default.yml",
+          "target": "Espanso/config/default.yml"
+        }
+      ]
+    }
+  ]
+}
