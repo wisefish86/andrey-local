@@ -1,8 +1,8 @@
 ﻿#Requires AutoHotkey v2.0
 #SingleInstance Force
 SetTitleMatchMode 3
+CoordMode "Mouse", "Client"
 
-; Этап 1: открыть BUP и заполнить два поля фамилией.
 bupShortcut := "D:\YandexDisk\Проекты\Работа в Компас\- Задачи (рабочие)\- Избранные задачи\- BUP.lnk"
 windowTitle := "BUP"
 surname := "Шевцов"
@@ -14,34 +14,33 @@ if !FileExist(bupShortcut) {
 
 try {
     Run '"' bupShortcut '"'
-    if !WinWait(windowTitle, , 15) {
+    hwnd := WinWait(windowTitle, , 15)
+    if !hwnd
         throw Error("Окно BUP не появилось за 15 секунд.")
-    }
-
-    WinActivate windowTitle
-    if !WinWaitActive(windowTitle, , 5) {
+    WinActivate "ahk_id " hwnd
+    if !WinWaitActive("ahk_id " hwnd, , 5)
         throw Error("Не удалось активировать окно BUP.")
-    }
 
-    ; Работаем только с полями ввода окна BUP, без кликов по координатам.
-    firstEdit := ControlGetHwnd("Edit1", windowTitle)
-    secondEdit := ControlGetHwnd("Edit2", windowTitle)
-    if (!firstEdit || !secondEdit) {
-        throw Error("Не найдены оба стандартных поля Edit1 и Edit2.")
-    }
+    ; Координаты относительно клиентской области окна (по скриншоту формы 310x100).
+    ; Не используем Tab, буфер обмена и ControlSetText.
+    WinGetClientPos(, , &width, &height, "ahk_id " hwnd)
+    if width < 280 || height < 85
+        throw Error("Размер окна отличается от ожидаемого. Ввод остановлен.")
 
-    ControlSetText surname, "Edit1", windowTitle
-    ControlSetText surname, "Edit2", windowTitle
+    Click 135, 48
+    Sleep 200
+    SendText surname
+    Sleep 200
 
-    ; Защита от подтверждения неверно заполненной формы.
-    if (ControlGetText("Edit1", windowTitle) != surname
-        || ControlGetText("Edit2", windowTitle) != surname) {
-        throw Error("Значение одного из полей отличается от ожидаемого.")
-    }
+    Click 100, 77
+    Sleep 200
+    SendText surname
+    Sleep 250
 
-    ControlFocus "Edit2", windowTitle
+    ; Enter отправляется только в активное окно BUP.
+    if !WinActive("ahk_id " hwnd)
+        throw Error("Окно BUP потеряло фокус. Enter не отправлен.")
     Send "{Enter}"
 } catch as err {
-    MsgBox "Не удалось выполнить первый этап:`n" err.Message
-        . "`n`nНичего дополнительно не нажимай в BUP до проверки.", "Отчёт в BUP", "Iconx"
+    MsgBox "Не удалось выполнить первый этап:`n" err.Message, "Отчёт в BUP", "Iconx"
 }
