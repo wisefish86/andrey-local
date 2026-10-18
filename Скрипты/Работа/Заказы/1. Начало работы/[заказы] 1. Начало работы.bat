@@ -1,26 +1,37 @@
 @echo off
 setlocal
-
-REM Если ничего не передали аргументом - подсказка пользователю
+chcp 65001 >nul
+title Начало работы с заказом
 if "%~1"=="" (
-    echo Перетащи папку заказа, архив или файл/файлы мышкой на этот файл "[заказы] 1. Начало работы"
-    echo.
-    pause
-    exit /b
+  echo Перетащи папку заказа, архив или файлы на этот BAT или его ярлык.
+  echo.
+  pause
+  exit /b 1
 )
-
-REM Папка, где лежат rename.py
-set "SCRIPT_DIR=%~dp0"
-
-echo SCRIPT_DIR: %SCRIPT_DIR%
-echo.
-
-REM Передаем в Python все перетянутые элементы, а не только первый
-python "%SCRIPT_DIR%rename.py" %*
-
-REM Если произошла ошибка (код возврата 1 и выше) - ждем нажатия клавиши
+set "PYTHON="
+where py.exe >nul 2>nul
+if not errorlevel 1 set "PYTHON=py.exe"
+if not defined PYTHON (
+  where python.exe >nul 2>nul
+  if not errorlevel 1 set "PYTHON=python.exe"
+)
+if not defined PYTHON (
+  echo Python не найден. Установи Python или добавь его в PATH.
+  pause
+  exit /b 1
+)
+"%PYTHON%" -c "import openpyxl, pyperclip" >nul 2>nul
 if errorlevel 1 (
-    echo.
-    pause
+  echo Не найдены библиотеки openpyxl и/или pyperclip.
+  echo Выполни: %PYTHON% -m pip install openpyxl pyperclip
+  pause
+  exit /b 1
 )
-REM При успехе окно закроется автоматически
+"%PYTHON%" "%~dp0rename.py" %*
+set "CODE=%errorlevel%"
+if not "%CODE%"=="0" (
+  echo.
+  echo Ошибка выполнения (код %CODE%). Проверь rename.log рядом с rename.py.
+  pause
+)
+exit /b %CODE%
