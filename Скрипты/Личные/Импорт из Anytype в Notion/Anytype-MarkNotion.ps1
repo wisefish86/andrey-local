@@ -5,6 +5,7 @@ $ErrorActionPreference = 'Stop'
 $diagnostic = Join-Path $env:TEMP 'Anytype-Export-error.txt'
 Remove-Item -LiteralPath $diagnostic -ErrorAction SilentlyContinue
 try {
+$stage = 'Initialize'
 $api = 'http://127.0.0.1:31009/v1'
 Add-Type -TypeDefinition @'
 using System;
@@ -42,6 +43,7 @@ if (!$objectId -or !$spaceId) { throw 'Object ID or space ID missing' }
 $key = [AnytypeCredential]::Read('Anytype-Local-API')
 if ([string]::IsNullOrWhiteSpace($key)) { throw 'Empty Anytype API key' }
 $headers = @{ Authorization = "Bearer $key"; 'Anytype-Version' = '2025-11-08' }
+$stage = 'GET properties'
 $props = Invoke-RestMethod -Uri "$api/spaces/$spaceId/properties" -Headers $headers -Method Get
 $items = @($props.data)
 if (!$items.Count) { $items = @($props.properties) }
@@ -50,7 +52,9 @@ if ($match.Count -ne 1) { throw "Expected one checkbox property, found $($match.
 $propertyKey = $match[0].key
 if (!$propertyKey) { throw 'Property key missing' }
 $payload = @{ properties = @(@{ key = $propertyKey; checkbox = $true }) } | ConvertTo-Json -Depth 8
+$stage = 'PATCH object'
 Invoke-RestMethod -Uri "$api/spaces/$spaceId/objects/$objectId" -Headers $headers -Method Patch -ContentType 'application/json; charset=utf-8' -Body ([System.Text.Encoding]::UTF8.GetBytes($payload)) | Out-Null
+$stage = 'GET object verification'
 $check = Invoke-RestMethod -Uri "$api/spaces/$spaceId/objects/$objectId" -Headers $headers -Method Get
 $values = @($check.object.properties)
 if (!$values.Count) { $values = @($check.data.properties) }
@@ -60,7 +64,7 @@ if (!(@($values | Where-Object { $_.key -eq $propertyKey -and $_.checkbox -eq $t
 Write-Output 'Checkbox verified'
 
 } catch {
-  $message = $_.Exception.Message
+  $message = 'Stage: ' + $stage + '; ' + $_.Exception.Message
   if ($key) { $message = $message -replace [regex]::Escape($key), '[REDACTED]' }
   [System.IO.File]::WriteAllText($diagnostic, $message, [System.Text.Encoding]::UTF8)
   exit 1
