@@ -3,13 +3,11 @@
 param([switch]$WhatIf)
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
-$output = Join-Path $root 'Ярлыки'
 $signature = 'Managed by AndreyLocal Shortcut Catalog v1'
 $iconsRoot = Join-Path $root 'Ресурсы\Иконки'
 $configPath = Join-Path $iconsRoot 'icon-map.json'
 $config = Get-Content -LiteralPath $configPath -Raw -Encoding UTF8 | ConvertFrom-Json
 $iconDirectory = Join-Path $iconsRoot 'ICO'
-if (-not $WhatIf -and -not (Test-Path -LiteralPath $output)) { New-Item -ItemType Directory -Path $output -Force | Out-Null }
 $wsh = New-Object -ComObject WScript.Shell
 
 function Make-SafeName([string]$name) {
@@ -40,10 +38,10 @@ $items = @()
 $scriptDir = Join-Path $root 'Скрипты'
 if (Test-Path -LiteralPath $scriptDir) {
   $items += @(Get-ChildItem -LiteralPath $scriptDir -File -Recurse |
-    Where-Object { $_.Extension -in @('.bat', '.pyw') -and $_.FullName -notmatch '[\\/](Results|__pycache__|Archive|Архив|backup|бэкапы|бэкап|# Починить)[\\/]' -and $_.BaseName -notmatch '(?i)(backup|бэкап|install|установить|test|тест)' })
+    Where-Object { $_.Extension -in @('.bat', '.pyw', '.ahk') -and $_.FullName -notmatch '[\\/](Results|__pycache__|Archive|Архив|backup|бэкапы|бэкап|# Починить)[\\/]' })
 }
 $items += @(Get-ChildItem -LiteralPath $root -File |
-  Where-Object { $_.Extension -in @('.bat') -and $_.Name -notmatch '^(Установить|Авто)' })
+  Where-Object { $_.Extension -in @('.bat') })
 $items = @($items | Where-Object { $_.FullName -ne $PSCommandPath } | Sort-Object FullName -Unique)
 
 # User-facing names are verbs/actions, not internal implementation filenames.
@@ -75,32 +73,16 @@ foreach ($file in $items) {
       Where-Object { $_.BaseName -notmatch '(?i)(backup|бэкап|install|установить|test|тест)' })
     if ($neighbors.Count -gt 0) { continue }
   }
+  # One shortcut next to each launcher. Never manage the user's separate Ярлыки folder.
   $relativeDir = $file.DirectoryName.Substring($root.Length).TrimStart('\')
   $category = if ($relativeDir -eq '') { 'Системные' } else { $relativeDir }
-  # A short, actionable catalog section for all five order workflows.
-  # The .lnk target remains the original BAT beside its Python script,
-  # so drag-and-drop passes the order path via the shortcut to %~1.
-  if ($relativeDir -like 'Скрипты\Работа\Заказы\*') {
-    $category = 'Работа\Заказы'
-  }
-  $folder = Join-Path $output $category
-  $title = if ($names.ContainsKey($file.Name)) { $names[$file.Name] } else { $file.BaseName }
-  $title = Make-SafeName $title
-  # Windows Shell Link COM may replace nonstandard Unicode symbols with '?'.
+  $folder = $file.DirectoryName
+  $title = Make-SafeName $file.BaseName
   $title = $title.Replace([string][char]0x058E, ' - ').Replace('?', '_')
-  $shortcutPath = Join-Path $folder ($title + '.lnk')
-  # Convenience launcher in the root of the shortcut catalog; same underlying BAT.
-  if ($file.Name -eq 'Обновить ярлыки.bat') {
-    $folder = $output
-    $shortcutPath = Join-Path $folder ($title + '.lnk')
-  }
+  $shortcutPath = Join-Path $folder ($title + ' - ярлык.lnk')
   if ($WhatIf) { Write-Host "Would update: $shortcutPath"; continue }
-  if (-not (Test-Path -LiteralPath $folder)) { New-Item -ItemType Directory -Path $folder -Force | Out-Null }
-  # Do not overwrite a shortcut that was created or customized by the user.
-  if (Test-Path -LiteralPath $shortcutPath) {
-    $previous = $wsh.CreateShortcut($shortcutPath)
-    if ($previous.Description -ne $signature) { continue }
-  }
+  # Existing shortcut remains untouched, including custom icon, target and arguments.
+  if (Test-Path -LiteralPath $shortcutPath) { continue }
   $stage = 'CreateShortcut'
   try {
     $shortcut = $wsh.CreateShortcut($shortcutPath)
@@ -148,4 +130,4 @@ if ($errorsFound.Count -gt 0) {
   Write-Host "Other shortcuts were created; existing shortcuts were not deleted." -ForegroundColor Yellow
   exit 1
 }
-if (-not $WhatIf) { Write-Host "Shortcuts updated in: $output" }
+if (-not $WhatIf) { Write-Host 'Shortcuts created beside launchers. Existing shortcuts were preserved.' }
