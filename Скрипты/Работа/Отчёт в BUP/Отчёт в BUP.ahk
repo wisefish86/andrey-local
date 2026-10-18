@@ -3,12 +3,12 @@
 SetTitleMatchMode 3
 CoordMode "Mouse", "Client"
 
-bupShortcut := "D:\YandexDisk\Проекты\Работа в Компас\- Задачи (рабочие)\- Избранные задачи\- BUP.lnk"
+bupShortcut := "D:\YandexDisk\Ресурсы\Софт\Работа и управление задачами\Компас\BUP.exe"
 windowTitle := "BUP"
 surname := "Шевцов"
 
 if !FileExist(bupShortcut) {
-    MsgBox "Не найден ярлык BUP:`n" bupShortcut, "Отчёт в BUP", "Iconx"
+    MsgBox "Не найден BUP.exe:`n" bupShortcut, "Отчёт в BUP", "Iconx"
     ExitApp
 }
 
