@@ -18,6 +18,9 @@ __pycache__/
 # Automated sync diagnostics
 .auto-sync.log
 
+# Windows Explorer folder metadata (not project files)
+[Dd]esktop.ini
+
 # Local generated Windows shortcuts (machine-specific absolute paths)
 /Ярлыки/
 
