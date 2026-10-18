@@ -78,19 +78,35 @@ ExportCurrent() {
         Send "{Enter}"
         if !WinWaitClose("ahk_id " picker, , 10)
             throw Error("Выбор папки не закрылся. Проверь диалог вручную.")
-        ; Explorer might not open at all; this is normal for some Anytype versions.
-        ; Close only a newly opened Explorer window, if any.
-        Loop 10 {
-            Sleep 350
+        ; Anytype can reuse an existing Explorer window. Never close user's
+        ; pre-existing windows: minimize a reused foreground window instead.
+        Loop 30 {
+            Sleep 250
+            active := WinGetID("A")
+            if WinGetClass("ahk_id " active) = "CabinetWClass" {
+                if before.Has(active)
+                    WinMinimize "ahk_id " active
+                else
+                    WinClose "ahk_id " active
+                break
+            }
+            ; A newly created Explorer window may open without focus.
+            newExplorer := 0
             for id in WinGetList("ahk_class CabinetWClass") {
                 if !before.Has(id) {
-                    try WinClose "ahk_id " id
+                    newExplorer := id
                     break
                 }
             }
+            if newExplorer {
+                try WinClose "ahk_id " newExplorer
+                break
+            }
         }
-        if WinExist("ahk_id " hwnd)
+        if WinExist("ahk_id " hwnd) {
             WinActivate "ahk_id " hwnd
+            WinWaitActive "ahk_id " hwnd, , 3
+        }
         ; Closing the picker is not proof that the ZIP is complete.
         ; Never mark the object as imported without a verified export.
         ToolTip "Диалог экспорта закрыт. Проверь ZIP. Отметка «В Notion» пока не изменена."
