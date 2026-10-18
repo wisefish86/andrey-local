@@ -2,6 +2,9 @@ param(
     [Parameter(Mandatory=$true)][string]$ObjectUrl
 )
 $ErrorActionPreference = 'Stop'
+$diagnostic = Join-Path $env:TEMP 'Anytype-Export-error.txt'
+Remove-Item -LiteralPath $diagnostic -ErrorAction SilentlyContinue
+try {
 $api = 'http://127.0.0.1:31009/v1'
 Add-Type -TypeDefinition @'
 using System;
@@ -55,3 +58,10 @@ if (!(@($values | Where-Object { $_.key -eq $propertyKey -and $_.checkbox -eq $t
   throw 'PATCH sent but checkbox verification failed'
 }
 Write-Output 'Checkbox verified'
+
+} catch {
+  $message = $_.Exception.Message
+  if ($key) { $message = $message -replace [regex]::Escape($key), '[REDACTED]' }
+  [System.IO.File]::WriteAllText($diagnostic, $message, [System.Text.Encoding]::UTF8)
+  exit 1
+}
