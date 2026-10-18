@@ -1,5 +1,5 @@
 ﻿# Generates Windows shortcuts for launchable scripts in this repository.
-# Only manages shortcuts marked with the description signature; never executes targets.
+# Preserves all existing shortcuts and detects renamed shortcuts by their target.
 param([switch]$WhatIf)
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
@@ -60,8 +60,30 @@ foreach ($file in $items) {
   $title = $title.Replace([string][char]0x058E, ' - ').Replace('?', '_')
   $shortcutPath = Join-Path $folder ($title + ' - ярлык.lnk')
   if ($WhatIf) { Write-Host "Would create if missing: $shortcutPath"; continue }
-  # Existing shortcut remains untouched, including custom icon, target and arguments.
+  # Preserve a shortcut even when the user renamed it. Compare its destination,
+  # not just its filename; never edit or delete existing shortcuts.
   if (Test-Path -LiteralPath $shortcutPath) { continue }
+  $alreadyLinked = $false
+  foreach ($existingFile in @(Get-ChildItem -LiteralPath $folder -File -Filter '*.lnk' -ErrorAction SilentlyContinue)) {
+    try {
+      $existing = $wsh.CreateShortcut($existingFile.FullName)
+      $existingTarget = [string]$existing.TargetPath
+      if ([string]::Equals($existingTarget, $file.FullName, [StringComparison]::OrdinalIgnoreCase)) {
+        $alreadyLinked = $true
+        break
+      }
+      # Some BAT paths require cmd.exe as the shortcut executable.
+      if ($file.Extension -eq '.bat' -and
+          [string]::Equals($existingTarget, $env:ComSpec, [StringComparison]::OrdinalIgnoreCase) -and
+          ([string]$existing.Arguments).Contains('"' + $file.FullName + '"')) {
+        $alreadyLinked = $true
+        break
+      }
+    } catch {
+      Write-Warning ("Cannot inspect shortcut (preserved): " + $existingFile.FullName)
+    }
+  }
+  if ($alreadyLinked) { continue }
   $stage = 'CreateShortcut'
   try {
     $shortcut = $wsh.CreateShortcut($shortcutPath)
