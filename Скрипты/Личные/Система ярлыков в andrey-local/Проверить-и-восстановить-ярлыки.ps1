@@ -9,10 +9,7 @@ $wsh = New-Object -ComObject WScript.Shell
 $scriptRoot = Join-Path $root 'Скрипты'
 if (-not (Test-Path -LiteralPath $scriptRoot -PathType Container)) { throw "Scripts directory is missing: $scriptRoot" }
 $excludePattern = '[\\/](Results|__pycache__|Archive|Архив|backup|бэкапы|бэкап|# Починить)[\\/]'
-$launchers = @(
-  Get-ChildItem -LiteralPath $scriptRoot -Recurse -File |
-    Where-Object { $_.Extension -in @('.bat', '.pyw', '.ahk') -and $_.FullName -notmatch $excludePattern }
-)
+$launchers = @(Get-ChildItem -LiteralPath $scriptRoot -Recurse -File | Where-Object { $_.Extension -in @('.bat', '.pyw', '.ahk') -and $_.FullName -notmatch $excludePattern })
 $launchers += @(Get-ChildItem -LiteralPath $root -File | Where-Object { $_.Extension -eq '.bat' })
 $launchers = @($launchers | Sort-Object FullName -Unique | Where-Object {
   if ($_.Extension -ne '.pyw') { return $true }
@@ -76,7 +73,7 @@ foreach ($item in $repairs) {
     # Recheck immediately before the write; never overwrite manually retagged links.
     $link = $wsh.CreateShortcut($item.Link)
     if ([string]$link.Description -ne $signature) { throw 'Management signature changed' }
-    if (-not [string]::Equals([string]$linkFileFolder = (Split-Path -Parent $item.Link), (Split-Path -Parent $item.Launcher), [StringComparison]::OrdinalIgnoreCase)) { throw 'Source moved out of link folder' }
+    if (-not [string]::Equals((Split-Path -Parent $item.Link), (Split-Path -Parent $item.Launcher), [StringComparison]::OrdinalIgnoreCase)) { throw 'Source moved out of link folder' }
     if (-not (Test-Path -LiteralPath $item.Launcher -PathType Leaf)) { throw 'Launcher no longer exists' }
     $relative = $item.Link.Substring($root.Length).TrimStart('\')
     $backup = Join-Path $backupFolder $relative
