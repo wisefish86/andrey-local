@@ -5,10 +5,7 @@
 ; reliable mapping of the active Anytype object to its API object ID.
 SetTitleMatchMode 2
 CoordMode "Mouse", "Client"
-global config := A_LocalAppData "\\AnytypeExport\\settings.ini"
-DirCreate A_LocalAppData "\\AnytypeExport"
-; Legacy calibration remains readable to avoid forcing a new setup.
-global legacyConfig := A_ScriptDir "\\Anytype-Export.local.ini"
+global config := A_ScriptDir "\\Anytype-Export.local.ini"
 global running := false
 
 IsAnytype() {
@@ -32,10 +29,9 @@ CapturePoint(name) {
 }
 
 ReadPoint(name) {
-    global config, legacyConfig
-    source := FileExist(config) ? config : legacyConfig
-    x := IniRead(source, "Clicks", name "X", "")
-    y := IniRead(source, "Clicks", name "Y", "")
+    global config
+    x := IniRead(config, "Clicks", name "X", "")
+    y := IniRead(config, "Clicks", name "Y", "")
     if (x = "" || y = "")
         throw Error("Не настроена точка " name ". Используй Ctrl+Shift+1/2/3.")
     return [Integer(x), Integer(y)]
