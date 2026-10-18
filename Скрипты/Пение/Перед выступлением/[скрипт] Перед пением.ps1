@@ -56,5 +56,5 @@ Get-Process "BreakTimer" -ErrorAction SilentlyContinue | Stop-Process -Force
 Start-Process "ms-settings:easeofaccess-audio"
 Start-Process "magnify"
 Start-Process "C:\Program Files\TightVNC\tvnserver.exe"
-Start-Process "D:\YandexDisk\Ресурсы\Автоматизация\Скрипты\Все скрипты\Для пения и личные\[скрипт] Панель громкости для выступлений.ahk"
+Start-Process -FilePath (Join-Path $PSScriptRoot "Панель громкости.ahk")
 Start-Process "anytype://object?objectId=bafyreiek44nqfypu3es7uydlr7bpc7aitm3welxl3u3ia7tl6rsxyffgk4&spaceId=bafyreiao7lfc742foxkwd65zkudl7blk7s7s4mvsq6trwtihyyxgkktury.3vagjf2fgfoqc"
