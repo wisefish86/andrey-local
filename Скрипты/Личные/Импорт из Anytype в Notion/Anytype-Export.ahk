@@ -127,8 +127,13 @@ ExportCurrent() {
         if !FileExist(helper)
             throw Error("Missing Anytype-MarkNotion.ps1")
         command := 'powershell.exe -NoProfile -File "' helper '" -ObjectUrl "' objectUrl '"'
-        if RunWait(command, , "Hide")
-            throw Error("Anytype API update failed; checkbox not confirmed.")
+        if RunWait(command, , "Hide") {
+            detailFile := A_Temp "\Anytype-Export-error.txt"
+            detail := FileExist(detailFile) ? FileRead(detailFile, "UTF-8") : "PowerShell failed without details."
+            if FileExist(detailFile)
+                FileDelete detailFile
+            throw Error("Anytype API: " detail)
+        }
         ToolTip "В Notion: отмечено через API"
         SetTimer () => ToolTip(), -4000
     } catch as e {
