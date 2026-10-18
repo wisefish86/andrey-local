@@ -23,10 +23,6 @@ try {
 
     ; Координаты относительно клиентской области окна (по скриншоту формы 310x104, без заголовка).
     ; Не используем Tab, буфер обмена и ControlSetText.
-    WinGetClientPos(, , &width, &height, "ahk_id " hwnd)
-    if width < 280 || height < 65
-        throw Error("Размер окна отличается от ожидаемого. Ввод остановлен.")
-
     Click 135, 22
     Sleep 200
     SendText surname
