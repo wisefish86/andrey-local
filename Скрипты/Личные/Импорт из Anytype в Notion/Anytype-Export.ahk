@@ -5,7 +5,10 @@
 ; reliable mapping of the active Anytype object to its API object ID.
 SetTitleMatchMode 2
 CoordMode "Mouse", "Client"
-global config := A_ScriptDir "\\Anytype-Export.local.ini"
+global config := A_LocalAppData "\\AnytypeExport\\settings.ini"
+DirCreate A_LocalAppData "\\AnytypeExport"
+; Legacy calibration remains readable to avoid forcing a new setup.
+global legacyConfig := A_ScriptDir "\\Anytype-Export.local.ini"
 global running := false
 
 IsAnytype() {
@@ -29,9 +32,10 @@ CapturePoint(name) {
 }
 
 ReadPoint(name) {
-    global config
-    x := IniRead(config, "Clicks", name "X", "")
-    y := IniRead(config, "Clicks", name "Y", "")
+    global config, legacyConfig
+    source := FileExist(config) ? config : legacyConfig
+    x := IniRead(source, "Clicks", name "X", "")
+    y := IniRead(source, "Clicks", name "Y", "")
     if (x = "" || y = "")
         throw Error("Не настроена точка " name ". Используй Ctrl+Shift+1/2/3.")
     return [Integer(x), Integer(y)]
@@ -78,27 +82,23 @@ ExportCurrent() {
         Send "{Enter}"
         if !WinWaitClose("ahk_id " picker, , 10)
             throw Error("Выбор папки не закрылся. Проверь диалог вручную.")
-        ; Export may take time. New Explorer is a hint, not proof of ZIP validity.
-        found := false
-        Loop 30 {
-            Sleep 500
+        ; Explorer might not open at all; this is normal for some Anytype versions.
+        ; Close only a newly opened Explorer window, if any.
+        Loop 10 {
+            Sleep 350
             for id in WinGetList("ahk_class CabinetWClass") {
                 if !before.Has(id) {
-                    ; Close only the newly opened window.
-                    try WinClose("ahk_id " id)
-                    found := true
+                    try WinClose "ahk_id " id
                     break
                 }
             }
-            if found
-                break
         }
         if WinExist("ahk_id " hwnd)
             WinActivate "ahk_id " hwnd
-        if found
-            MsgBox "Проводник закрыт. Проверь ZIP экспорта. Свойство «В Notion» пока не менялось.", "Anytype Export", "Iconi"
-        else
-            MsgBox "Не обнаружено новое окно Проводника. Проверь результат экспорта вручную. Свойство не менялось.", "Anytype Export", "Icon!"
+        ; Closing the picker is not proof that the ZIP is complete.
+        ; Never mark the object as imported without a verified export.
+        ToolTip "Диалог экспорта закрыт. Проверь ZIP. Отметка «В Notion» пока не изменена."
+        SetTimer () => ToolTip(), -5000
     } catch as e {
         MsgBox e.Message, "Anytype Export", "Icon!"
     } finally {
