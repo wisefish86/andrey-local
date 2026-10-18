@@ -7,7 +7,7 @@ from xml.etree import ElementTree as ET
 import cairosvg
 from PIL import Image
 
-root = Path(__file__).resolve().parents[2] / "Ресурсы" / "Иконки"
+root = Path(__file__).resolve().parents[3] / "Ресурсы" / "Иконки"
 settings = json.loads((root / "icon-map.json").read_text(encoding="utf-8-sig"))
 for name, lucide in settings["icons"].items():
     if not name.replace("-", "").isalnum() or not lucide.replace("-", "").isalnum():

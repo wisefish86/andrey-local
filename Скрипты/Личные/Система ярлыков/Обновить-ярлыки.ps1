@@ -2,7 +2,7 @@
 # Preserves all existing shortcuts and detects renamed shortcuts by their target.
 param([switch]$WhatIf)
 $ErrorActionPreference = 'Stop'
-$root = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+$root = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $PSScriptRoot))
 $signature = 'Managed by AndreyLocal Shortcut Catalog v1'
 $iconsRoot = Join-Path $root 'Ресурсы\Иконки'
 $configPath = Join-Path $iconsRoot 'icon-map.json'

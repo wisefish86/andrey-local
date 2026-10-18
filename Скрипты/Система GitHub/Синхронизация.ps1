@@ -71,7 +71,7 @@ if ($changes.Count) {
     Invoke-Git pull --ff-only origin main
 }
 # Refresh local shortcut catalog after repository sync. Shortcuts stay beside BAT launchers.
-$catalog = Join-Path $repoRoot 'Скрипты\Система ярлыков\Обновить-ярлыки.ps1'
+$catalog = Join-Path $repoRoot 'Скрипты\Личные\Система ярлыков\Обновить-ярлыки.ps1'
 if (Test-Path -LiteralPath $catalog -PathType Leaf) {
     Write-Host 'Updating Windows shortcuts...' -ForegroundColor Cyan
     & $catalog
