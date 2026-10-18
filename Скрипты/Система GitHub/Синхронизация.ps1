@@ -37,7 +37,14 @@ if ($LASTEXITCODE -ne 0) { throw 'Cannot inspect local changes' }
 
 if (-not $changes.Count) {
     # Update ignore rules first, then recheck: new files may become visible.
-    Invoke-Git pull --ff-only origin main
+    $aheadBehind = (& $git rev-list --left-right --count HEAD...origin/main).Trim() -split '\s+'
+    if ($LASTEXITCODE -ne 0 -or $aheadBehind.Count -ne 2) { throw 'Cannot inspect branch divergence' }
+    if ([int]$aheadBehind[0] -gt 0) {
+        Write-Host 'Local commits exist; rebasing on origin/main without pushing.' -ForegroundColor Yellow
+        Invoke-Git rebase origin/main
+    } else {
+        Invoke-Git merge --ff-only origin/main
+    }
     $changes = @(& $git status --porcelain --untracked-files=all)
     if ($LASTEXITCODE -ne 0) { throw 'Cannot inspect local changes after pull' }
 }
@@ -68,7 +75,7 @@ if ($changes.Count) {
     Invoke-Git pull --rebase origin main
     Invoke-Git push origin main
 } else {
-    Invoke-Git pull --ff-only origin main
+    Invoke-Git merge --ff-only origin/main
 }
 # Refresh local shortcut catalog after repository sync. Shortcuts stay beside BAT launchers.
 $catalog = Join-Path $repoRoot 'Скрипты\Личные\Система ярлыков\Обновить-ярлыки.ps1'
