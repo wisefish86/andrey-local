@@ -45,8 +45,8 @@ $headers = @{ Authorization = "Bearer $key"; 'Anytype-Version' = '2025-11-08' }
 $props = Invoke-RestMethod -Uri "$api/spaces/$spaceId/properties" -Headers $headers -Method Get
 $items = @($props.data)
 if (!$items.Count) { $items = @($props.properties) }
-$match = @($items | Where-Object { $_.name -eq 'В Notion' -and ($_.format -eq 'checkbox' -or $_.type -eq 'checkbox' -or $_.format -eq 'Checkbox') })
-if ($match.Count -ne 1) { throw "Expected one checkbox property 'В Notion', found $($match.Count)" }
+$match = @($items | Where-Object { $_.name -eq ([string]([char]0x0412) + ' Notion') -and ($_.format -eq 'checkbox' -or $_.type -eq 'checkbox' -or $_.format -eq 'Checkbox') })
+if ($match.Count -ne 1) { throw "Expected one checkbox property ([string]([char]0x0412) + ' Notion'), found $($match.Count)" }
 $propertyKey = $match[0].key
 if (!$propertyKey) { throw 'Property key missing' }
 $payload = @{ properties = @(@{ key = $propertyKey; checkbox = $true }) } | ConvertTo-Json -Depth 8
