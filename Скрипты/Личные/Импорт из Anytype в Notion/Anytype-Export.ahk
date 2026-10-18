@@ -88,18 +88,20 @@ ExportCurrent() {
         }
         if !picker
             throw Error("Окно выбора папки не появилось.")
+        if !WinExist("ahk_id " picker)
+            throw Error("Окно выбора папки закрылось до подтверждения.")
         WinActivate "ahk_id " picker
         if !WinWaitActive("ahk_id " picker, , 3)
             throw Error("Не удалось активировать выбор папки.")
         Send "{Enter}"
-        if !WinWaitClose("ahk_id " picker, , 10)
+        if WinExist("ahk_id " picker) && !WinWaitClose("ahk_id " picker, , 10)
             throw Error("Выбор папки не закрылся. Проверь диалог вручную.")
         ; Anytype can reuse an existing Explorer window. Never close user's
         ; pre-existing windows: minimize a reused foreground window instead.
         Loop 30 {
             Sleep 250
             active := WinGetID("A")
-            if WinGetClass("ahk_id " active) = "CabinetWClass" {
+            if (active && WinExist("ahk_id " active) && WinGetClass("ahk_id " active) = "CabinetWClass") {
                 if before.Has(active)
                     WinMinimize "ahk_id " active
                 else
@@ -121,7 +123,7 @@ ExportCurrent() {
         }
         if WinExist("ahk_id " hwnd) {
             WinActivate "ahk_id " hwnd
-            WinWaitActive "ahk_id " hwnd, , 3
+            try WinWaitActive "ahk_id " hwnd, , 3
         }
         helper := A_ScriptDir "\Anytype-MarkNotion.ps1"
         if !FileExist(helper)
@@ -137,7 +139,7 @@ ExportCurrent() {
         ToolTip "В Notion: отмечено через API"
         SetTimer () => ToolTip(), -4000
     } catch as e {
-        MsgBox e.Message, "Anytype Export", "Icon!"
+        MsgBox e.Message " (строка " e.Line ")", "Anytype Export", "Icon!"
     } finally {
         running := false
     }
