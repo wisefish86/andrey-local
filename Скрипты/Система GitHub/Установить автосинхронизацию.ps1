@@ -2,10 +2,10 @@
 $ErrorActionPreference = 'Stop'
 $taskName = 'AndreyLocal Inbox Auto Sync'
 $repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
-$scriptPath = Join-Path $repoRoot 'Автосинхронизация.ps1'
+$scriptPath = Join-Path $PSScriptRoot 'Автосинхронизация.ps1'
 if (-not (Test-Path -LiteralPath $scriptPath)) { throw "Script missing: $scriptPath" }
 # wscript.exe is a GUI host: the PowerShell console stays fully hidden.
-$launcherPath = Join-Path $repoRoot 'Тихий запуск синхронизации.vbs'
+$launcherPath = Join-Path $PSScriptRoot 'Тихий запуск синхронизации.vbs'
 if (-not (Test-Path -LiteralPath $launcherPath)) { throw "Launcher missing: $launcherPath" }
 $arguments = '"' + $launcherPath + '" "' + $scriptPath + '"'
 $action = New-ScheduledTaskAction -Execute (Join-Path $env:SystemRoot 'System32\wscript.exe') -Argument $arguments -WorkingDirectory $repoRoot
