@@ -2,7 +2,7 @@
 chcp 65001 >nul
 
 echo Запуск PowerShell...
-powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0[скрипт] Перед пением.ps1"
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0[скрипт] Удалить из названия файлов ֎ если они в подпапках.ps1"
 
 if %errorlevel% neq 0 (
     echo.

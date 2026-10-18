@@ -56,5 +56,9 @@ Get-Process "BreakTimer" -ErrorAction SilentlyContinue | Stop-Process -Force
 Start-Process "ms-settings:easeofaccess-audio"
 Start-Process "magnify"
 Start-Process "C:\Program Files\TightVNC\tvnserver.exe"
-Start-Process -FilePath (Join-Path $PSScriptRoot "Панель громкости.ahk")
+Start-Process -FilePath (Join-Path $PSScriptRoot "Связанные скрипты\Панель громкости.ahk")
+$ipv4Bat = Join-Path $PSScriptRoot 'Связанные скрипты\Показать IPv4.bat'
+if (Test-Path -LiteralPath $ipv4Bat) {
+    Start-Process -FilePath $env:ComSpec -ArgumentList ('/d /c ""{0}""' -f $ipv4Bat)
+}
 Start-Process "anytype://object?objectId=bafyreiek44nqfypu3es7uydlr7bpc7aitm3welxl3u3ia7tl6rsxyffgk4&spaceId=bafyreiao7lfc742foxkwd65zkudl7blk7s7s4mvsq6trwtihyyxgkktury.3vagjf2fgfoqc"
