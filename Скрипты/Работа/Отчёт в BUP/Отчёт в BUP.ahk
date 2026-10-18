@@ -37,6 +37,35 @@ try {
     if !WinActive("ahk_id " hwnd)
         throw Error("Окно BUP потеряло фокус. Enter не отправлен.")
     Send "{Enter}"
+
+    ; После входа ждём основное окно BUP (в заголовке появляется имя).
+    ; Иконка пользователя находится в клиентской области у левого верхнего края.
+    mainWindow := 0
+    deadline := A_TickCount + 15000
+    while (A_TickCount < deadline) {
+        for candidate in WinGetList("BUP ahk_exe " WinGetProcessName("ahk_id " hwnd)) {
+            if !WinExist("ahk_id " candidate)
+                continue
+            title := WinGetTitle("ahk_id " candidate)
+            if InStr(title, "BUP - ") {
+                mainWindow := candidate
+                break
+            }
+        }
+        if mainWindow
+            break
+        Sleep 250
+    }
+    if !mainWindow
+        throw Error("Основное окно BUP не найдено после входа. Клик не выполнен.")
+
+    WinActivate "ahk_id " mainWindow
+    if !WinWaitActive("ahk_id " mainWindow, , 5)
+        throw Error("Не удалось активировать главное окно BUP.")
+
+    ; На предоставленном скриншоте иконка расположена примерно в (8, 17)
+    ; относительно клиентской области главного окна.
+    Click 9, 17
 } catch as err {
     MsgBox "Не удалось выполнить первый этап:`n" err.Message, "Отчёт в BUP", "Iconx"
 }
