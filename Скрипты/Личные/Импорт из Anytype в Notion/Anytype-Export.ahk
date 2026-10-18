@@ -16,6 +16,7 @@ IsAnytype() {
 ^+1::CapturePoint("Menu")
 ^+2::CapturePoint("ExportMenu")
 ^+3::CapturePoint("ExportConfirm")
+^+4::CapturePoint("CopyLink")
 ^e::ExportCurrent()
 #HotIf
 
@@ -45,6 +46,21 @@ ExportCurrent() {
     try {
         hwnd := WinGetID("A")
         p1 := ReadPoint("Menu")
+        pLink := ReadPoint("CopyLink")
+        savedClipboard := ClipboardAll()
+        A_Clipboard := ""
+        Click p1[1], p1[2]
+        Sleep 350
+        Click pLink[1], pLink[2]
+        if !ClipWait(3) {
+            A_Clipboard := savedClipboard
+            throw Error("Copy Link did not copy a URL.")
+        }
+        objectUrl := A_Clipboard
+        A_Clipboard := savedClipboard
+        if !RegExMatch(objectUrl, "^https://object[.]any[.]coop/[^?]+[?]spaceId=")
+            throw Error("Unexpected object link; checkbox unchanged.")
+        Sleep 250
         p2 := ReadPoint("ExportMenu")
         p3 := ReadPoint("ExportConfirm")
         ; Remember existing Explorer windows to avoid closing the user's work.
@@ -107,10 +123,14 @@ ExportCurrent() {
             WinActivate "ahk_id " hwnd
             WinWaitActive "ahk_id " hwnd, , 3
         }
-        ; Closing the picker is not proof that the ZIP is complete.
-        ; Never mark the object as imported without a verified export.
-        ToolTip "Диалог экспорта закрыт. Проверь ZIP. Отметка «В Notion» пока не изменена."
-        SetTimer () => ToolTip(), -5000
+        helper := A_ScriptDir "\Anytype-MarkNotion.ps1"
+        if !FileExist(helper)
+            throw Error("Missing Anytype-MarkNotion.ps1")
+        command := 'powershell.exe -NoProfile -File "' helper '" -ObjectUrl "' objectUrl '"'
+        if RunWait(command, , "Hide")
+            throw Error("Anytype API update failed; checkbox not confirmed.")
+        ToolTip "В Notion: отмечено через API"
+        SetTimer () => ToolTip(), -4000
     } catch as e {
         MsgBox e.Message, "Anytype Export", "Icon!"
     } finally {
