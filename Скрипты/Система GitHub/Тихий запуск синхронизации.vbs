@@ -1,4 +1,4 @@
-' Starts an existing PowerShell script without showing a console window.
+' Starts PowerShell script hidden.
 Option Explicit
 Dim shell, command, scriptPath, exitCode
 If WScript.Arguments.Count <> 1 Then WScript.Quit 2
