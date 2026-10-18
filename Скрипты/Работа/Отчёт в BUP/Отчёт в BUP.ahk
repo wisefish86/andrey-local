@@ -21,18 +21,18 @@ try {
     if !WinWaitActive("ahk_id " hwnd, , 5)
         throw Error("Не удалось активировать окно BUP.")
 
-    ; Координаты относительно клиентской области окна (по скриншоту формы 310x100).
+    ; Координаты относительно клиентской области окна (по скриншоту формы 310x104, без заголовка).
     ; Не используем Tab, буфер обмена и ControlSetText.
     WinGetClientPos(, , &width, &height, "ahk_id " hwnd)
-    if width < 280 || height < 85
+    if width < 280 || height < 65
         throw Error("Размер окна отличается от ожидаемого. Ввод остановлен.")
 
-    Click 135, 48
+    Click 135, 22
     Sleep 200
     SendText surname
     Sleep 200
 
-    Click 100, 77
+    Click 100, 50
     Sleep 200
     SendText surname
     Sleep 250
