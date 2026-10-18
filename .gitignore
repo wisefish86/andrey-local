@@ -26,3 +26,7 @@ __pycache__/
 
 # Local Anytype import archives: keep ZIP files and nested ZIP files on this PC only
 /Скрипты/Личные/Импорт из Anytype в Notion/**/*.zip
+
+# Auto-generated launch shortcuts placed beside scripts (manually tracked existing links remain)
+/Скрипты/**/*.lnk
+/*.lnk
