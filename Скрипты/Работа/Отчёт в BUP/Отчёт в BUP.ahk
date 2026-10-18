@@ -43,7 +43,7 @@ try {
     mainWindow := 0
     deadline := A_TickCount + 15000
     while (A_TickCount < deadline) {
-        for candidate in WinGetList("BUP ahk_exe " WinGetProcessName("ahk_id " hwnd)) {
+        for candidate in WinGetList("ahk_exe " WinGetProcessName("ahk_id " hwnd)) {
             if !WinExist("ahk_id " candidate)
                 continue
             title := WinGetTitle("ahk_id " candidate)
