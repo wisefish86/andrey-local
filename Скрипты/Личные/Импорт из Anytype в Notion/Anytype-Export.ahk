@@ -56,6 +56,28 @@ ExportCurrent() {
         Click p2[1], p2[2]
         Sleep 550
         Click p3[1], p3[2]
+        ; Native Windows folder picker: identify by title/class, not coordinates.
+        picker := 0
+        Loop 30 {
+            for id in WinGetList("ahk_class #32770") {
+                title := WinGetTitle("ahk_id " id)
+                if (title = "Выбор папки" || title = "Select Folder" || title = "Browse For Folder") {
+                    picker := id
+                    break
+                }
+            }
+            if picker
+                break
+            Sleep 200
+        }
+        if !picker
+            throw Error("Окно выбора папки не появилось.")
+        WinActivate "ahk_id " picker
+        if !WinWaitActive("ahk_id " picker, , 3)
+            throw Error("Не удалось активировать выбор папки.")
+        Send "{Enter}"
+        if !WinWaitClose("ahk_id " picker, , 10)
+            throw Error("Выбор папки не закрылся. Проверь диалог вручную.")
         ; Export may take time. New Explorer is a hint, not proof of ZIP validity.
         found := false
         Loop 30 {
