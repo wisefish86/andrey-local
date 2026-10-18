@@ -44,33 +44,12 @@ $items += @(Get-ChildItem -LiteralPath $root -File |
   Where-Object { $_.Extension -in @('.bat') })
 $items = @($items | Where-Object { $_.FullName -ne $PSCommandPath } | Sort-Object FullName -Unique)
 
-# User-facing names are verbs/actions, not internal implementation filenames.
-$names = @{
-  'Синхронизация.bat' = 'Синхронизировать файлы'
-  'Запуск импорта.bat' = 'Импортировать в Notion'
-  'Сканировать-папку.bat' = 'Сканировать папку'
-  'Обновить ярлыки.bat' = 'Обновить каталог ярлыков'
-  'Запустить замену раскладки.bat' = 'Включить замену ввода в Flow Launcher'
-  'Открыть панель громкости.bat' = 'Открыть панель громкости для выступлений'
-  'Создать файл-маркер ЯД.bat' = 'Создать маркеры ЯД'
-  'Нормализация аудио видео.bat' = 'Нормализовать звук видео'
-  '[заказы] 1. Начало работы.bat' = '01 — Начало работы с заказом (перетащить)'
-  '[заказы] 2. Отправка макета на согласование.bat' = '02 — Отправить макет на согласование (перетащить)'
-  '[заказы] 3. Подготовка к печати.bat' = '03 — Подготовить к печати (перетащить)'
-  '[заказы] 4. Архивация и отправка на производство.bat' = '04 — Архивировать и отправить на производство (перетащить)'
-  '[заказы] 5. Удаление лишнего.bat' = '05 — Удалить лишнее (перетащить)'
-  '[скрипт] Удалить из названия файлов ֎ если они в подпапках.bat' = 'Удалить символ из имён файлов в подпапках'
-  'run_csv_cleaner.bat' = 'Очистить CSV от лишних столбцов'
-  'PDF-сборщик (перетяни файлы).bat' = 'Собрать PDF-превью (перетащить)'
-  '[скрипт] Добавление водяного знака и конв. в WebP 75%.bat' = 'Добавить водяной знак и конвертировать в WebP'
-  '[скрипт] Конвертировать в WebP 75%.bat' = 'Конвертировать в WebP 75%'
-}
 $errorsFound = @()
 foreach ($file in $items) {
   # A companion BAT owns the user-facing shortcut for a GUI script.
   if ($file.Extension -eq '.pyw') {
     $neighbors = @(Get-ChildItem -LiteralPath $file.DirectoryName -File -Filter '*.bat' -ErrorAction SilentlyContinue |
-      Where-Object { $_.BaseName -notmatch '(?i)(backup|бэкап|install|установить|test|тест)' })
+      Where-Object { $true })
     if ($neighbors.Count -gt 0) { continue }
   }
   # One shortcut next to each launcher. Never manage the user's separate Ярлыки folder.
@@ -80,7 +59,7 @@ foreach ($file in $items) {
   $title = Make-SafeName $file.BaseName
   $title = $title.Replace([string][char]0x058E, ' - ').Replace('?', '_')
   $shortcutPath = Join-Path $folder ($title + ' - ярлык.lnk')
-  if ($WhatIf) { Write-Host "Would update: $shortcutPath"; continue }
+  if ($WhatIf) { Write-Host "Would create if missing: $shortcutPath"; continue }
   # Existing shortcut remains untouched, including custom icon, target and arguments.
   if (Test-Path -LiteralPath $shortcutPath) { continue }
   $stage = 'CreateShortcut'
@@ -113,7 +92,7 @@ foreach ($file in $items) {
     else { $shortcut.IconLocation = $file.FullName + ',0' }
     $stage = 'Save'
     $shortcut.Save()
-    Write-Host ("Created/updated: " + $shortcutPath)
+    Write-Host ("Created: " + $shortcutPath)
   } catch {
     $errorsFound += [PSCustomObject]@{ File = $file.FullName; Step = $stage; Error = $_.Exception.Message }
     Write-Warning ("SHORTCUT ERROR [" + $stage + "]: " + $file.FullName + " -> " + $_.Exception.Message)
