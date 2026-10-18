@@ -56,7 +56,8 @@ foreach ($linkFile in $allLinks) {
     $validCmd = $source.Extension -eq '.bat' -and
       [string]::Equals($target, $env:ComSpec, [StringComparison]::OrdinalIgnoreCase) -and
       $args.Contains('"' + $source.FullName + '"')
-    $status = if ($validDirect -or $validCmd) { 'OK' } else { 'REPAIR' }
+    $validWorkdir = [string]::Equals([string]$link.WorkingDirectory, $source.DirectoryName, [StringComparison]::OrdinalIgnoreCase)
+    $status = if (($validDirect -or $validCmd) -and $validWorkdir) { 'OK' } else { 'REPAIR' }
     $rows += [pscustomobject]@{ Status=$status; Link=$linkFile.FullName; Launcher=$source.FullName; Reason=$reason }
   } catch {
     $rows += [pscustomobject]@{ Status='REVIEW'; Link=$linkFile.FullName; Launcher=''; Reason=$_.Exception.Message }
@@ -75,12 +76,13 @@ foreach ($item in $repairs) {
     # Recheck immediately before the write; never overwrite manually retagged links.
     $link = $wsh.CreateShortcut($item.Link)
     if ([string]$link.Description -ne $signature) { throw 'Management signature changed' }
+    if (-not [string]::Equals([string]$linkFileFolder = (Split-Path -Parent $item.Link), (Split-Path -Parent $item.Launcher), [StringComparison]::OrdinalIgnoreCase)) { throw 'Source moved out of link folder' }
     if (-not (Test-Path -LiteralPath $item.Launcher -PathType Leaf)) { throw 'Launcher no longer exists' }
     $relative = $item.Link.Substring($root.Length).TrimStart('\')
     $backup = Join-Path $backupFolder $relative
     New-Item -ItemType Directory -Path (Split-Path -Parent $backup) -Force | Out-Null
     Copy-Item -LiteralPath $item.Link -Destination $backup -ErrorAction Stop
-    # Preserve custom arguments and icons. Only repair the broken destination and workdir.
+    # Preserve custom icons. Repair only managed launcher path, arguments and workdir.
     $source = Get-Item -LiteralPath $item.Launcher
     if ($source.Extension -eq '.bat') {
       $link.TargetPath = $env:ComSpec
