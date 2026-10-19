@@ -1,8 +1,7 @@
 #Requires AutoHotkey v2.0
 #SingleInstance Force
-; Anytype → Notion: preliminary safe UI exporter.
-; Does not read or expose the API key; property update will be added after
-; reliable mapping of the active Anytype object to its API object ID.
+; Anytype UI export with configurable completion-toast and checkbox clicks.
+; The checkbox is toggled, not set idempotently: start with it unchecked.
 SetTitleMatchMode 2
 CoordMode "Mouse", "Client"
 global config := A_ScriptDir "\\Anytype-Export.local.ini"
@@ -17,6 +16,7 @@ IsAnytype() {
 ^+2::CapturePoint("ExportMenu")
 ^+3::CapturePoint("ExportConfirm")
 ^+5::CapturePoint("NotionCheckbox")
+^+6::CapturePoint("ExportToastClose")
 ^e::ExportCurrent()
 #HotIf
 
@@ -34,7 +34,7 @@ ReadPoint(name) {
     x := IniRead(config, "Clicks", name "X", "")
     y := IniRead(config, "Clicks", name "Y", "")
     if (x = "" || y = "")
-        throw Error("Не настроена точка " name ". Используй Ctrl+Shift+1/2/3/5.")
+        throw Error("Не настроена точка " name ". Используй Ctrl+Shift+1/2/3/5/6.")
     return [Integer(x), Integer(y)]
 }
 
@@ -110,6 +110,14 @@ ExportCurrent() {
             WinActivate "ahk_id " hwnd
             try WinWaitActive "ahk_id " hwnd, , 3
         }
+        ; Close the export-completed toast before toggling the checkbox.
+        ; Toast coordinates are relative to the Anytype client window.
+        pToast := ReadPoint("ExportToastClose")
+        if !WinActive("ahk_id " hwnd)
+            throw Error("Anytype не активно; уведомление не закрыто.")
+        Sleep 400
+        Click pToast[1], pToast[2]
+        Sleep 250
         ; Coordinate-based toggle: only use when the checkbox is initially OFF.
         ; This UI method cannot reliably read its current checked state.
         pCheck := ReadPoint("NotionCheckbox")
