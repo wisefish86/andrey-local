@@ -16,7 +16,7 @@ IsAnytype() {
 ^+1::CapturePoint("Menu")
 ^+2::CapturePoint("ExportMenu")
 ^+3::CapturePoint("ExportConfirm")
-^+4::CapturePoint("CopyLink")
+^+5::CapturePoint("NotionCheckbox")
 ^e::ExportCurrent()
 #HotIf
 
@@ -34,7 +34,7 @@ ReadPoint(name) {
     x := IniRead(config, "Clicks", name "X", "")
     y := IniRead(config, "Clicks", name "Y", "")
     if (x = "" || y = "")
-        throw Error("Не настроена точка " name ". Используй Ctrl+Shift+1/2/3.")
+        throw Error("Не настроена точка " name ". Используй Ctrl+Shift+1/2/3/5.")
     return [Integer(x), Integer(y)]
 }
 
@@ -46,21 +46,6 @@ ExportCurrent() {
     try {
         hwnd := WinGetID("A")
         p1 := ReadPoint("Menu")
-        pLink := ReadPoint("CopyLink")
-        savedClipboard := ClipboardAll()
-        A_Clipboard := ""
-        Click p1[1], p1[2]
-        Sleep 350
-        Click pLink[1], pLink[2]
-        if !ClipWait(3) {
-            A_Clipboard := savedClipboard
-            throw Error("Copy Link did not copy a URL.")
-        }
-        objectUrl := A_Clipboard
-        A_Clipboard := savedClipboard
-        if !RegExMatch(objectUrl, "^https://object[.]any[.]coop/[^?]+[?]spaceId=")
-            throw Error("Unexpected object link; checkbox unchanged.")
-        Sleep 250
         p2 := ReadPoint("ExportMenu")
         p3 := ReadPoint("ExportConfirm")
         ; Remember existing Explorer windows to avoid closing the user's work.
@@ -125,18 +110,13 @@ ExportCurrent() {
             WinActivate "ahk_id " hwnd
             try WinWaitActive "ahk_id " hwnd, , 3
         }
-        helper := A_ScriptDir "\Anytype-MarkNotion.ps1"
-        if !FileExist(helper)
-            throw Error("Missing Anytype-MarkNotion.ps1")
-        command := 'powershell.exe -NoProfile -File "' helper '" -ObjectUrl "' objectUrl '"'
-        if RunWait(command, , "Hide") {
-            detailFile := A_Temp "\Anytype-Export-error.txt"
-            detail := FileExist(detailFile) ? FileRead(detailFile, "UTF-8") : "PowerShell failed without details."
-            if FileExist(detailFile)
-                FileDelete detailFile
-            throw Error("Anytype API: " detail)
-        }
-        ToolTip "В Notion: отмечено через API"
+        ; Coordinate-based toggle: only use when the checkbox is initially OFF.
+        ; This UI method cannot reliably read its current checked state.
+        pCheck := ReadPoint("NotionCheckbox")
+        if !WinActive("ahk_id " hwnd)
+            throw Error("Anytype не активно; галочка не изменена.")
+        Click pCheck[1], pCheck[2]
+        ToolTip "В Notion: переключено (проверь состояние галочки)"
         SetTimer () => ToolTip(), -4000
     } catch as e {
         MsgBox e.Message " (строка " e.Line ")", "Anytype Export", "Icon!"
