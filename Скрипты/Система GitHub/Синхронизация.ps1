@@ -77,6 +77,20 @@ if ($changes.Count) {
 } else {
     Invoke-Git merge --ff-only origin/main
 }
+# Restore Windows Explorer metadata after Git updates. Git does not track Hidden/System attributes.
+try {
+    $count = 0
+    Get-ChildItem -LiteralPath $repoRoot -Filter 'desktop.ini' -File -Force -Recurse -ErrorAction Stop |
+        ForEach-Object {
+            $wanted = $_.Attributes -bor [System.IO.FileAttributes]::Hidden -bor [System.IO.FileAttributes]::System
+            if ($_.Attributes -ne $wanted) { $_.Attributes = $wanted }
+            $count++
+        }
+    Write-Host ("desktop.ini attributes restored: " + $count) -ForegroundColor Cyan
+} catch {
+    Write-Warning ("desktop.ini attribute restoration failed: " + $_.Exception.Message)
+}
+
 # Refresh local shortcut catalog after repository sync. Shortcuts stay beside BAT launchers.
 $catalog = Join-Path $repoRoot 'Скрипты\Личные\Система ярлыков\Обновить-ярлыки.ps1'
 if (Test-Path -LiteralPath $catalog -PathType Leaf) {
