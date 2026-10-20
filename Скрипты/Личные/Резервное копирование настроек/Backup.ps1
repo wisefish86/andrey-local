@@ -150,7 +150,7 @@ try {
         Destination=$destination; Copied=$copied; Unchanged=$unchanged; Deferred=$deferred; Failed=$failed
         Files=@($results.ToArray())
     }
-    $reportFile = Join-Path $destination 'backup-last-report.json'
+    $reportFile = Join-Path $scriptDir 'backup-last-report.json'
     $report | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $reportFile -Encoding UTF8
     $message = "Settings backup complete.`r`nCopied: $copied`r`nUnchanged: $unchanged`r`nDeferred: $deferred`r`nErrors: $failed`r`nReport: $reportFile"
     Write-Output $message
