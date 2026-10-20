@@ -119,7 +119,16 @@ try {
                     }
                     if (Test-Path -LiteralPath $target -PathType Leaf) {
                         # Existing copy is preserved until replacement is ready.
-                        [IO.File]::Replace($temp, $target, $null)
+                        # Keep the previous version until the new file is safely installed.
+                        # File.Replace requires a valid backup path on some .NET runtimes.
+                        $previous = $target + '.previous-' + [guid]::NewGuid().ToString('N') + '.bak'
+                        [IO.File]::Replace($temp, $target, $previous)
+                        if ((Get-FileHash -LiteralPath $target -Algorithm SHA256).Hash -ne $sourceHash) {
+                            # Restore the previous copy if the replacement is not valid.
+                            Copy-Item -LiteralPath $previous -Destination $target -Force -ErrorAction Stop
+                            throw 'SHA256 verification failed after replacement.'
+                        }
+                        Remove-Item -LiteralPath $previous -Force -ErrorAction Stop
                     } else {
                         [IO.File]::Move($temp, $target)
                     }
