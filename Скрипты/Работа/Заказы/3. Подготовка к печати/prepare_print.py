@@ -52,6 +52,7 @@ if not folder.exists() or not folder.is_dir():
 
 # --- Удаление файла "Позиции заказа.txt" ---
 items_file = folder / ITEMS_FILENAME
+# Legacy TXT cleanup only. New - Данные заказа.json must be preserved.
 if items_file.exists():
     try:
         items_file.unlink()
