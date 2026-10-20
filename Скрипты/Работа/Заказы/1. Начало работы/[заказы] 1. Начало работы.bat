@@ -20,10 +20,10 @@ if not defined PYTHON (
   pause
   exit /b 1
 )
-"%PYTHON%" -c "import openpyxl, pyperclip" >nul 2>nul
+"%PYTHON%" -c "import openpyxl" >nul 2>nul
 if errorlevel 1 (
-  echo Не найдены библиотеки openpyxl и/или pyperclip.
-  echo Выполни: %PYTHON% -m pip install openpyxl pyperclip
+  echo Не найдена библиотека openpyxl.
+  echo Выполни: %PYTHON% -m pip install openpyxl
   pause
   exit /b 1
 )
