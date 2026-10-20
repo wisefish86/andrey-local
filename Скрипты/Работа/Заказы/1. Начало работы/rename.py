@@ -671,7 +671,7 @@ def write_items_file(work_folder, header_lines, items):
 def write_items_json(work_folder, order_number, order_date, client, manager, items, found_emails):
     """
     Создает технический JSON для автоматического чтения CorelDRAW.
-    Email намеренно не включаются.
+    Email включаются в единый JSON заказа.
     """
     json_file_path = work_folder / ITEMS_JSON_FILENAME
 
