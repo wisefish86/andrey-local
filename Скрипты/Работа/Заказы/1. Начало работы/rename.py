@@ -32,6 +32,7 @@ ITEM_NUM_COL = 'C'                # колонка с номером
 ITEM_NAME_COL = 'D'               # колонка с наименованием
 ITEM_QTY_COL = 'E'                # колонка с количеством
 ITEM_COMMENT_COL = 'F'            # колонка с комментарием
+ITEM_FILES_COL = 'G'              # текст из колонки «Файлы»
 # ====================================================
 
 EMAIL_PATTERN = r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'
@@ -521,7 +522,10 @@ def extract_items_fixed(worksheet):
         quantity = clean_text(qty_cell)
 
         comment_cell = worksheet[f'{ITEM_COMMENT_COL}{row}'].value
-        comment = clean_text(comment_cell)
+        files_text = clean_text(worksheet[f'{ITEM_FILES_COL}{row}'].value)
+        # Единое поле для существующего {{COMMENT_PART}} в CorelDRAW.
+        # Пустые значения не добавляют скобок или пустых строк.
+        comment = "\n".join(part for part in (comment, files_text) if part)
 
         unit = excel_item_unit(name)
         item = {
