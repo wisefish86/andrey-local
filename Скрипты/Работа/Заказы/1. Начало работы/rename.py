@@ -10,7 +10,6 @@ import tempfile
 import zipfile
 
 import openpyxl
-import pyperclip
 
 # ================= НАСТРОЙКИ =================
 CLIENT_CELL = 'D4'                # ячейка с заказчиком
@@ -891,11 +890,6 @@ def main():
 
     logger.info(f"New folder name: {new_name_folder}")
 
-    try:
-        pyperclip.copy("\r\n".join(header_lines))
-    except Exception as e:
-        logger.error(f"Clipboard error: {e}")
-
     parent = folder.parent
     target_folder = parent / new_name_folder
 
@@ -980,25 +974,6 @@ def main():
     else:
         logger.warning("No .cdr found.")
 
-    # Excel открывается ТОЛЬКО если адресов почты больше одного.
-    # При 0 или 1 адресе Excel не открываем.
-    if source_type == 'excel':
-        excel_files = [
-            path for path in work_folder.iterdir()
-            if is_order_excel(path)
-        ]
-        if excel_files:
-            if should_open_emails:
-                open_path(
-                    excel_files[0],
-                    "Excel opened.",
-                    "Cannot open Excel"
-                )
-            else:
-                logger.info(
-                    "Only one email found — Excel file will not be opened."
-                )
-
     # Email-файл открывается только если адресов больше одного.
     if should_open_emails and email_file_path.exists():
         open_path(
@@ -1018,13 +993,6 @@ def main():
             work_folder,
             "Order folder opened in Explorer.",
             "Cannot open order folder"
-        )
-
-    if items_file_path.exists():
-        open_path(
-            items_file_path,
-            f"Opened {ITEMS_FILENAME}",
-            "Cannot open items file"
         )
 
     logger.info("DONE.")
