@@ -1,0 +1,215 @@
+﻿{
+    "Started":  "2026-10-20T11:32:09.3090836+03:00",
+    "Finished":  "2026-10-20T11:32:10.1103194+03:00",
+    "Destination":  "D:\\YandexDisk\\Архив\\Backup\\Программы",
+    "Copied":  3,
+    "Unchanged":  31,
+    "Deferred":  0,
+    "Failed":  0,
+    "Files":  [
+                  {
+                      "Name":  "Flow Launcher",
+                      "File":  "Flow Launcher\\Favorites.conf",
+                      "Status":  "Copied",
+                      "Error":  ""
+                  },
+                  {
+                      "Name":  "Espanso",
+                      "File":  "Espanso\\match\\base.yml",
+                      "Status":  "Copied",
+                      "Error":  ""
+                  },
+                  {
+                      "Name":  "Espanso",
+                      "File":  "Espanso\\config\\default.yml",
+                      "Status":  "Unchanged",
+                      "Error":  ""
+                  },
+                  {
+                      "Name":  "CorelDRAW GMS",
+                      "File":  "CorelDRAW\\CorelDRAW Graphics Suite 2026\\Draw\\GlobalMacros.gms",
+                      "Status":  "Copied",
+                      "Error":  ""
+                  },
+                  {
+                      "Name":  "Adobe Photoshop",
+                      "File":  "Photoshop\\Adobe Photoshop 2025\\Adobe Photoshop 2025 Settings\\Actions Palette.psp",
+                      "Status":  "Unchanged",
+                      "Error":  ""
+                  },
+                  {
+                      "Name":  "Adobe Photoshop",
+                      "File":  "Photoshop\\Adobe Photoshop 2025\\Adobe Photoshop 2025 Settings\\Adobe Photoshop 2025 Prefs.psp",
+                      "Status":  "Unchanged",
+                      "Error":  ""
+                  },
+                  {
+                      "Name":  "Adobe Photoshop",
+                      "File":  "Photoshop\\Adobe Photoshop 2025\\Adobe Photoshop 2025 Settings\\Brushes.psp",
+                      "Status":  "Unchanged",
+                      "Error":  ""
+                  },
+                  {
+                      "Name":  "Adobe Photoshop",
+                      "File":  "Photoshop\\Adobe Photoshop 2025\\Adobe Photoshop 2025 Settings\\CustomShapes.psp",
+                      "Status":  "Unchanged",
+                      "Error":  ""
+                  },
+                  {
+                      "Name":  "Adobe Photoshop",
+                      "File":  "Photoshop\\Adobe Photoshop 2025\\Adobe Photoshop 2025 Settings\\Default Type Styles.psp",
+                      "Status":  "Unchanged",
+                      "Error":  ""
+                  },
+                  {
+                      "Name":  "Adobe Photoshop",
+                      "File":  "Photoshop\\Adobe Photoshop 2025\\Adobe Photoshop 2025 Settings\\DialogPreferences.psp",
+                      "Status":  "Unchanged",
+                      "Error":  ""
+                  },
+                  {
+                      "Name":  "Adobe Photoshop",
+                      "File":  "Photoshop\\Adobe Photoshop 2025\\Adobe Photoshop 2025 Settings\\FMCache.psp",
+                      "Status":  "Unchanged",
+                      "Error":  ""
+                  },
+                  {
+                      "Name":  "Adobe Photoshop",
+                      "File":  "Photoshop\\Adobe Photoshop 2025\\Adobe Photoshop 2025 Settings\\Gradients.psp",
+                      "Status":  "Unchanged",
+                      "Error":  ""
+                  },
+                  {
+                      "Name":  "Adobe Photoshop",
+                      "File":  "Photoshop\\Adobe Photoshop 2025\\Adobe Photoshop 2025 Settings\\LaunchEndFlag.psp",
+                      "Status":  "Unchanged",
+                      "Error":  ""
+                  },
+                  {
+                      "Name":  "Adobe Photoshop",
+                      "File":  "Photoshop\\Adobe Photoshop 2025\\Adobe Photoshop 2025 Settings\\MachinePrefs.psp",
+                      "Status":  "Unchanged",
+                      "Error":  ""
+                  },
+                  {
+                      "Name":  "Adobe Photoshop",
+                      "File":  "Photoshop\\Adobe Photoshop 2025\\Adobe Photoshop 2025 Settings\\MRU New Doc Sizes.json",
+                      "Status":  "Unchanged",
+                      "Error":  ""
+                  },
+                  {
+                      "Name":  "Adobe Photoshop",
+                      "File":  "Photoshop\\Adobe Photoshop 2025\\Adobe Photoshop 2025 Settings\\MRUBrushes.psp",
+                      "Status":  "Unchanged",
+                      "Error":  ""
+                  },
+                  {
+                      "Name":  "Adobe Photoshop",
+                      "File":  "Photoshop\\Adobe Photoshop 2025\\Adobe Photoshop 2025 Settings\\MRUSwatches.psp",
+                      "Status":  "Unchanged",
+                      "Error":  ""
+                  },
+                  {
+                      "Name":  "Adobe Photoshop",
+                      "File":  "Photoshop\\Adobe Photoshop 2025\\Adobe Photoshop 2025 Settings\\New Doc Sizes.json",
+                      "Status":  "Unchanged",
+                      "Error":  ""
+                  },
+                  {
+                      "Name":  "Adobe Photoshop",
+                      "File":  "Photoshop\\Adobe Photoshop 2025\\Adobe Photoshop 2025 Settings\\Patterns.psp",
+                      "Status":  "Unchanged",
+                      "Error":  ""
+                  },
+                  {
+                      "Name":  "Adobe Photoshop",
+                      "File":  "Photoshop\\Adobe Photoshop 2025\\Adobe Photoshop 2025 Settings\\PluginCache.psp",
+                      "Status":  "Unchanged",
+                      "Error":  ""
+                  },
+                  {
+                      "Name":  "Adobe Photoshop",
+                      "File":  "Photoshop\\Adobe Photoshop 2025\\Adobe Photoshop 2025 Settings\\QuitEndFlag.psp",
+                      "Status":  "Unchanged",
+                      "Error":  ""
+                  },
+                  {
+                      "Name":  "Adobe Photoshop",
+                      "File":  "Photoshop\\Adobe Photoshop 2025\\Adobe Photoshop 2025 Settings\\Save for Web Prefs.psp",
+                      "Status":  "Unchanged",
+                      "Error":  ""
+                  },
+                  {
+                      "Name":  "Adobe Photoshop",
+                      "File":  "Photoshop\\Adobe Photoshop 2025\\Adobe Photoshop 2025 Settings\\Styles.psp",
+                      "Status":  "Unchanged",
+                      "Error":  ""
+                  },
+                  {
+                      "Name":  "Adobe Photoshop",
+                      "File":  "Photoshop\\Adobe Photoshop 2025\\Adobe Photoshop 2025 Settings\\Swatches.psp",
+                      "Status":  "Unchanged",
+                      "Error":  ""
+                  },
+                  {
+                      "Name":  "Adobe Photoshop",
+                      "File":  "Photoshop\\Adobe Photoshop 2025\\Adobe Photoshop 2025 Settings\\UIPrefs.psp",
+                      "Status":  "Unchanged",
+                      "Error":  ""
+                  },
+                  {
+                      "Name":  "Adobe Photoshop",
+                      "File":  "Photoshop\\Adobe Photoshop 2025\\Adobe Photoshop 2025 Settings\\Workspace Prefs.psp",
+                      "Status":  "Unchanged",
+                      "Error":  ""
+                  },
+                  {
+                      "Name":  "Adobe Photoshop",
+                      "File":  "Photoshop\\Adobe Photoshop 2025\\FontFeatureCache\\FontAttributes\\blackletter.json",
+                      "Status":  "Unchanged",
+                      "Error":  ""
+                  },
+                  {
+                      "Name":  "Adobe Photoshop",
+                      "File":  "Photoshop\\Adobe Photoshop 2025\\FontFeatureCache\\FontAttributes\\decorative.json",
+                      "Status":  "Unchanged",
+                      "Error":  ""
+                  },
+                  {
+                      "Name":  "Adobe Photoshop",
+                      "File":  "Photoshop\\Adobe Photoshop 2025\\FontFeatureCache\\FontAttributes\\handmade.json",
+                      "Status":  "Unchanged",
+                      "Error":  ""
+                  },
+                  {
+                      "Name":  "Adobe Photoshop",
+                      "File":  "Photoshop\\Adobe Photoshop 2025\\FontFeatureCache\\FontAttributes\\monospace.json",
+                      "Status":  "Unchanged",
+                      "Error":  ""
+                  },
+                  {
+                      "Name":  "Adobe Photoshop",
+                      "File":  "Photoshop\\Adobe Photoshop 2025\\FontFeatureCache\\FontAttributes\\sans.json",
+                      "Status":  "Unchanged",
+                      "Error":  ""
+                  },
+                  {
+                      "Name":  "Adobe Photoshop",
+                      "File":  "Photoshop\\Adobe Photoshop 2025\\FontFeatureCache\\FontAttributes\\script.json",
+                      "Status":  "Unchanged",
+                      "Error":  ""
+                  },
+                  {
+                      "Name":  "Adobe Photoshop",
+                      "File":  "Photoshop\\Adobe Photoshop 2025\\FontFeatureCache\\FontAttributes\\serif_not_slab.json",
+                      "Status":  "Unchanged",
+                      "Error":  ""
+                  },
+                  {
+                      "Name":  "Adobe Photoshop",
+                      "File":  "Photoshop\\Adobe Photoshop 2025\\FontFeatureCache\\FontAttributes\\slab.json",
+                      "Status":  "Unchanged",
+                      "Error":  ""
+                  }
+              ]
+}
