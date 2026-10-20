@@ -28,7 +28,8 @@ CHECK_CDR_VERSION = True                          # проверять ли ве
 LOG_FILENAME = "archive.log"
 
 EMAILS_FILENAME = "- Emails для согласования.txt"
-ORDER_JSON_FILENAME = "- Позиции заказа.json"
+ORDER_JSON_FILENAME = "- Данные заказа.json"
+LEGACY_JSON_FILENAME = "- Позиции заказа.json"
 PRODUCTION_EMAIL = "made@magazinot.ru"
 
 # Шаблон тела письма в производство
@@ -213,6 +214,8 @@ def was_sent_for_approval_today(folder):
     """Проверяет, была ли последняя отправка на согласование сегодня."""
     json_file = folder / ORDER_JSON_FILENAME
     if not json_file.exists():
+        json_file = folder / LEGACY_JSON_FILENAME
+    if not json_file.exists():
         logger.info(f"{ORDER_JSON_FILENAME} не найден: приветствие оставляем.")
         return False
 
@@ -353,7 +356,16 @@ if error_file_path and error_file_path.exists():
     logger.info("Пропускаем письмо заказчику: есть ОШИБКИ.txt")
 else:
     emails_file = folder / EMAILS_FILENAME
-    to_emails = read_emails_from_file(emails_file)
+    new_json = folder / ORDER_JSON_FILENAME
+    if new_json.exists():
+        try:
+            with open(new_json, encoding="utf-8-sig") as f:
+                to_emails = json.load(f).get("emails", [])
+        except (OSError, ValueError, TypeError) as e:
+            logger.error(f"Ошибка чтения JSON заказа: {e}")
+            to_emails = []
+    else:
+        to_emails = read_emails_from_file(emails_file)
     if not to_emails:
         logger.warning(
             f"Файл {EMAILS_FILENAME} не найден, пуст или без валидных адресов. "
