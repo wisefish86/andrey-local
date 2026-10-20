@@ -58,7 +58,7 @@ try {
     Invoke-Git pull --ff-only origin main
   }
   # Update local launch shortcuts after Git sync. Never execute discovered scripts.
-  $catalog = Join-Path $repoRoot 'Скрипты\Личные\Система ярлыков\Обновить-ярлыки.ps1'
+  $catalog = Join-Path $repoRoot 'Скрипты\Личные\Система ярлыков в andrey-local\Обновить-ярлыки.ps1'
   if (Test-Path -LiteralPath $catalog -PathType Leaf) {
     try {
       & $catalog | Out-Null
