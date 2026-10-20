@@ -8,7 +8,7 @@ This tool copies selected application configuration files to:
 - A single latest copy is kept for each file. This is **not a versioned historical archive**; enable Yandex Disk version history separately if required.
 - Missing source files are reported, never deleted from the destination.
 - Unchanged files are skipped. Changed copies are verified by SHA-256 before replacement.
-- Reports: `Программы\backup-last-report.json`. Errors also produce a non-zero exit code.
+- Reports: `backup-last-report.json` beside `Backup.ps1` (inside the repository). Errors also produce a non-zero exit code. The report can be committed by the regular Git synchronization; review it for local paths before publishing to a public repository.
 - Destination drive must be available. No fallback to another drive.
 - `%APPDATA%` resolves dynamically to the Windows user profile.
 
@@ -63,7 +63,7 @@ Both BAT files invoke PowerShell relative to their own folder, so moving the rep
 - `mode: "every_hours"`: run every `intervalHours` (integer 1–24), starting at `time`. The repetition trigger is valid for 3650 days and can be renewed by running the installer BAT.
 - After **any** change to the schedule, rerun `Установить расписание резервного копирования.bat`. Editing the JSON alone does **not** update an existing Windows task.
 - The installer does not run the backup. It only registers/updates the daily or hourly task.
-- Missed executions can run later via Task Scheduler's StartWhenAvailable; unattended tasks do not show pop-up dialogs. Inspect `Программы\backup-last-report.json` and Windows Task Scheduler history for failures.
+- Missed executions can run later via Task Scheduler's StartWhenAvailable; unattended tasks do not show pop-up dialogs. Inspect `backup-last-report.json` beside `Backup.ps1` and Windows Task Scheduler history for failures.
 - The schedule is **not yet installed on your Windows PC** until you run the BAT locally.
 
 ## Extend
