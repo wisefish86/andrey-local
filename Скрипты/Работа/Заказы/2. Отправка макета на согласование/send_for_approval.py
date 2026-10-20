@@ -8,7 +8,8 @@ from datetime import datetime
 
 # ================= НАСТРОЙКИ =================
 EMAILS_FILENAME = "- Emails для согласования.txt"
-ORDER_JSON_FILENAME = "- Позиции заказа.json"
+ORDER_JSON_FILENAME = "- Данные заказа.json"
+LEGACY_JSON_FILENAME = "- Позиции заказа.json"
 LOG_FILENAME = "send_for_approval.log"
 
 # Соответствие менеджер → email (для копии)
@@ -73,6 +74,8 @@ def create_mailto_link(to_emails, cc_emails, subject, body):
 def update_approval_history(folder):
     """Обновляет историю отправок на согласование в JSON заказа."""
     json_file = folder / ORDER_JSON_FILENAME
+    if not json_file.exists():
+        json_file = folder / LEGACY_JSON_FILENAME
     if not json_file.exists():
         logger.warning(f"{ORDER_JSON_FILENAME} не найден. История согласований не обновлена.")
         return
@@ -154,7 +157,16 @@ else:
 
 # --- Читаем email-ы получателей из файла ---
 emails_file = folder / EMAILS_FILENAME
-to_emails = read_emails_from_file(emails_file)
+to_emails = []
+new_json = folder / ORDER_JSON_FILENAME
+if new_json.exists():
+    try:
+        with open(new_json, encoding="utf-8-sig") as f:
+            to_emails = json.load(f).get("emails", [])
+    except (OSError, ValueError, TypeError) as e:
+        logger.error(f"Ошибка чтения JSON заказа: {e}")
+else:
+    to_emails = read_emails_from_file(emails_file)
 if not to_emails:
     logger.warning(f"Файл {EMAILS_FILENAME} не найден или пуст. Получатели не указаны.")
 else:
