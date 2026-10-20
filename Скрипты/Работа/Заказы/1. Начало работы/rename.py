@@ -16,7 +16,7 @@ CLIENT_CELL = 'D4'                # ячейка с заказчиком
 MANAGER_CELL = 'D5'               # ячейка с менеджером
 EMAIL_FILENAME = "- Emails для согласования.txt"
 ITEMS_FILENAME = "- Позиции заказа.txt"
-ITEMS_JSON_FILENAME = "- Позиции заказа.json"
+ITEMS_JSON_FILENAME = "- Данные заказа.json"
 LOG_FILENAME = "rename.log"       # файл лога (в папке скрипта)
 FILES_FOLDER_NAME = "файлы"
 TXT_MANAGER = "Наталия Миронова"
@@ -668,7 +668,7 @@ def write_items_file(work_folder, header_lines, items):
     return items_file_path
 
 
-def write_items_json(work_folder, order_number, order_date, client, manager, items):
+def write_items_json(work_folder, order_number, order_date, client, manager, items, found_emails):
     """
     Создает технический JSON для автоматического чтения CorelDRAW.
     Email намеренно не включаются.
@@ -681,6 +681,7 @@ def write_items_json(work_folder, order_number, order_date, client, manager, ite
             "order_date": order_date or "",
             "client": client or "",
             "manager": manager or "",
+            "emails": found_emails,
             "items": items,
         }
         try:
@@ -934,21 +935,17 @@ def main():
             fail("После перемещения не найден исходный TXT заказа")
         source_txt_file = rename_source_txt(txt_result[0])
 
-    email_file_path, should_open_emails = write_email_file(
-        work_folder, found_emails
-    )
-    items_file_path = write_items_file(
-        work_folder,
-        header_lines,
-        items
-    )
+    # New orders use one structured file; legacy TXT files are not generated.
+    should_open_emails = False
+    email_file_path = work_folder / EMAIL_FILENAME
     write_items_json(
         work_folder,
         order_number,
         order_date,
         client,
         manager,
-        items
+        items,
+        found_emails
     )
 
     cdr_file = find_cdr_file(work_folder)
