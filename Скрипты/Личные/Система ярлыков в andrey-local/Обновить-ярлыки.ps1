@@ -59,7 +59,6 @@ foreach ($file in $items) {
   $title = Make-SafeName $file.BaseName
   $title = $title.Replace([string][char]0x058E, ' - ').Replace('?', '_')
   $shortcutPath = Join-Path $folder ($title + ' - ярлык.lnk')
-  if ($WhatIf) { Write-Host "Would create if missing: $shortcutPath"; continue }
   # Preserve a shortcut even when the user renamed it. Compare its destination,
   # not just its filename; never edit or delete existing shortcuts.
   if (Test-Path -LiteralPath $shortcutPath) { continue }
@@ -84,6 +83,7 @@ foreach ($file in $items) {
     }
   }
   if ($alreadyLinked) { continue }
+  if ($WhatIf) { Write-Host "Would create: $shortcutPath"; continue }
   $stage = 'CreateShortcut'
   try {
     $shortcut = $wsh.CreateShortcut($shortcutPath)
