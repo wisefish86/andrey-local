@@ -521,7 +521,7 @@ def extract_items_fixed(worksheet):
         qty_cell = worksheet[f'{ITEM_QTY_COL}{row}'].value
         quantity = clean_text(qty_cell)
 
-        comment = clean_text(comment_cell)
+        comment = clean_text(worksheet[f'{ITEM_COMMENT_COL}{row}'].value)
         files_text = clean_text(worksheet[f'{ITEM_FILES_COL}{row}'].value)
         # Единое поле для существующего {{COMMENT_PART}} в CorelDRAW.
         # Пустые значения не добавляют скобок или пустых строк.
