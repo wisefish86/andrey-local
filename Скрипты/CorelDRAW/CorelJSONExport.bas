@@ -1,15 +1,15 @@
 Attribute VB_Name = "CorelJSONExport"
-' РќР°Р·РІР°РЅРёРµ: Р­РєСЃРїРѕСЂС‚ СЃС‚СЂСѓРєС‚СѓСЂС‹ CorelDRAW РІ JSON
-' РњРѕРґСѓР»СЊ: CorelJSONExport
-' Р—Р°РїСѓСЃРє: Main_ExportCorelJSON
-' РќР°Р·РЅР°С‡РµРЅРёРµ: Р’С‹РіСЂСѓР¶Р°РµС‚ СЃС‚СЂР°РЅРёС†С‹, СЃР»РѕРё, РѕР±СЉРµРєС‚С‹, С‚РµРєСЃС‚ Рё СЃС‚РёР»Рё РІ UTF-8 JSON.
-' РСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ:
-'   1. РћС‚РєСЂРѕР№С‚Рµ РёСЃС…РѕРґРЅС‹Р№ CDR (РїСЂРµРґРїРѕС‡С‚РёС‚РµР»СЊРЅРѕ РєРѕРїРёСЋ).
-'   2. Р—Р°РїСѓСЃС‚РёС‚Рµ Main_ExportCorelJSON С‡РµСЂРµР· РґРёСЃРїРµС‚С‡РµСЂ РјР°РєСЂРѕСЃРѕРІ.
-'   3. РЈРєР°Р¶РёС‚Рµ РїСѓС‚СЊ Рє JSON Рё РїРµСЂРµРґР°Р№С‚Рµ СЂРµР·СѓР»СЊС‚Р°С‚ РґР»СЏ Р°РЅР°Р»РёР·Р°.
-' РЈСЃР»РѕРІРёСЏ: РґРѕРєСѓРјРµРЅС‚ РќР• РёР·РјРµРЅСЏРµС‚СЃСЏ. РўСЂРµР±СѓРµС‚СЃСЏ СѓСЃС‚Р°РЅРѕРІР»РµРЅРЅС‹Р№ ADODB.Stream (Windows).
-' Р’РЅРёРјР°РЅРёРµ: СЃР»РѕР¶РЅС‹Рµ СЌС„С„РµРєС‚С‹/СЃРїРµС†РѕР±СЉРµРєС‚С‹ РјРѕРіСѓС‚ СЌРєСЃРїРѕСЂС‚РёСЂРѕРІР°С‚СЊСЃСЏ РЅРµ РїРѕР»РЅРѕСЃС‚СЊСЋ.
-' РўРµСЃС‚: СЃС‚Р°С‚РёС‡РµСЃРєР°СЏ РїСЂРѕРІРµСЂРєР°, СЂРµР°Р»СЊРЅС‹Р№ Р·Р°РїСѓСЃРє РІ CorelDRAW РїРѕРєР° РЅРµ РІС‹РїРѕР»РЅРµРЅ.
+' Название: Экспорт структуры CorelDRAW в JSON
+' Модуль: CorelJSONExport
+' Запуск: Main_ExportCorelJSON
+' Назначение: Выгружает страницы, слои, объекты, текст и стили в UTF-8 JSON.
+' Использование:
+'   1. Откройте исходный CDR (предпочтительно копию).
+'   2. Запустите Main_ExportCorelJSON через диспетчер макросов.
+'   3. Укажите путь к JSON и передайте результат для анализа.
+' Условия: документ НЕ изменяется. Требуется установленный ADODB.Stream (Windows).
+' Внимание: сложные эффекты/спецобъекты могут экспортироваться не полностью.
+' Тест: статическая проверка, реальный запуск в CorelDRAW пока не выполнен.
 Option Explicit
 
 Private mDoc As Object
@@ -26,7 +26,7 @@ Public Sub Main_ExportCorelJSON()
     On Error GoTo Fatal
 
     If Application.Documents.Count = 0 Then
-        MsgBox "РћС‚РєСЂРѕР№С‚Рµ РґРѕРєСѓРјРµРЅС‚ CorelDRAW.", vbExclamation
+        MsgBox "Откройте документ CorelDRAW.", vbExclamation
         Exit Sub
     End If
     Set doc = ActiveDocument
@@ -34,12 +34,12 @@ Public Sub Main_ExportCorelJSON()
     mShapes = 0: mTexts = 0: mWarnings = "": mWarningCount = 0
     Set mMissing = CreateObject("Scripting.Dictionary")
 
-    target = InputBox("РџСѓС‚СЊ РґР»СЏ JSON (UTF-8):", "Р­РєСЃРїРѕСЂС‚ CorelDRAW", _
+    target = InputBox("Путь для JSON (UTF-8):", "Экспорт CorelDRAW", _
                      Environ$("USERPROFILE") & "\Documents\CorelDRAW_export.json")
     If Len(Trim$(target)) = 0 Then Exit Sub
     If LCase$(Right$(target, 5)) <> ".json" Then target = target & ".json"
     If Len(Dir$(target)) > 0 Then
-        If MsgBox("Р¤Р°Р№Р» СѓР¶Рµ СЃСѓС‰РµСЃС‚РІСѓРµС‚. РџРµСЂРµР·Р°РїРёСЃР°С‚СЊ?" & vbCrLf & target, _
+        If MsgBox("Файл уже существует. Перезаписать?" & vbCrLf & target, _
                   vbQuestion + vbYesNo + vbDefaultButton2) <> vbYes Then Exit Sub
     End If
 
@@ -83,14 +83,14 @@ Public Sub Main_ExportCorelJSON()
         """warnings"": [" & mWarnings & "]}"
 
     SaveUTF8 target, result
-    MsgBox "JSON СЃРѕР·РґР°РЅ: " & target & vbCrLf & _
-           "РћР±СЉРµРєС‚РѕРІ: " & mShapes & "; С‚РµРєСЃС‚РѕРІС‹С…: " & mTexts & _
-           "; Р·Р°РјРµС‡Р°РЅРёР№: " & mWarningCount & vbCrLf & _
-           "РСЃС…РѕРґРЅС‹Р№ CDR РЅРµ РёР·РјРµРЅС‘РЅ.", vbInformation
+    MsgBox "JSON создан: " & target & vbCrLf & _
+           "Объектов: " & mShapes & "; текстовых: " & mTexts & _
+           "; замечаний: " & mWarningCount & vbCrLf & _
+           "Исходный CDR не изменён.", vbInformation
     Exit Sub
 Fatal:
-    MsgBox "Р­РєСЃРїРѕСЂС‚ РЅРµ Р·Р°РІРµСЂС€С‘РЅ: " & Err.Description & vbCrLf & _
-           "РЎС‚СЂРѕРєР°/СЌР»РµРјРµРЅС‚ СЃРј. С‡РµСЂРµР· РѕС‚Р»Р°РґС‡РёРє VBA. CDR РЅРµ РёР·РјРµРЅС‘РЅ.", vbCritical
+    MsgBox "Экспорт не завершён: " & Err.Description & vbCrLf & _
+           "Строка/элемент см. через отладчик VBA. CDR не изменён.", vbCritical
 End Sub
 
 Private Function JShapes(ByVal shapes As Object, ByVal depth As Long) As String
@@ -98,7 +98,7 @@ Private Function JShapes(ByVal shapes As Object, ByVal depth As Long) As String
     s = "[": sep = ""
     If shapes Is Nothing Then JShapes = "[]": Exit Function
     If depth > 60 Then
-        Warn "РџСЂРµРІС‹С€РµРЅР° РіР»СѓР±РёРЅР° РІР»РѕР¶РµРЅРЅРѕСЃС‚Рё РѕР±СЉРµРєС‚РѕРІ (60)."
+        Warn "Превышена глубина вложенности объектов (60)."
         JShapes = "[]": Exit Function
     End If
     On Error GoTo Failed
@@ -109,7 +109,7 @@ Private Function JShapes(ByVal shapes As Object, ByVal depth As Long) As String
     JShapes = s & "]"
     Exit Function
 Failed:
-    Warn "РќРµ СѓРґР°Р»РѕСЃСЊ РѕР±РѕР№С‚Рё РЅРµРєРѕС‚РѕСЂС‹Рµ РѕР±СЉРµРєС‚С‹: " & Err.Description
+    Warn "Не удалось обойти некоторые объекты: " & Err.Description
     JShapes = s & "]"
 End Function
 
@@ -133,7 +133,7 @@ Private Function JMasterLayers(ByVal d As Object) As String
     JMasterLayers = s & "]"
     Exit Function
 Failed:
-    Warn "РќРµ СѓРґР°Р»РѕСЃСЊ СЌРєСЃРїРѕСЂС‚РёСЂРѕРІР°С‚СЊ РјР°СЃС‚РµСЂ-СЃР»РѕРё: " & Err.Description
+    Warn "Не удалось экспортировать мастер-слои: " & Err.Description
     JMasterLayers = s & "]"
 End Function
 
@@ -149,7 +149,7 @@ Private Function JEffects(ByVal effects As Object) As String
     JEffects = s & "]"
     Exit Function
 Failed:
-    Warn "РќРµ РІСЃРµ СЌС„С„РµРєС‚С‹ РґРѕСЃС‚СѓРїРЅС‹: " & Err.Description
+    Warn "Не все эффекты доступны: " & Err.Description
     JEffects = s & "]"
 End Function
 
@@ -210,7 +210,7 @@ Private Function JShape(ByVal sh As Object, ByVal depth As Long) As String
     JShape = tmp & "}"
     Exit Function
 Failed:
-    Warn "РћС€РёР±РєР° РѕР±СЉРµРєС‚Р°: " & Err.Description
+    Warn "Ошибка объекта: " & Err.Description
     JShape = "{""staticId"":" & JProp(sh, "StaticID") & _
              ",""error"":" & Q(Err.Description) & "}"
 End Function
@@ -261,7 +261,7 @@ Private Function JRuns(ByVal story As Object) As String
     JRuns = s & "]"
     Exit Function
 Failed:
-    Warn "РџРѕСЃРёРјРІРѕР»СЊРЅС‹Р№ СЌРєСЃРїРѕСЂС‚ РЅРµ СѓРґР°Р»СЃСЏ: " & Err.Description
+    Warn "Посимвольный экспорт не удался: " & Err.Description
     JRuns = "[]"
 End Function
 
@@ -310,7 +310,7 @@ Private Function JParagraphs(ByVal story As Object) As String
     JParagraphs = s & "]"
     Exit Function
 Failed:
-    Warn "РќРµ СѓРґР°Р»РѕСЃСЊ РІС‹РіСЂСѓР·РёС‚СЊ Р°Р±Р·Р°С†С‹: " & Err.Description
+    Warn "Не удалось выгрузить абзацы: " & Err.Description
     JParagraphs = "[]"
 End Function
 
@@ -323,7 +323,7 @@ End Function
 
 Private Function JStyleSheet(ByVal sheet As Object) As String
     If sheet Is Nothing Then
-        Warn "StyleSheet РЅРµ РґРѕСЃС‚СѓРїРµРЅ."
+        Warn "StyleSheet не доступен."
         JStyleSheet = "null": Exit Function
     End If
     JStyleSheet = "{""styles"":" & JStyles(Obj(sheet, "AllStyles")) & _
@@ -349,7 +349,7 @@ Private Function JStyles(ByVal collection As Object) As String
     JStyles = s & "]"
     Exit Function
 Failed:
-    Warn "РќРµРїРѕР»РЅС‹Р№ СЌРєСЃРїРѕСЂС‚ РєР°С‚Р°Р»РѕРіР° СЃС‚РёР»РµР№: " & Err.Description
+    Warn "Неполный экспорт каталога стилей: " & Err.Description
     JStyles = s & "]"
 End Function
 
@@ -366,7 +366,7 @@ Private Function JColorStyles(ByVal collection As Object) As String
     JColorStyles = s & "]"
     Exit Function
 Failed:
-    Warn "РќРµРїРѕР»РЅС‹Р№ СЌРєСЃРїРѕСЂС‚ С†РІРµС‚РѕРІС‹С… СЃС‚РёР»РµР№: " & Err.Description
+    Warn "Неполный экспорт цветовых стилей: " & Err.Description
     JColorStyles = s & "]"
 End Function
 
