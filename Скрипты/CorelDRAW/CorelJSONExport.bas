@@ -1,537 +1,73 @@
 Attribute VB_Name = "CorelJSONExport"
-' Νΰηβΰνθε: έκροξπς ρςπσκςσπϋ CorelDRAW β JSON
-' Μξδσλό: CorelJSONExport
-' Ηΰοσρκ: Main_ExportCorelJSON
-' Νΰηνΰχενθε: Βϋγπσζΰες ρςπΰνθφϋ, ρλξθ, ξαϊεκςϋ, ςεκρς θ ρςθλθ β UTF-8 JSON.
-' Θροξλόηξβΰνθε:
-'   1. Ξςκπξιςε θρυξδνϋι CDR (οπεδοξχςθςελόνξ κξοθώ).
-'   2. Ηΰοσρςθςε Main_ExportCorelJSON χεπεη δθροεςχεπ μΰκπξρξβ.
-'   3. Σκΰζθςε οσςό κ JSON θ οεπεδΰιςε πεησλόςΰς δλÿ ΰνΰλθηΰ.
-' Σρλξβθÿ: δξκσμενς ΝΕ θημενÿεςρÿ. Òπεασεςρÿ σρςΰνξβλεννϋι ADODB.Stream (Windows).
-' Βνθμΰνθε: ρλξζνϋε ύττεκςϋ/ροεφξαϊεκςϋ μξγσς ύκροξπςθπξβΰςόρÿ νε οξλνξρςόώ.
-' Òερς: ρςΰςθχερκΰÿ οπξβεπκΰ, πεΰλόνϋι ηΰοσρκ β CorelDRAW οξκΰ νε βϋοξλνεν.
+' Νΰηβΰνθε: Αϊιέyψ§yΡςπϋι ύκρλ§uηβηnπς ςεκρςΰ CorelDRAW β JSON
+' Μξδσκιέyψ§yά: CorelJSONExport
+' Ηΰξιέyψ§yΣρκ: Main_ExportCorelJSON
+' Νΰηνΰχενθε: έκροξπςθπσες ςεκρς θ ξρνξβνϋε ψπθτςξβϋε ρβξιρςβΰ θη CDR β UTF-8 JSON.
+' Θρλ§uηβηnκιέyψ§yάηξβΰνθε:
+'   1. Ξςκπξιςε ρξυπΰνΈννϋι CDR β CorelDRAW.
+'   2. Ηΰοςιέyψ§yΡςθςε Main_ExportCorelJSON.
+'   3. ΒξηΊw^~)ήtμθςε JSON θη οξδοΰλ§uηβηjθ data πξΧwδξμ ρ CDR θ οεπεδΰιςε εγξ δκιέyψ§yί ΰνΰλθηΰ.
+' ΣρλξβθξΧw: δξκσμενς νε θημενϋ§uηβηeςρξΧw; κξξπδθνΰςϋ, πΰημεπϋ θ βιέyψ§yΠΰτθκΰ νε βϋγπσζΰΊw^~)ήvςρΊw^~)ήw.
+' Ξβιέyψ§yΠΰνθχενθε: οξδπξανϋε ρςθλθ ξςδελΊw^~)ήtνϋυ ρθμβξλξβ β αϋρςπξμ πεζθμε νε βϋβιέyψ§yΠσζΰώςρξΧw.
+' Λ§uηβηpξβεπκΰ: ρςΰςθχερκΰΊw^~)ήw; ηΰοςιέyψ§yΡκ β CorelDRAW 2026 εωΈ νε λ§uηβηnδςβεπζδΈν.
 Option Explicit
 
-Private mDoc As Object
-Private mShapes As Long
-Private mTexts As Long
-Private mWarnings As String
-Private mWarningCount As Long
-Private mMissing As Object
+Private Const MAX_SECONDS As Double = 30#
+Private Const MAX_TEXTS As Long = 2500
+Private mBusy As Boolean
+Private mStart As Single
+Private mDone As Long
+Private mErrors As Long
+Private mNotes As String
 
 Public Sub Main_ExportCorelJSON()
-    Dim doc As Object, pg As Object, ly As Object
-    Dim target As String, result As String, pageItems As String, layerItems As String
-    Dim commaPage As String, commaLayer As String, stylesJson As String
-    On Error GoTo Fatal
+    Dim doc As Document
+    Dim pg As Page
+    Dim texts As ShapeRange
+    Dim sh As Shape
+    Dim folder As String
+    Dim target As String
+    Dim items As String
+    Dim finished As Boolean
+    Dim problem As String
+    Dim json As String
 
+    If mBusy Then Exit Sub
     If Application.Documents.Count = 0 Then
-        MsgBox "Ξςκπξιςε δξκσμενς CorelDRAW.", vbExclamation
+        MsgBox "Ρνΰχΰλΰ ξςκπξιςε δξκσμενς CorelDRAW.", vbExclamation
         Exit Sub
     End If
+
     Set doc = ActiveDocument
-    Set mDoc = doc
-    mShapes = 0: mTexts = 0: mWarnings = "": mWarningCount = 0
-    Set mMissing = CreateObject("Scripting.Dictionary")
-
-    target = InputBox("Οσςό δλÿ JSON (UTF-8):", "έκροξπς CorelDRAW", _
-                     Environ$("USERPROFILE") & "\Documents\CorelDRAW_export.json")
-    If Len(Trim$(target)) = 0 Then Exit Sub
-    If LCase$(Right$(target, 5)) <> ".json" Then target = target & ".json"
-    If Len(Dir$(target)) > 0 Then
-        If MsgBox("Τΰιλ σζε ρσωερςβσες. Οεπεηΰοθρΰςό?" & vbCrLf & target, _
-                  vbQuestion + vbYesNo + vbDefaultButton2) <> vbYes Then Exit Sub
+    If Len(doc.FilePath) = 0 Or Len(doc.FileName) = 0 Then
+        MsgBox "Ρνΰχΰλΰ ρξυπΰνθςε CDR, φιέyψ§yÒξαϋ ρξηδΰςΊw^~)ήt οΰλ§uηβηjσ data πξΧwδξμ ρ τΰιλξμ.", vbExclamation
+        Exit Sub
     End If
 
-    pageItems = "": commaPage = ""
+    On Error GoTo Failed
+    mBusy = True
+    mStart = Timer
+    mDone = 0
+    mErrors = 0
+    mNotes = ""
+
+    folder = doc.FilePath
+    If Right$(folder, 1) <> "\" Then folder = folder & "\"
+    folder = folder & "data"
+    If Len(Dir$(folder, vbDirectory)) = 0 Then MkDir folder
+    target = NewExportPath(folder)
+
+    items = ""
+    finished = True
     For Each pg In doc.Pages
-        layerItems = "": commaLayer = ""
-        For Each ly In pg.Layers
-            layerItems = layerItems & commaLayer & "{" & _
-                """name"":" & JProp(ly, "Name") & "," & _
-                """visible"":" & JProp(ly, "Visible") & "," & _
-                """printable"":" & JProp(ly, "Printable") & "," & _
-                """editable"":" & JProp(ly, "Editable") & "," & _
-                """shapes"":" & JShapes(Obj(ly, "Shapes"), 0) & "}"
-            commaLayer = ","
-        Next ly
-        pageItems = pageItems & commaPage & "{" & _
-            """index"":" & JProp(pg, "Index") & "," & _
-            """name"":" & JProp(pg, "Name") & "," & _
-            """sizeMm"":{""width"":" & MM(pg, "SizeWidth") & _
-              ",""height"":" & MM(pg, "SizeHeight") & "}," & _
-            """layers"": [" & layerItems & "]}"
-        commaPage = ","
-    Next pg
-
-    stylesJson = JStyleSheet(Obj(doc, "StyleSheet"))
-
-    result = "{" & _
-        """schema"":""coreldraw-json-export/v1""," & _
-        """exportedAt"":" & Q(Format$(Now, "yyyy-mm-dd\Thh:nn:ss")) & "," & _
-        """readOnly"":true," & _
-        """document"":{""name"":" & JProp(doc, "Name") & _
-            ",""fileName"":" & JProp(doc, "FileName") & _
-            ",""unitsEnum"":" & JProp(doc, "Unit") & _
-            ",""pagesCount"":" & JProp(doc.Pages, "Count") & "}," & _
-        """pages"": [" & pageItems & "]," & _
-        """masterLayers"":" & JMasterLayers(doc) & "," & _
-        """styleSheet"":" & stylesJson & "," & _
-        """missingProperties"":" & JMissing() & "," & _
-        """summary"":{""shapes"":" & CStr(mShapes) & ",""textShapes"":" & CStr(mTexts) & _
-           ",""warningCount"":" & CStr(mWarningCount) & "}," & _
-        """warnings"": [" & mWarnings & "]}"
-
-    SaveUTF8 target, result
-    MsgBox "JSON ρξηδΰν: " & target & vbCrLf & _
-           "Ξαϊεκςξβ: " & mShapes & "; ςεκρςξβϋυ: " & mTexts & _
-           "; ηΰμεχΰνθι: " & mWarningCount & vbCrLf & _
-           "Θρυξδνϋι CDR νε θημενΈν.", vbInformation
-    Exit Sub
-Fatal:
-    MsgBox "έκροξπς νε ηΰβεπψΈν: " & Err.Description & vbCrLf & _
-           "Ρςπξκΰ/ύλεμενς ρμ. χεπεη ξςλΰδχθκ VBA. CDR νε θημενΈν.", vbCritical
-End Sub
-
-Private Function JShapes(ByVal shapes As Object, ByVal depth As Long) As String
-    Dim sh As Object, s As String, sep As String
-    s = "[": sep = ""
-    If shapes Is Nothing Then JShapes = "[]": Exit Function
-    If depth > 60 Then
-        Warn "Οπεβϋψενΰ γλσαθνΰ βλξζεννξρςθ ξαϊεκςξβ (60)."
-        JShapes = "[]": Exit Function
-    End If
-    On Error GoTo Failed
-    For Each sh In shapes
-        s = s & sep & JShape(sh, depth)
-        sep = ","
-    Next sh
-    JShapes = s & "]"
-    Exit Function
-Failed:
-    Warn "Νε σδΰλξρό ξαξιςθ νεκξςξπϋε ξαϊεκςϋ: " & Err.Description
-    JShapes = s & "]"
-End Function
-
-Private Function JMasterLayers(ByVal d As Object) As String
-    Dim master As Object, layers As Object, layer As Object
-    Dim s As String, sep As String
-    Set master = Obj(d, "MasterPage")
-    If master Is Nothing Then JMasterLayers = "[]": Exit Function
-    Set layers = Obj(master, "Layers")
-    If layers Is Nothing Then JMasterLayers = "[]": Exit Function
-    On Error GoTo Failed
-    s = "[": sep = ""
-    For Each layer In layers
-        s = s & sep & "{" & _
-            """name"":" & JProp(layer, "Name") & "," & _
-            """visible"":" & JProp(layer, "Visible") & "," & _
-            """printable"":" & JProp(layer, "Printable") & "," & _
-            """shapes"":" & JShapes(Obj(layer, "Shapes"), 0) & "}"
-        sep = ","
-    Next layer
-    JMasterLayers = s & "]"
-    Exit Function
-Failed:
-    Warn "Νε σδΰλξρό ύκροξπςθπξβΰςό μΰρςεπ-ρλξθ: " & Err.Description
-    JMasterLayers = s & "]"
-End Function
-
-Private Function JEffects(ByVal effects As Object) As String
-    Dim eff As Object, s As String, sep As String
-    If effects Is Nothing Then JEffects = "[]": Exit Function
-    On Error GoTo Failed
-    s = "[": sep = ""
-    For Each eff In effects
-        s = s & sep & "{""typeEnum"":" & JProp(eff, "Type") & "}"
-        sep = ","
-    Next eff
-    JEffects = s & "]"
-    Exit Function
-Failed:
-    Warn "Νε βρε ύττεκςϋ δξρςσονϋ: " & Err.Description
-    JEffects = s & "]"
-End Function
-
-Private Function JShape(ByVal sh As Object, ByVal depth As Long) As String
-    Dim st As Object, txt As Object, pow As Object
-    Dim members As Object, ownLayer As Object, tmp As String
-    On Error GoTo Failed
-    mShapes = mShapes + 1
-    Set st = Obj(sh, "Style")
-    Set ownLayer = Obj(sh, "Layer")
-
-    tmp = "{" & _
-      """staticId"":" & JProp(sh, "StaticID") & "," & _
-      """name"":" & JProp(sh, "Name") & "," & _
-      """typeEnum"":" & JProp(sh, "Type") & "," & _
-      """layer"":" & JProp(ownLayer, "Name") & "," & _
-      """zOrder"":" & JProp(sh, "ZOrder") & "," & _
-      """visible"":" & JProp(sh, "Visible") & "," & _
-      """locked"":" & JProp(sh, "Locked") & "," & _
-      """boundsMm"":{""x"":" & MM(sh, "PositionX") & _
-          ",""y"":" & MM(sh, "PositionY") & _
-          ",""width"":" & MM(sh, "SizeWidth") & _
-          ",""height"":" & MM(sh, "SizeHeight") & "}," & _
-      """transform"":{""rotationDeg"":" & JProp(sh, "RotationAngle") & _
-          ",""horizontalScale"":" & JProp(sh, "AbsoluteHScale") & _
-          ",""verticalScale"":" & JProp(sh, "AbsoluteVScale") & _
-          ",""skewDeg"":" & JProp(sh, "AbsoluteSkew") & "}," & _
-      """style"":" & JStyleRef(st) & "," & _
-      """effects"":" & JEffects(Obj(sh, "Effects")) & "," & _
-      """fill"":" & JFill(Obj(sh, "Fill")) & "," & _
-      """outline"":" & JOutline(Obj(sh, "Outline")) & "," & _
-      """transparency"":{""typeEnum"":" & JProp(Obj(sh, "Transparency"), "Type") & _
-          ",""uniform"":" & JProp(Obj(sh, "Transparency"), "Uniform") & "}"
-
-    Set txt = Obj(sh, "Text")
-    If Not txt Is Nothing Then
-        If Not Obj(txt, "Story") Is Nothing Then
-            mTexts = mTexts + 1
-            tmp = tmp & ",""text"":" & JText(txt)
-        End If
-    End If
-
-    Set members = Obj(sh, "Shapes")
-    If Not members Is Nothing Then
-        If ValProp(members, "Count") > 0 Then
-            tmp = tmp & ",""children"":" & JShapes(members, depth + 1)
-        End If
-    End If
-    Set pow = Obj(sh, "PowerClip")
-    If Not pow Is Nothing Then
-        Set members = Obj(pow, "Shapes")
-        If Not members Is Nothing Then
-            If ValProp(members, "Count") > 0 Then
-                tmp = tmp & ",""powerClipChildren"":" & JShapes(members, depth + 1)
+        ' CorelDRAW βϋλ§uηβηnλνξΧwες οξθρκ ςεκρςΰ ρπΰησ, βκλώχΰξΧw ρξδεπζθμξε βιέyψ§yΠσοο.
+        Set texts = pg.FindShapes(Type:=cdrTextShape, Recursive:=True)
+        For Each sh In texts
+            If mDone >= MAX_TEXTS Or ElapsedSeconds() >= MAX_SECONDS Then
+                finished = False
+                Exit For
             End If
-        End If
-    End If
-    JShape = tmp & "}"
-    Exit Function
-Failed:
-    Warn "Ξψθακΰ ξαϊεκςΰ: " & Err.Description
-    JShape = "{""staticId"":" & JProp(sh, "StaticID") & _
-             ",""error"":" & Q(Err.Description) & "}"
-End Function
-
-Private Function JText(ByVal t As Object) As String
-    Dim story As Object
-    Set story = Obj(t, "Story")
-    JText = "{" & _
-       """isArtistic"":" & JProp(t, "IsArtisticText") & "," & _
-       """typeEnum"":" & JProp(t, "Type") & "," & _
-       """overflow"":" & JProp(t, "Overflow") & "," & _
-       """framesInLink"":" & JProp(t, "FramesInLink") & "," & _
-       """content"":" & JProp(story, "Text") & "," & _
-       """runs"":" & JRuns(story) & "," & _
-       """paragraphs"":" & JParagraphs(story) & "}"
-End Function
-
-' Create continuous runs of characters with identical formatting.
-' The text at story level remains authoritative; runs are diagnostic.
-Private Function JRuns(ByVal story As Object) As String
-    Dim chars As Object, ch As Object
-    Dim s As String, delim As String, frag As String, current As String
-    Dim fmt As String, lastFmt As String, startAt As Long, count As Long
-    On Error GoTo Failed
-    Set chars = Obj(story, "Characters")
-    If chars Is Nothing Then JRuns = "[]": Exit Function
-    s = "[": delim = "": current = "": lastFmt = "": startAt = 1: count = 0
-    For Each ch In chars
-        frag = StrProp(ch, "Text")
-        fmt = JCharFormat(ch)
-        If count = 0 Then
-            lastFmt = fmt: current = frag: startAt = 1
-        ElseIf fmt = lastFmt Then
-            current = current & frag
-        Else
-            s = s & delim & "{""start1"":" & CStr(startAt) & _
-                      ",""length"":" & CStr(count - startAt + 1) & _
-                      ",""text"":" & Q(current) & ",""format"":" & lastFmt & "}"
-            delim = ",": current = frag: lastFmt = fmt: startAt = count + 1
-        End If
-        count = count + 1
-    Next ch
-    If count > 0 Then
-        s = s & delim & "{""start1"":" & CStr(startAt) & _
-                  ",""length"":" & CStr(count - startAt + 1) & _
-                  ",""text"":" & Q(current) & ",""format"":" & lastFmt & "}"
-    End If
-    JRuns = s & "]"
-    Exit Function
-Failed:
-    Warn "Οξρθμβξλόνϋι ύκροξπς νε σδΰλρÿ: " & Err.Description
-    JRuns = "[]"
-End Function
-
-Private Function JCharFormat(ByVal r As Object) As String
-    JCharFormat = "{" & _
-      """font"":" & JProp(r, "Font") & "," & _
-      """sizePt"":" & JProp(r, "Size") & "," & _
-      """bold"":" & JProp(r, "Bold") & "," & _
-      """italic"":" & JProp(r, "Italic") & "," & _
-      """fontStyleEnum"":" & JProp(r, "Style") & "," & _
-      """underlineEnum"":" & JProp(r, "Underline") & "," & _
-      """strikethroughEnum"":" & JProp(r, "Strikethru") & "," & _
-      """overscoreEnum"":" & JProp(r, "Overscore") & "," & _
-      """positionEnum"":" & JProp(r, "Position") & "," & _
-      """charSpacing"":" & JProp(r, "CharSpacing") & "," & _
-      """horizontalShift"":" & JProp(r, "HorizShift") & "," & _
-      """characterAngle"":" & JProp(r, "CharAngle") & "," & _
-      """rangeKerning"":" & JProp(r, "RangeKerning") & "," & _
-      """languageEnum"":" & JProp(r, "LanguageID") & "," & _
-      """objectStyle"":" & JStyleRef(Obj(r, "ObjectStyle")) & "," & _
-      """fill"":" & JFill(Obj(r, "Fill")) & "}"
-End Function
-
-Private Function JParagraphs(ByVal story As Object) As String
-    Dim ps As Object, p As Object, s As String, sep As String
-    On Error GoTo Failed
-    Set ps = Obj(story, "Paragraphs")
-    If ps Is Nothing Then JParagraphs = "[]": Exit Function
-    s = "[": sep = ""
-    For Each p In ps
-        s = s & sep & "{" & _
-           """start1"":" & JProp(p, "Start") & "," & _
-           """end1"":" & JProp(p, "End") & "," & _
-           """text"":" & JProp(p, "Text") & "," & _
-           """alignmentEnum"":" & JProp(p, "Alignment") & "," & _
-           """lineSpacing"":" & JProp(p, "LineSpacing") & "," & _
-           """lineSpacingTypeEnum"":" & JProp(p, "LineSpacingType") & "," & _
-           """before"":" & JProp(p, "ParaSpacingBefore") & "," & _
-           """after"":" & JProp(p, "ParaSpacingAfter") & "," & _
-           """firstLineIndent"":" & JProp(p, "FirstLineIndent") & "," & _
-           """leftIndent"":" & JProp(p, "LeftIndent") & "," & _
-           """rightIndent"":" & JProp(p, "RightIndent") & "," & _
-           """style"":" & JStyleRef(Obj(p, "ObjectStyle")) & "}"
-        sep = ","
-    Next p
-    JParagraphs = s & "]"
-    Exit Function
-Failed:
-    Warn "Νε σδΰλξρό βϋγπσηθςό ΰαηΰφϋ: " & Err.Description
-    JParagraphs = "[]"
-End Function
-
-Private Function JStyleRef(ByVal st As Object) As String
-    If st Is Nothing Then JStyleRef = "null": Exit Function
-    JStyleRef = "{""name"":" & JProp(st, "Name") & _
-                ",""category"":" & JProp(st, "CategoryName") & _
-                ",""basedOn"":" & JProp(Obj(st, "BasedOn"), "Name") & "}"
-End Function
-
-Private Function JStyleSheet(ByVal sheet As Object) As String
-    If sheet Is Nothing Then
-        Warn "StyleSheet νε δξρςσοεν."
-        JStyleSheet = "null": Exit Function
-    End If
-    JStyleSheet = "{""styles"":" & JStyles(Obj(sheet, "AllStyles")) & _
-                  ",""styleSets"":" & JStyles(Obj(sheet, "AllStyleSets")) & _
-                  ",""colorStyles"":" & JColorStyles(Obj(sheet, "AllColorStyles")) & "}"
-End Function
-
-Private Function JStyles(ByVal collection As Object) As String
-    Dim st As Object, s As String, sep As String, raw As String
-    On Error GoTo Failed
-    If collection Is Nothing Then JStyles = "[]": Exit Function
-    s = "[": sep = ""
-    For Each st In collection
-        raw = MethodText(st, "ToString")
-        s = s & sep & "{" & _
-           """name"":" & JProp(st, "Name") & "," & _
-           """displayName"":" & JProp(st, "DisplayName") & "," & _
-           """category"":" & JProp(st, "CategoryName") & "," & _
-           """basedOn"":" & JProp(Obj(st, "BasedOn"), "Name") & "," & _
-           """rawProperties"":" & Q(raw) & "}"
-        sep = ","
-    Next st
-    JStyles = s & "]"
-    Exit Function
-Failed:
-    Warn "Νεοξλνϋι ύκροξπς κΰςΰλξγΰ ρςθλει: " & Err.Description
-    JStyles = s & "]"
-End Function
-
-Private Function JColorStyles(ByVal collection As Object) As String
-    Dim st As Object, s As String, sep As String
-    On Error GoTo Failed
-    If collection Is Nothing Then JColorStyles = "[]": Exit Function
-    s = "[": sep = ""
-    For Each st In collection
-        s = s & sep & "{""name"":" & JProp(st, "Name") & _
-          ",""color"":" & JColor(Obj(st, "Color")) & "}"
-        sep = ","
-    Next st
-    JColorStyles = s & "]"
-    Exit Function
-Failed:
-    Warn "Νεοξλνϋι ύκροξπς φβεςξβϋυ ρςθλει: " & Err.Description
-    JColorStyles = s & "]"
-End Function
-
-Private Function JFill(ByVal f As Object) As String
-    If f Is Nothing Then JFill = "null": Exit Function
-    JFill = "{""typeEnum"":" & JProp(f, "Type") & _
-            ",""uniformColor"":" & JColor(Obj(f, "UniformColor")) & "}"
-End Function
-
-Private Function JOutline(ByVal o As Object) As String
-    If o Is Nothing Then JOutline = "null": Exit Function
-    JOutline = "{""typeEnum"":" & JProp(o, "Type") & _
-        ",""width"":" & JProp(o, "Width") & _
-        ",""color"":" & JColor(Obj(o, "Color")) & "}"
-End Function
-
-Private Function JColor(ByVal c As Object) As String
-    If c Is Nothing Then JColor = "null": Exit Function
-    JColor = "{""typeEnum"":" & JProp(c, "Type") & _
-            ",""modelEnum"":" & JProp(c, "Model") & _
-            ",""name"":" & JProp(c, "Name") & _
-            ",""rgb"":{""r"":" & JProp(c, "RGBRed") & _
-            ",""g"":" & JProp(c, "RGBGreen") & _
-            ",""b"":" & JProp(c, "RGBBlue") & "}," & _
-            """cmyk"":{""c"":" & JProp(c, "CMYKCyan") & _
-            ",""m"":" & JProp(c, "CMYKMagenta") & _
-            ",""y"":" & JProp(c, "CMYKYellow") & _
-            ",""k"":" & JProp(c, "CMYKBlack") & "}}"
-End Function
-
-Private Function Obj(ByVal source As Object, ByVal member As String) As Object
-    On Error Resume Next
-    If source Is Nothing Then Exit Function
-    Set Obj = CallByName(source, member, VbGet)
-    Err.Clear
-End Function
-
-Private Function ValProp(ByVal source As Object, ByVal member As String) As Double
-    Dim v As Variant
-    On Error Resume Next
-    If source Is Nothing Then Exit Function
-    v = CallByName(source, member, VbGet)
-    If Err.Number = 0 And IsNumeric(v) Then ValProp = CDbl(v)
-    Err.Clear
-End Function
-
-Private Function StrProp(ByVal source As Object, ByVal member As String) As String
-    Dim v As Variant
-    On Error Resume Next
-    If source Is Nothing Then Exit Function
-    v = CallByName(source, member, VbGet)
-    If Err.Number = 0 Then
-        If Not IsNull(v) Then StrProp = CStr(v)
-    End If
-    Err.Clear
-End Function
-
-Private Function MethodText(ByVal source As Object, ByVal member As String) As String
-    Dim v As Variant
-    On Error Resume Next
-    v = CallByName(source, member, VbMethod)
-    If Err.Number = 0 Then
-        If Not IsNull(v) Then MethodText = CStr(v)
-    End If
-    Err.Clear
-End Function
-
-Private Function JProp(ByVal source As Object, ByVal member As String) As String
-    Dim v As Variant
-    On Error GoTo Missing
-    If source Is Nothing Then GoTo Missing
-    v = CallByName(source, member, VbGet)
-    If IsNull(v) Or IsEmpty(v) Then GoTo Missing
-    Select Case VarType(v)
-       Case vbBoolean
-           If v Then JProp = "true" Else JProp = "false"
-       Case vbByte, vbInteger, vbLong, vbSingle, vbDouble, vbCurrency, vbDecimal
-           JProp = N(CDbl(v))
-       Case vbString
-           JProp = Q(CStr(v))
-       Case Else
-           JProp = Q(CStr(v))
-    End Select
-    Exit Function
-Missing:
-    If Err.Number <> 0 Then RecordMissing source, member
-    JProp = "null"
-End Function
-
-Private Sub RecordMissing(ByVal source As Object, ByVal member As String)
-    Dim key As String
-    On Error Resume Next
-    If source Is Nothing Or mMissing Is Nothing Then Exit Sub
-    key = TypeName(source) & "." & member
-    If mMissing.Exists(key) Then
-        mMissing(key) = CLng(mMissing(key)) + 1
-    Else
-        mMissing.Add key, 1
-    End If
-End Sub
-
-Private Function JMissing() As String
-    Dim key As Variant, s As String, delim As String
-    s = "{": delim = ""
-    If Not mMissing Is Nothing Then
-        For Each key In mMissing.Keys
-            s = s & delim & Q(CStr(key)) & ":" & CStr(mMissing(key))
-            delim = ","
-        Next key
-    End If
-    JMissing = s & "}"
-End Function
-
-Private Function MM(ByVal obj As Object, ByVal prop As String) As String
-    Dim v As Variant
-    On Error GoTo Missing
-    v = CallByName(obj, prop, VbGet)
-    If Not IsNumeric(v) Then GoTo Missing
-    MM = N(CDbl(mDoc.FromUnits(CDbl(v), cdrMillimeter)))
-    Exit Function
-Missing:
-    MM = "null"
-End Function
-
-Private Function N(ByVal value As Double) As String
-    ' JSON uses '.' regardless of system locale.
-    N = Replace$(Format$(value, "0.############"), ",", ".")
-End Function
-
-Private Function Q(ByVal value As String) As String
-    Dim i As Long, u As Long, ch As String, out As String
-    out = """"
-    For i = 1 To Len(value)
-        ch = Mid$(value, i, 1)
-        u = AscW(ch): If u < 0 Then u = u + 65536
-        Select Case u
-           Case 34: out = out & "\"""
-           Case 92: out = out & "\\"
-           Case 8:  out = out & "\b"
-           Case 9:  out = out & "\t"
-           Case 10: out = out & "\n"
-           Case 12: out = out & "\f"
-           Case 13: out = out & "\r"
-           Case 0 To 31: out = out & "\u" & Right$("0000" & Hex$(u), 4)
-           Case Else: out = out & ch
-        End Select
-    Next i
-    Q = out & """"
-End Function
-
-Private Sub Warn(ByVal msg As String)
-    If mWarningCount < 500 Then
-        If Len(mWarnings) <> 0 Then mWarnings = mWarnings & ","
-        mWarnings = mWarnings & Q(msg)
-    End If
-    mWarningCount = mWarningCount + 1
-End Sub
-
-Private Sub SaveUTF8(ByVal path As String, ByVal data As String)
-    Dim stream As Object
-    Set stream = CreateObject("ADODB.Stream")
-    stream.Type = 2               ' adTypeText
-    stream.Charset = "utf-8"
-    stream.Open
-    stream.WriteText data
-    stream.SaveToFile path, 2     ' adSaveCreateOverWrite
-    stream.Close
-End Sub
+            If Len(items) <> 0 Then items = items & ","
+            items = items & OneText(sh, pg.Index)
+            mDone = mDone + 1
+            ' Ξςδΰςό σοπΰβλενθε θνςεπτειρσ οξρλε κΰζδϊιέyψ§yΥ δερ5£K ƒ»‡λ—«Λ»Έ(€€€€€€€€€€€%€΅µ½Ή”5½€Δΐ¤€τ€ΐQ΅•Έ½Ω•ΉΡΜ(€€€€€€€9•αΠΝ (€€€€€€€%9½Π™¥Ή¥Ν΅•Q΅•Έα¥Π½Θ(€€€9•αΠΑ((€€€©Ν½Έ€τ€‰μ€|(€€€€€€€€‰Ν΅•µ„θ‰½Ι•±‘Ι…άµΡ•αΠµ™…ΝΠ½ΨΘ°€|(€€€€€€€€‰•αΑ½ΙΡ•‘Ρ1½…°θ€EΥ½Ρ”΅½Ιµ…Π΅9½ά°€‰εεεδµµ΄µ‘‘qQ΅ ιΉΈιΝΜ¤¤€€°€|(€€€€€€€€‰•αΑ½ΙΡ•Θθ‰½Ι•±)M=9αΑ½ΙΠ°€|(€€€€€€€€‰Ν½ΥΙ•¥±”θ€EΥ½Ρ”΅‘½Ή¥±•9…µ”¤€€°€|(€€€€€€€€‰½µΑ±•Ρ”θ€)Ν½Ή	½½°΅™¥Ή¥Ν΅•¤€€°€|(€€€€€€€€‰™½Ιµ…ΡM½Α”θ‰Ρ•αΠµ½‰©•Πμ¥Ή‘¥Ω¥‘Υ…°΅…Ι…Ρ•ΘΝΑ…ΉΜ…Ι”Ή½Π•αΑ½ΙΡ•°€|(€€€€€€€€‰Ρ•αΡ=‰©•ΡΜθ€€‰l€¥Ρ•µΜ€€‰t°€|(€€€€€€€€‰ΝΥµµ…Ιδιμ‰½ΥΉΠθ€MΡΘ΅µ½Ή”¤€€°‰•ΙΙ½ΙΜθ€MΡΘ΅µΙΙ½ΙΜ¤€|(€€€€€€€€°‰•±…ΑΝ•‘M•½Ή‘Μθ€)Ν½Ή9Υµ‰•Θ΅±…ΑΝ•‘M•½Ή‘Μ ¤¤€€‰τ°€|(€€€€€€€€‰έ…ΙΉ¥ΉΜθ€€‰l€µ9½Ρ•Μ€€‰uτ((€€€]Ι¥Ρ•UΡΰΡ…Ι•Π°©Ν½Έ(€€€µ	ΥΝδ€τ…±Ν”(€€€%™¥Ή¥Ν΅•Q΅•Έ(€€€€€€€5Ν	½ΰ€‹K—«ΗΛμƒ‹οΓΟ›—·μθ€€µ½Ή”€Ω‰Ι1€|(€€€€€€€€€€€€€€€‰)M=8θ€€Ρ…Ι•Π€Ω‰Ι1€|(€€€€€€€€€€€€€€€‰Hƒ·”ƒ£³—¶γ΄Έ°Ω‰%Ή™½Ιµ…Ρ¥½Έ(€€€±Ν”(€€€€€€€5Ν	½ΰ€‹w«ΗΏ»ΓΘƒ»ΗΛƒ·»‹―—΄ƒΏΈƒ―£³£ΛΜƒ‹Γ—³—· Ώ»‡λ—«Λ»Έ€Ω‰Ι1€|(€€€€€€€€€€€€€€€‹.Χw»«§uηβηOί—΄ƒ_GK#_7o$)M=8θ€€Ρ…Ι•Π€Ω‰Ι1€|(€€€€€€€€€€€€€€€‹K—«ΗΛ»θ€€µ½Ή”°Ω‰α±…µ…Ρ¥½Έ(€€€Ή%(€€€α¥ΠMΥ()…¥±•θ(€€€ΑΙ½‰±•΄€τΙΘΉ•ΝΙ¥ΑΡ¥½Έ(€€€µ	ΥΝδ€τ…±Ν”(€€€5Ν	½ΰ€‹;γ£‡«€ƒχ«Η®Χw»ΓΛ€θ€€ΑΙ½‰±•΄€Ω‰Ι1€|(€€€€€€€€€€€‰Hƒ·”ƒ£³—¶γ΄Έ°Ω‰Ι¥Ρ¥…°)ΉMΥ()AΙ¥Ω…Ρ”ΥΉΡ¥½Έ=Ή•Q•αΠ΅	εY…°Ν ΜM΅…Α”°	εY…°Α…•%Ή‘•ΰΜ1½Ή¤ΜMΡΙ¥Ή(€€€¥΄ΠΜ=‰©•Π°ΝΡ½ΙδΜ=‰©•Π(€€€¥΄Ι½άΜMΡΙ¥Ή(€€€¥΄•ΙΙ½ΙQ•αΠΜMΡΙ¥Ή(€€€=ΈΙΙ½Θ½QΌ…¥±•((€€€M•ΠΠ€τΝ ΉQ•αΠ(€€€M•ΠΝΡ½Ιδ€τΠΉMΡ½Ιδ(€€€Ι½ά€τ€‰μ€|(€€€€€€€€‰Α…”θ€MΡΘ΅Α…•%Ή‘•ΰ¤€€°€|(€€€€€€€€‰¥θ€AΙ½ΐ΅Ν °€‰MΡ…Ρ¥%¤€€°€|(€€€€€€€€‰Ή…µ”θ€AΙ½ΐ΅Ν °€‰9…µ”¤€€°€|(€€€€€€€€‰±…ε•Θθ€AΙ½ΐ΅=‰¨΅Ν °€‰1…ε•Θ¤°€‰9…µ”¤€€°€|(€€€€€€€€‰­¥Ήθ€AΙ½ΐ΅Π°€‰QεΑ”¤€€°€|(€€€€€€€€‰¥ΝΙΡ¥ΝΡ¥θ€AΙ½ΐ΅Π°€‰%ΝΙΡ¥ΝΡ¥Q•αΠ¤€€°€|(€€€€€€€€‰Ρ•αΠθ€AΙ½ΐ΅ΝΡ½Ιδ°€‰Q•αΠ¤€€°€|(€€€€€€€€‰™½ΉΠθ€Q•αΡ½Ιµ…Π΅ΝΡ½Ιδ¤€€°€|(€€€€€€€€‰Ν΅…Α•Q•αΡ½±½Θθ€½±½Ι%Ή™Ό΅=‰¨΅=‰¨΅Ν °€‰¥±°¤°€‰UΉ¥™½Ιµ½±½Θ¤¤€€°€|(€€€€€€€€‰ΝΡε±”θ€MΡε±•I•΅=‰¨΅Ν °€‰MΡε±”¤¤€€‰τ(€€€=Ή•Q•αΠ€τΙ½ά(€€€α¥ΠΥΉΡ¥½Έ()…¥±•θ(€€€•ΙΙ½ΙQ•αΠ€τΙΘΉ•ΝΙ¥ΑΡ¥½Έ(€€€µΙΙ½ΙΜ€τµΙΙ½ΙΜ€¬€Δ(€€€‘‘9½Ρ”€‹7”ƒΟ“ƒ―»Ηπƒ®ΧwΓ»ί£ΛƒΚιέyψ§yΠƒΛ—«ΗΛ»‹ο¤ƒ»‡λ—«Θƒ·€ƒΗΛΓƒ·£Ϋ”€€MΡΘ΅Α…•%Ή‘•ΰ¤(€€€=Ή•Q•αΠ€τ€‰μ‰Α…”θ€MΡΘ΅Α…•%Ή‘•ΰ¤€€°‰¥θ€AΙ½ΐ΅Ν °€‰MΡ…Ρ¥%¤€|(€€€€€€€€€€€€€€°‰•ΙΙ½Θθ€EΥ½Ρ”΅•ΙΙ½ΙQ•αΠ¤€€‰τ)ΉΥΉΡ¥½Έ()AΙ¥Ω…Ρ”ΥΉΡ¥½ΈQ•αΡ½Ιµ…Π΅	εY…°ΡΘΜ=‰©•Π¤ΜMΡΙ¥Ή(€€€Q•αΡ½Ιµ…Π€τ€‰μ€|(€€€€€€€€‰™…µ¥±δθ€AΙ½ΐ΅ΡΘ°€‰½ΉΠ¤€€°€|(€€€€€€€€‰Ν¥ι•AΠθ€AΙ½ΐ΅ΡΘ°€‰M¥ι”¤€€°€|(€€€€€€€€‰‰½±θ€AΙ½ΐ΅ΡΘ°€‰	½±¤€€°€|(€€€€€€€€‰¥Ρ…±¥θ€AΙ½ΐ΅ΡΘ°€‰%Ρ…±¥¤€€°€|(€€€€€€€€‰ΥΉ‘•Ι±¥Ή”θ€AΙ½ΐ΅ΡΘ°€‰UΉ‘•Ι±¥Ή”¤€€°€|(€€€€€€€€‰Α½Ν¥Ρ¥½Έθ€AΙ½ΐ΅ΡΘ°€‰A½Ν¥Ρ¥½Έ¤€€°€|(€€€€€€€€‰ΝΡε±•ΉΥ΄θ€AΙ½ΐ΅ΡΘ°€‰MΡε±”¤€€°€|(€€€€€€€€‰½±½Θθ€½±½Ι%Ή™Ό΅=‰¨΅=‰¨΅ΡΘ°€‰¥±°¤°€‰UΉ¥™½Ιµ½±½Θ¤¤€€°€|(€€€€€€€€‰ΝΡε±•I•θ€MΡε±•I•΅=‰¨΅ΡΘ°€‰=‰©•ΡMΡε±”¤¤€€‰τ)ΉΥΉΡ¥½Έ()AΙ¥Ω…Ρ”ΥΉΡ¥½Έ½±½Ι%Ή™Ό΅	εY…°½°Μ=‰©•Π¤ΜMΡΙ¥Ή(€€€%½°%Μ9½Ρ΅¥ΉQ΅•Έ(€€€€€€€½±½Ι%Ή™Ό€τ€‰ΉΥ±°(€€€€€€€α¥ΠΥΉΡ¥½Έ(€€€Ή%(€€€½±½Ι%Ή™Ό€τ€‰μ‰µ½‘•°θ€AΙ½ΐ΅½°°€‰5½‘•°¤€|(€€€€€€€€€€€€€€€€°‰Ή…µ”θ€AΙ½ΐ΅½°°€‰9…µ”¤€|(€€€€€€€€€€€€€€€€°‰Θθ€AΙ½ΐ΅½°°€‰I	I•¤€|(€€€€€€€€€€€€€€€€°‰θ€AΙ½ΐ΅½°°€‰I	Ι••Έ¤€|(€€€€€€€€€€€€€€€€°‰θ€AΙ½ΐ΅½°°€‰I		±Υ”¤€|(€€€€€€€€€€€€€€€€°‰θ€AΙ½ΐ΅½°°€‰5e-ε…Έ¤€|(€€€€€€€€€€€€€€€€°‰΄θ€AΙ½ΐ΅½°°€‰5e-5…•ΉΡ„¤€|(€€€€€€€€€€€€€€€€°‰δθ€AΙ½ΐ΅½°°€‰5e-e•±±½ά¤€|(€€€€€€€€€€€€€€€€°‰¬θ€AΙ½ΐ΅½°°€‰5e-	±…¬¤€€‰τ)ΉΥΉΡ¥½Έ()AΙ¥Ω…Ρ”ΥΉΡ¥½ΈMΡε±•I•΅	εY…°ΝΠΜ=‰©•Π¤ΜMΡΙ¥Ή(€€€%ΝΠ%Μ9½Ρ΅¥ΉQ΅•Έ(€€€€€€€MΡε±•I•€τ€‰ΉΥ±°(€€€€€€€α¥ΠΥΉΡ¥½Έ(€€€Ή%(€€€MΡε±•I•€τ€‰μ‰Ή…µ”θ€AΙ½ΐ΅ΝΠ°€‰9…µ”¤€|(€€€€€€€€€€€€€€€°‰‰…Ν•‘=Έθ€AΙ½ΐ΅=‰¨΅ΝΠ°€‰	…Ν•‘=Έ¤°€‰9…µ”¤€€‰τ)ΉΥΉΡ¥½Έ()AΙ¥Ω…Ρ”ΥΉΡ¥½Έ=‰¨΅	εY…°Ν½ΥΙ”Μ=‰©•Π°	εY…°µ•µ‰•ΘΜMΡΙ¥Ή¤Μ=‰©•Π(€€€=ΈΙΙ½ΘI•ΝΥµ”9•αΠ(€€€%Ν½ΥΙ”%Μ9½Ρ΅¥ΉQ΅•Έα¥ΠΥΉΡ¥½Έ(€€€M•Π=‰¨€τ…±±	ε9…µ”΅Ν½ΥΙ”°µ•µ‰•Θ°Y‰•Π¤(€€€ΙΘΉ±•…Θ)ΉΥΉΡ¥½Έ()AΙ¥Ω…Ρ”ΥΉΡ¥½ΈAΙ½ΐ΅	εY…°Ν½ΥΙ”Μ=‰©•Π°	εY…°µ•µ‰•ΘΜMΡΙ¥Ή¤ΜMΡΙ¥Ή(€€€¥΄Ω…±Υ”ΜY…Ι¥…ΉΠ(€€€=ΈΙΙ½Θ½QΌ9½ΡΩ…¥±…‰±”(€€€%Ν½ΥΙ”%Μ9½Ρ΅¥ΉQ΅•Έ½QΌ9½ΡΩ…¥±…‰±”(€€€Ω…±Υ”€τ…±±	ε9…µ”΅Ν½ΥΙ”°µ•µ‰•Θ°Y‰•Π¤(€€€%%Ν9Υ±°΅Ω…±Υ”¤=Θ%ΝµΑΡδ΅Ω…±Υ”¤Q΅•Έ½QΌ9½ΡΩ…¥±…‰±”(€€€M•±•Π…Ν”Y…ΙQεΑ”΅Ω…±Υ”¤(€€€€€€€…Ν”Ω‰MΡΙ¥Ή(€€€€€€€€€€€AΙ½ΐ€τEΥ½Ρ”΅MΡΘ΅Ω…±Υ”¤¤(€€€€€€€…Ν”Ω‰	½½±•…Έ(€€€€€€€€€€€AΙ½ΐ€τ)Ν½Ή	½½°΅	½½°΅Ω…±Υ”¤¤(€€€€€€€…Ν”Ω‰	εΡ”°Ω‰%ΉΡ••Θ°Ω‰1½Ή°Ω‰M¥Ή±”°Ω‰½Υ‰±”°Ω‰ΥΙΙ•Ήδ°Ω‰•¥µ…°(€€€€€€€€€€€AΙ½ΐ€τ)Ν½Ή9Υµ‰•Θ΅‰°΅Ω…±Υ”¤¤(€€€€€€€…Ν”±Ν”(€€€€€€€€€€€AΙ½ΐ€τEΥ½Ρ”΅MΡΘ΅Ω…±Υ”¤¤(€€€ΉM•±•Π(€€€α¥ΠΥΉΡ¥½Έ)9½ΡΩ…¥±…‰±”θ(€€€AΙ½ΐ€τ€‰ΉΥ±°)ΉΥΉΡ¥½Έ()AΙ¥Ω…Ρ”ΥΉΡ¥½Έ)Ν½Ή	½½°΅	εY…°Ω…±Υ”Μ	½½±•…Έ¤ΜMΡΙ¥Ή(€€€%Ω…±Υ”Q΅•Έ(€€€€€€€)Ν½Ή	½½°€τ€‰ΡΙΥ”(€€€±Ν”(€€€€€€€)Ν½Ή	½½°€τ€‰™…±Ν”(€€€Ή%)ΉΥΉΡ¥½Έ()AΙ¥Ω…Ρ”ΥΉΡ¥½Έ)Ν½Ή9Υµ‰•Θ΅	εY…°Ω…±Υ”Μ½Υ‰±”¤ΜMΡΙ¥Ή(€€€)Ν½Ή9Υµ‰•Θ€τI•Α±…”΅½Ιµ…Π΅Ω…±Υ”°€ΐΈ¤°€°°€Έ¤(€€€%I¥΅Π΅)Ν½Ή9Υµ‰•Θ°€Δ¤€τ€ΈQ΅•Έ(€€€€€€€)Ν½Ή9Υµ‰•Θ€τ1•™Π΅)Ν½Ή9Υµ‰•Θ°1•Έ΅)Ν½Ή9Υµ‰•Θ¤€΄€Δ¤(€€€Ή%)ΉΥΉΡ¥½Έ()AΙ¥Ω…Ρ”ΥΉΡ¥½ΈEΥ½Ρ”΅	εY…°Ω…±Υ”ΜMΡΙ¥Ή¤ΜMΡΙ¥Ή(€€€¥΄¤Μ1½Ή°ΈΜ1½Ή° ΜMΡΙ¥Ή°½ΥΠΜMΡΙ¥Ή(€€€½ΥΠ€τ€(€€€½Θ¤€τ€ΔQΌ1•Έ΅Ω…±Υ”¤(€€€€€€€ €τ5¥΅Ω…±Υ”°¤°€Δ¤(€€€€€€€Έ€τΝ\΅ ¤(€€€€€€€%Έ€π€ΐQ΅•ΈΈ€τΈ€¬€ΨΤΤΜΨ(€€€€€€€M•±•Π…Ν”Έ(€€€€€€€€€€€…Ν”€ΜΠθ½ΥΠ€τ½ΥΠ€€‰p(€€€€€€€€€€€…Ν”€δΘθ½ΥΠ€τ½ΥΠ€€‰qp(€€€€€€€€€€€…Ν”€ΰθ€½ΥΠ€τ½ΥΠ€€‰q(€€€€€€€€€€€…Ν”€δθ€½ΥΠ€τ½ΥΠ€€‰qΠ(€€€€€€€€€€€…Ν”€Δΐθ½ΥΠ€τ½ΥΠ€€‰qΈ(€€€€€€€€€€€…Ν”€ΔΘθ½ΥΠ€τ½ΥΠ€€‰q(€€€€€€€€€€€…Ν”€ΔΜθ½ΥΠ€τ½ΥΠ€€‰qΘ(€€€€€€€€€€€…Ν”€ΐQΌ€ΜΔθ½ΥΠ€τ½ΥΠ€€‰qΤ€I¥΅Π ΐΐΐΐ€!•ΰ΅Έ¤°€Π¤(€€€€€€€€€€€…Ν”±Ν”θ½ΥΠ€τ½ΥΠ€ (€€€€€€€ΉM•±•Π(€€€9•αΠ¤(€€€EΥ½Ρ”€τ½ΥΠ€€)ΉΥΉΡ¥½Έ()AΙ¥Ω…Ρ”ΥΉΡ¥½Έ9•έαΑ½ΙΡA…Ρ ΅	εY…°™½±‘•ΘΜMΡΙ¥Ή¤ΜMΡΙ¥Ή(€€€¥΄ΝΡ•΄ΜMΡΙ¥Ή°ΐΜMΡΙ¥Ή°¤Μ1½Ή(€€€ΝΡ•΄€τ™½±‘•Θ€€‰q½Ι•±)M=9αΑ½ΙΡ|€½Ιµ…Π΅9½ά°€‰εεεδµµ΄µ‘‘}΅ µΉΈµΝΜ¤(€€€ΐ€τΝΡ•΄€€Ή©Ν½Έ(€€€¤€τ€Θ(€€€Ό]΅¥±”1•Έ΅¥Θ΅ΐ¤¤€ψ€ΐ(€€€€€€€ΐ€τΝΡ•΄€€‰|€½Ιµ…Π΅¤°€ΐΐ¤€€Ή©Ν½Έ(€€€€€€€¤€τ¤€¬€Δ(€€€1½½ΐ(€€€9•έαΑ½ΙΡA…Ρ €τΐ)ΉΥΉΡ¥½Έ()AΙ¥Ω…Ρ”ΥΉΡ¥½Έ±…ΑΝ•‘M•½Ή‘Μ ¤Μ½Υ‰±”(€€€±…ΑΝ•‘M•½Ή‘Μ€τ‰°΅Q¥µ•Θ¤€΄‰°΅µMΡ…ΙΠ¤(€€€%±…ΑΝ•‘M•½Ή‘Μ€π€ΐQ΅•Έ±…ΑΝ•‘M•½Ή‘Μ€τ±…ΑΝ•‘M•½Ή‘Μ€¬€ΰΨΠΐΐ)ΉΥΉΡ¥½Έ()AΙ¥Ω…Ρ”MΥ‘‘9½Ρ”΅	εY…°µΝΜMΡΙ¥Ή¤(€€€%µΙΙ½ΙΜ€πτ€ΔΐΐQ΅•Έ(€€€€€€€%1•Έ΅µ9½Ρ•Μ¤€ψ€ΐQ΅•Έµ9½Ρ•Μ€τµ9½Ρ•Μ€€°(€€€€€€€µ9½Ρ•Μ€τµ9½Ρ•Μ€EΥ½Ρ”΅µΝ¤(€€€Ή%)ΉMΥ()AΙ¥Ω…Ρ”MΥ]Ι¥Ρ•UΡΰ΅	εY…°Α…Ρ ΜMΡΙ¥Ή°	εY…°‘…Ρ„ΜMΡΙ¥Ή¤(€€€¥΄ΝΡΙ•…΄Μ=‰©•Π(€€€M•ΠΝΡΙ•…΄€τΙ•…Ρ•=‰©•Π ‰=ΉMΡΙ•…΄¤(€€€ΝΡΙ•…΄ΉQεΑ”€τ€Θ(€€€ΝΡΙ•…΄Ή΅…ΙΝ•Π€τ€‰ΥΡ΄ΰ(€€€ΝΡΙ•…΄Ή=Α•Έ(€€€ΝΡΙ•…΄Ή]Ι¥Ρ•Q•αΠ‘…Ρ„(€€€ΝΡΙ•…΄ΉM…Ω•Q½¥±”Α…Ρ °€Θ(€€€ΝΡΙ•…΄Ή±½Ν”)ΉMΥ
