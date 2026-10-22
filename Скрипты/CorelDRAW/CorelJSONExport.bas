@@ -1,15 +1,15 @@
 Attribute VB_Name = "CorelJSONExport"
-' Νΰηβΰνθε: Αϊιέyψ§yΡςπϋι ύκρλ§uηβηnπς ςεκρςΰ CorelDRAW β JSON
-' Μξδσκιέyψ§yά: CorelJSONExport
-' Ηΰξιέyψ§yΣρκ: Main_ExportCorelJSON
+' Νΰηβΰνθε: Αϋρςπϋι ύκροξπς ςεκρςΰ CorelDRAW β JSON
+' Μξδσλό: CorelJSONExport
+' Ηΰοσρκ: Main_ExportCorelJSON
 ' Νΰηνΰχενθε: έκροξπςθπσες ςεκρς θ ξρνξβνϋε ψπθτςξβϋε ρβξιρςβΰ θη CDR β UTF-8 JSON.
-' Θρλ§uηβηnκιέyψ§yάηξβΰνθε:
+' Θροξλόηξβΰνθε:
 '   1. Ξςκπξιςε ρξυπΰνΈννϋι CDR β CorelDRAW.
-'   2. Ηΰοςιέyψ§yΡςθςε Main_ExportCorelJSON.
-'   3. ΒξηΊw^~)ήtμθςε JSON θη οξδοΰλ§uηβηjθ data πξΧwδξμ ρ CDR θ οεπεδΰιςε εγξ δκιέyψ§yί ΰνΰλθηΰ.
-' ΣρλξβθξΧw: δξκσμενς νε θημενϋ§uηβηeςρξΧw; κξξπδθνΰςϋ, πΰημεπϋ θ βιέyψ§yΠΰτθκΰ νε βϋγπσζΰΊw^~)ήvςρΊw^~)ήw.
-' Ξβιέyψ§yΠΰνθχενθε: οξδπξανϋε ρςθλθ ξςδελΊw^~)ήtνϋυ ρθμβξλξβ β αϋρςπξμ πεζθμε νε βϋβιέyψ§yΠσζΰώςρξΧw.
-' Λ§uηβηpξβεπκΰ: ρςΰςθχερκΰΊw^~)ήw; ηΰοςιέyψ§yΡκ β CorelDRAW 2026 εωΈ νε λ§uηβηnδςβεπζδΈν.
+'   2. Ηΰοσρςθςε Main_ExportCorelJSON.
+'   3. Βξηόμθςε JSON θη οξδοΰοκθ data πÿδξμ ρ CDR θ οεπεδΰιςε εγξ δλÿ ΰνΰλθηΰ.
+' Σρλξβθÿ: δξκσμενς νε θημενÿεςρÿ; κξξπδθνΰςϋ, πΰημεπϋ θ γπΰτθκΰ νε βϋγπσζΰώςρÿ.
+' Ξγπΰνθχενθε: οξδπξανϋε ρςθλθ ξςδελόνϋυ ρθμβξλξβ β αϋρςπξμ πεζθμε νε βϋγπσζΰώςρÿ.
+' Οπξβεπκΰ: ρςΰςθχερκΰÿ; ηΰοσρκ β CorelDRAW 2026 εωΈ νε οξδςβεπζδΈν.
 Option Explicit
 
 Private Const MAX_SECONDS As Double = 30#
@@ -40,7 +40,7 @@ Public Sub Main_ExportCorelJSON()
 
     Set doc = ActiveDocument
     If Len(doc.FilePath) = 0 Or Len(doc.FileName) = 0 Then
-        MsgBox "Ρνΰχΰλΰ ρξυπΰνθςε CDR, φιέyψ§yÒξαϋ ρξηδΰςΊw^~)ήt οΰλ§uηβηjσ data πξΧwδξμ ρ τΰιλξμ.", vbExclamation
+        MsgBox "Ρνΰχΰλΰ ρξυπΰνθςε CDR, χςξαϋ ρξηδΰςό οΰοκσ data πÿδξμ ρ τΰιλξμ.", vbExclamation
         Exit Sub
     End If
 
@@ -60,7 +60,7 @@ Public Sub Main_ExportCorelJSON()
     items = ""
     finished = True
     For Each pg In doc.Pages
-        ' CorelDRAW βϋλ§uηβηnλνξΧwες οξθρκ ςεκρςΰ ρπΰησ, βκλώχΰξΧw ρξδεπζθμξε βιέyψ§yΠσοο.
+        ' CorelDRAW βϋοξλνÿες οξθρκ ςεκρςΰ ρπΰησ, βκλώχΰÿ ρξδεπζθμξε γπσοο.
         Set texts = pg.FindShapes(Type:=cdrTextShape, Recursive:=True)
         For Each sh In texts
             If mDone >= MAX_TEXTS Or ElapsedSeconds() >= MAX_SECONDS Then
@@ -70,4 +70,208 @@ Public Sub Main_ExportCorelJSON()
             If Len(items) <> 0 Then items = items & ","
             items = items & OneText(sh, pg.Index)
             mDone = mDone + 1
-            ' Ξςδΰςό σοπΰβλενθε θνςεπτειρσ οξρλε κΰζδϊιέyψ§yΥ δερ5£K ƒ»‡λ—«Λ»Έ(€€€€€€€€€€€%€΅µ½Ή”5½€Δΐ¤€τ€ΐQ΅•Έ½Ω•ΉΡΜ(€€€€€€€9•αΠΝ (€€€€€€€%9½Π™¥Ή¥Ν΅•Q΅•Έα¥Π½Θ(€€€9•αΠΑ((€€€©Ν½Έ€τ€‰μ€|(€€€€€€€€‰Ν΅•µ„θ‰½Ι•±‘Ι…άµΡ•αΠµ™…ΝΠ½ΨΘ°€|(€€€€€€€€‰•αΑ½ΙΡ•‘Ρ1½…°θ€EΥ½Ρ”΅½Ιµ…Π΅9½ά°€‰εεεδµµ΄µ‘‘qQ΅ ιΉΈιΝΜ¤¤€€°€|(€€€€€€€€‰•αΑ½ΙΡ•Θθ‰½Ι•±)M=9αΑ½ΙΠ°€|(€€€€€€€€‰Ν½ΥΙ•¥±”θ€EΥ½Ρ”΅‘½Ή¥±•9…µ”¤€€°€|(€€€€€€€€‰½µΑ±•Ρ”θ€)Ν½Ή	½½°΅™¥Ή¥Ν΅•¤€€°€|(€€€€€€€€‰™½Ιµ…ΡM½Α”θ‰Ρ•αΠµ½‰©•Πμ¥Ή‘¥Ω¥‘Υ…°΅…Ι…Ρ•ΘΝΑ…ΉΜ…Ι”Ή½Π•αΑ½ΙΡ•°€|(€€€€€€€€‰Ρ•αΡ=‰©•ΡΜθ€€‰l€¥Ρ•µΜ€€‰t°€|(€€€€€€€€‰ΝΥµµ…Ιδιμ‰½ΥΉΠθ€MΡΘ΅µ½Ή”¤€€°‰•ΙΙ½ΙΜθ€MΡΘ΅µΙΙ½ΙΜ¤€|(€€€€€€€€°‰•±…ΑΝ•‘M•½Ή‘Μθ€)Ν½Ή9Υµ‰•Θ΅±…ΑΝ•‘M•½Ή‘Μ ¤¤€€‰τ°€|(€€€€€€€€‰έ…ΙΉ¥ΉΜθ€€‰l€µ9½Ρ•Μ€€‰uτ((€€€]Ι¥Ρ•UΡΰΡ…Ι•Π°©Ν½Έ(€€€µ	ΥΝδ€τ…±Ν”(€€€%™¥Ή¥Ν΅•Q΅•Έ(€€€€€€€5Ν	½ΰ€‹K—«ΗΛμƒ‹οΓΟ›—·μθ€€µ½Ή”€Ω‰Ι1€|(€€€€€€€€€€€€€€€‰)M=8θ€€Ρ…Ι•Π€Ω‰Ι1€|(€€€€€€€€€€€€€€€‰Hƒ·”ƒ£³—¶γ΄Έ°Ω‰%Ή™½Ιµ…Ρ¥½Έ(€€€±Ν”(€€€€€€€5Ν	½ΰ€‹w«ΗΏ»ΓΘƒ»ΗΛƒ·»‹―—΄ƒΏΈƒ―£³£ΛΜƒ‹Γ—³—· Ώ»‡λ—«Λ»Έ€Ω‰Ι1€|(€€€€€€€€€€€€€€€‹.Χw»«§uηβηOί—΄ƒ_GK#_7o$)M=8θ€€Ρ…Ι•Π€Ω‰Ι1€|(€€€€€€€€€€€€€€€‹K—«ΗΛ»θ€€µ½Ή”°Ω‰α±…µ…Ρ¥½Έ(€€€Ή%(€€€α¥ΠMΥ()…¥±•θ(€€€ΑΙ½‰±•΄€τΙΘΉ•ΝΙ¥ΑΡ¥½Έ(€€€µ	ΥΝδ€τ…±Ν”(€€€5Ν	½ΰ€‹;γ£‡«€ƒχ«Η®Χw»ΓΛ€θ€€ΑΙ½‰±•΄€Ω‰Ι1€|(€€€€€€€€€€€‰Hƒ·”ƒ£³—¶γ΄Έ°Ω‰Ι¥Ρ¥…°)ΉMΥ()AΙ¥Ω…Ρ”ΥΉΡ¥½Έ=Ή•Q•αΠ΅	εY…°Ν ΜM΅…Α”°	εY…°Α…•%Ή‘•ΰΜ1½Ή¤ΜMΡΙ¥Ή(€€€¥΄ΠΜ=‰©•Π°ΝΡ½ΙδΜ=‰©•Π(€€€¥΄Ι½άΜMΡΙ¥Ή(€€€¥΄•ΙΙ½ΙQ•αΠΜMΡΙ¥Ή(€€€=ΈΙΙ½Θ½QΌ…¥±•((€€€M•ΠΠ€τΝ ΉQ•αΠ(€€€M•ΠΝΡ½Ιδ€τΠΉMΡ½Ιδ(€€€Ι½ά€τ€‰μ€|(€€€€€€€€‰Α…”θ€MΡΘ΅Α…•%Ή‘•ΰ¤€€°€|(€€€€€€€€‰¥θ€AΙ½ΐ΅Ν °€‰MΡ…Ρ¥%¤€€°€|(€€€€€€€€‰Ή…µ”θ€AΙ½ΐ΅Ν °€‰9…µ”¤€€°€|(€€€€€€€€‰±…ε•Θθ€AΙ½ΐ΅=‰¨΅Ν °€‰1…ε•Θ¤°€‰9…µ”¤€€°€|(€€€€€€€€‰­¥Ήθ€AΙ½ΐ΅Π°€‰QεΑ”¤€€°€|(€€€€€€€€‰¥ΝΙΡ¥ΝΡ¥θ€AΙ½ΐ΅Π°€‰%ΝΙΡ¥ΝΡ¥Q•αΠ¤€€°€|(€€€€€€€€‰Ρ•αΠθ€AΙ½ΐ΅ΝΡ½Ιδ°€‰Q•αΠ¤€€°€|(€€€€€€€€‰™½ΉΠθ€Q•αΡ½Ιµ…Π΅ΝΡ½Ιδ¤€€°€|(€€€€€€€€‰Ν΅…Α•Q•αΡ½±½Θθ€½±½Ι%Ή™Ό΅=‰¨΅=‰¨΅Ν °€‰¥±°¤°€‰UΉ¥™½Ιµ½±½Θ¤¤€€°€|(€€€€€€€€‰ΝΡε±”θ€MΡε±•I•΅=‰¨΅Ν °€‰MΡε±”¤¤€€‰τ(€€€=Ή•Q•αΠ€τΙ½ά(€€€α¥ΠΥΉΡ¥½Έ()…¥±•θ(€€€•ΙΙ½ΙQ•αΠ€τΙΘΉ•ΝΙ¥ΑΡ¥½Έ(€€€µΙΙ½ΙΜ€τµΙΙ½ΙΜ€¬€Δ(€€€‘‘9½Ρ”€‹7”ƒΟ“ƒ―»Ηπƒ®ΧwΓ»ί£ΛƒΚιέyψ§yΠƒΛ—«ΗΛ»‹ο¤ƒ»‡λ—«Θƒ·€ƒΗΛΓƒ·£Ϋ”€€MΡΘ΅Α…•%Ή‘•ΰ¤(€€€=Ή•Q•αΠ€τ€‰μ‰Α…”θ€MΡΘ΅Α…•%Ή‘•ΰ¤€€°‰¥θ€AΙ½ΐ΅Ν °€‰MΡ…Ρ¥%¤€|(€€€€€€€€€€€€€€°‰•ΙΙ½Θθ€EΥ½Ρ”΅•ΙΙ½ΙQ•αΠ¤€€‰τ)ΉΥΉΡ¥½Έ()AΙ¥Ω…Ρ”ΥΉΡ¥½ΈQ•αΡ½Ιµ…Π΅	εY…°ΡΘΜ=‰©•Π¤ΜMΡΙ¥Ή(€€€Q•αΡ½Ιµ…Π€τ€‰μ€|(€€€€€€€€‰™…µ¥±δθ€AΙ½ΐ΅ΡΘ°€‰½ΉΠ¤€€°€|(€€€€€€€€‰Ν¥ι•AΠθ€AΙ½ΐ΅ΡΘ°€‰M¥ι”¤€€°€|(€€€€€€€€‰‰½±θ€AΙ½ΐ΅ΡΘ°€‰	½±¤€€°€|(€€€€€€€€‰¥Ρ…±¥θ€AΙ½ΐ΅ΡΘ°€‰%Ρ…±¥¤€€°€|(€€€€€€€€‰ΥΉ‘•Ι±¥Ή”θ€AΙ½ΐ΅ΡΘ°€‰UΉ‘•Ι±¥Ή”¤€€°€|(€€€€€€€€‰Α½Ν¥Ρ¥½Έθ€AΙ½ΐ΅ΡΘ°€‰A½Ν¥Ρ¥½Έ¤€€°€|(€€€€€€€€‰ΝΡε±•ΉΥ΄θ€AΙ½ΐ΅ΡΘ°€‰MΡε±”¤€€°€|(€€€€€€€€‰½±½Θθ€½±½Ι%Ή™Ό΅=‰¨΅=‰¨΅ΡΘ°€‰¥±°¤°€‰UΉ¥™½Ιµ½±½Θ¤¤€€°€|(€€€€€€€€‰ΝΡε±•I•θ€MΡε±•I•΅=‰¨΅ΡΘ°€‰=‰©•ΡMΡε±”¤¤€€‰τ)ΉΥΉΡ¥½Έ()AΙ¥Ω…Ρ”ΥΉΡ¥½Έ½±½Ι%Ή™Ό΅	εY…°½°Μ=‰©•Π¤ΜMΡΙ¥Ή(€€€%½°%Μ9½Ρ΅¥ΉQ΅•Έ(€€€€€€€½±½Ι%Ή™Ό€τ€‰ΉΥ±°(€€€€€€€α¥ΠΥΉΡ¥½Έ(€€€Ή%(€€€½±½Ι%Ή™Ό€τ€‰μ‰µ½‘•°θ€AΙ½ΐ΅½°°€‰5½‘•°¤€|(€€€€€€€€€€€€€€€€°‰Ή…µ”θ€AΙ½ΐ΅½°°€‰9…µ”¤€|(€€€€€€€€€€€€€€€€°‰Θθ€AΙ½ΐ΅½°°€‰I	I•¤€|(€€€€€€€€€€€€€€€€°‰θ€AΙ½ΐ΅½°°€‰I	Ι••Έ¤€|(€€€€€€€€€€€€€€€€°‰θ€AΙ½ΐ΅½°°€‰I		±Υ”¤€|(€€€€€€€€€€€€€€€€°‰θ€AΙ½ΐ΅½°°€‰5e-ε…Έ¤€|(€€€€€€€€€€€€€€€€°‰΄θ€AΙ½ΐ΅½°°€‰5e-5…•ΉΡ„¤€|(€€€€€€€€€€€€€€€€°‰δθ€AΙ½ΐ΅½°°€‰5e-e•±±½ά¤€|(€€€€€€€€€€€€€€€€°‰¬θ€AΙ½ΐ΅½°°€‰5e-	±…¬¤€€‰τ)ΉΥΉΡ¥½Έ()AΙ¥Ω…Ρ”ΥΉΡ¥½ΈMΡε±•I•΅	εY…°ΝΠΜ=‰©•Π¤ΜMΡΙ¥Ή(€€€%ΝΠ%Μ9½Ρ΅¥ΉQ΅•Έ(€€€€€€€MΡε±•I•€τ€‰ΉΥ±°(€€€€€€€α¥ΠΥΉΡ¥½Έ(€€€Ή%(€€€MΡε±•I•€τ€‰μ‰Ή…µ”θ€AΙ½ΐ΅ΝΠ°€‰9…µ”¤€|(€€€€€€€€€€€€€€€°‰‰…Ν•‘=Έθ€AΙ½ΐ΅=‰¨΅ΝΠ°€‰	…Ν•‘=Έ¤°€‰9…µ”¤€€‰τ)ΉΥΉΡ¥½Έ()AΙ¥Ω…Ρ”ΥΉΡ¥½Έ=‰¨΅	εY…°Ν½ΥΙ”Μ=‰©•Π°	εY…°µ•µ‰•ΘΜMΡΙ¥Ή¤Μ=‰©•Π(€€€=ΈΙΙ½ΘI•ΝΥµ”9•αΠ(€€€%Ν½ΥΙ”%Μ9½Ρ΅¥ΉQ΅•Έα¥ΠΥΉΡ¥½Έ(€€€M•Π=‰¨€τ…±±	ε9…µ”΅Ν½ΥΙ”°µ•µ‰•Θ°Y‰•Π¤(€€€ΙΘΉ±•…Θ)ΉΥΉΡ¥½Έ()AΙ¥Ω…Ρ”ΥΉΡ¥½ΈAΙ½ΐ΅	εY…°Ν½ΥΙ”Μ=‰©•Π°	εY…°µ•µ‰•ΘΜMΡΙ¥Ή¤ΜMΡΙ¥Ή(€€€¥΄Ω…±Υ”ΜY…Ι¥…ΉΠ(€€€=ΈΙΙ½Θ½QΌ9½ΡΩ…¥±…‰±”(€€€%Ν½ΥΙ”%Μ9½Ρ΅¥ΉQ΅•Έ½QΌ9½ΡΩ…¥±…‰±”(€€€Ω…±Υ”€τ…±±	ε9…µ”΅Ν½ΥΙ”°µ•µ‰•Θ°Y‰•Π¤(€€€%%Ν9Υ±°΅Ω…±Υ”¤=Θ%ΝµΑΡδ΅Ω…±Υ”¤Q΅•Έ½QΌ9½ΡΩ…¥±…‰±”(€€€M•±•Π…Ν”Y…ΙQεΑ”΅Ω…±Υ”¤(€€€€€€€…Ν”Ω‰MΡΙ¥Ή(€€€€€€€€€€€AΙ½ΐ€τEΥ½Ρ”΅MΡΘ΅Ω…±Υ”¤¤(€€€€€€€…Ν”Ω‰	½½±•…Έ(€€€€€€€€€€€AΙ½ΐ€τ)Ν½Ή	½½°΅	½½°΅Ω…±Υ”¤¤(€€€€€€€…Ν”Ω‰	εΡ”°Ω‰%ΉΡ••Θ°Ω‰1½Ή°Ω‰M¥Ή±”°Ω‰½Υ‰±”°Ω‰ΥΙΙ•Ήδ°Ω‰•¥µ…°(€€€€€€€€€€€AΙ½ΐ€τ)Ν½Ή9Υµ‰•Θ΅‰°΅Ω…±Υ”¤¤(€€€€€€€…Ν”±Ν”(€€€€€€€€€€€AΙ½ΐ€τEΥ½Ρ”΅MΡΘ΅Ω…±Υ”¤¤(€€€ΉM•±•Π(€€€α¥ΠΥΉΡ¥½Έ)9½ΡΩ…¥±…‰±”θ(€€€AΙ½ΐ€τ€‰ΉΥ±°)ΉΥΉΡ¥½Έ()AΙ¥Ω…Ρ”ΥΉΡ¥½Έ)Ν½Ή	½½°΅	εY…°Ω…±Υ”Μ	½½±•…Έ¤ΜMΡΙ¥Ή(€€€%Ω…±Υ”Q΅•Έ(€€€€€€€)Ν½Ή	½½°€τ€‰ΡΙΥ”(€€€±Ν”(€€€€€€€)Ν½Ή	½½°€τ€‰™…±Ν”(€€€Ή%)ΉΥΉΡ¥½Έ()AΙ¥Ω…Ρ”ΥΉΡ¥½Έ)Ν½Ή9Υµ‰•Θ΅	εY…°Ω…±Υ”Μ½Υ‰±”¤ΜMΡΙ¥Ή(€€€)Ν½Ή9Υµ‰•Θ€τI•Α±…”΅½Ιµ…Π΅Ω…±Υ”°€ΐΈ¤°€°°€Έ¤(€€€%I¥΅Π΅)Ν½Ή9Υµ‰•Θ°€Δ¤€τ€ΈQ΅•Έ(€€€€€€€)Ν½Ή9Υµ‰•Θ€τ1•™Π΅)Ν½Ή9Υµ‰•Θ°1•Έ΅)Ν½Ή9Υµ‰•Θ¤€΄€Δ¤(€€€Ή%)ΉΥΉΡ¥½Έ()AΙ¥Ω…Ρ”ΥΉΡ¥½ΈEΥ½Ρ”΅	εY…°Ω…±Υ”ΜMΡΙ¥Ή¤ΜMΡΙ¥Ή(€€€¥΄¤Μ1½Ή°ΈΜ1½Ή° ΜMΡΙ¥Ή°½ΥΠΜMΡΙ¥Ή(€€€½ΥΠ€τ€(€€€½Θ¤€τ€ΔQΌ1•Έ΅Ω…±Υ”¤(€€€€€€€ €τ5¥΅Ω…±Υ”°¤°€Δ¤(€€€€€€€Έ€τΝ\΅ ¤(€€€€€€€%Έ€π€ΐQ΅•ΈΈ€τΈ€¬€ΨΤΤΜΨ(€€€€€€€M•±•Π…Ν”Έ(€€€€€€€€€€€…Ν”€ΜΠθ½ΥΠ€τ½ΥΠ€€‰p(€€€€€€€€€€€…Ν”€δΘθ½ΥΠ€τ½ΥΠ€€‰qp(€€€€€€€€€€€…Ν”€ΰθ€½ΥΠ€τ½ΥΠ€€‰q(€€€€€€€€€€€…Ν”€δθ€½ΥΠ€τ½ΥΠ€€‰qΠ(€€€€€€€€€€€…Ν”€Δΐθ½ΥΠ€τ½ΥΠ€€‰qΈ(€€€€€€€€€€€…Ν”€ΔΘθ½ΥΠ€τ½ΥΠ€€‰q(€€€€€€€€€€€…Ν”€ΔΜθ½ΥΠ€τ½ΥΠ€€‰qΘ(€€€€€€€€€€€…Ν”€ΐQΌ€ΜΔθ½ΥΠ€τ½ΥΠ€€‰qΤ€I¥΅Π ΐΐΐΐ€!•ΰ΅Έ¤°€Π¤(€€€€€€€€€€€…Ν”±Ν”θ½ΥΠ€τ½ΥΠ€ (€€€€€€€ΉM•±•Π(€€€9•αΠ¤(€€€EΥ½Ρ”€τ½ΥΠ€€)ΉΥΉΡ¥½Έ()AΙ¥Ω…Ρ”ΥΉΡ¥½Έ9•έαΑ½ΙΡA…Ρ ΅	εY…°™½±‘•ΘΜMΡΙ¥Ή¤ΜMΡΙ¥Ή(€€€¥΄ΝΡ•΄ΜMΡΙ¥Ή°ΐΜMΡΙ¥Ή°¤Μ1½Ή(€€€ΝΡ•΄€τ™½±‘•Θ€€‰q½Ι•±)M=9αΑ½ΙΡ|€½Ιµ…Π΅9½ά°€‰εεεδµµ΄µ‘‘}΅ µΉΈµΝΜ¤(€€€ΐ€τΝΡ•΄€€Ή©Ν½Έ(€€€¤€τ€Θ(€€€Ό]΅¥±”1•Έ΅¥Θ΅ΐ¤¤€ψ€ΐ(€€€€€€€ΐ€τΝΡ•΄€€‰|€½Ιµ…Π΅¤°€ΐΐ¤€€Ή©Ν½Έ(€€€€€€€¤€τ¤€¬€Δ(€€€1½½ΐ(€€€9•έαΑ½ΙΡA…Ρ €τΐ)ΉΥΉΡ¥½Έ()AΙ¥Ω…Ρ”ΥΉΡ¥½Έ±…ΑΝ•‘M•½Ή‘Μ ¤Μ½Υ‰±”(€€€±…ΑΝ•‘M•½Ή‘Μ€τ‰°΅Q¥µ•Θ¤€΄‰°΅µMΡ…ΙΠ¤(€€€%±…ΑΝ•‘M•½Ή‘Μ€π€ΐQ΅•Έ±…ΑΝ•‘M•½Ή‘Μ€τ±…ΑΝ•‘M•½Ή‘Μ€¬€ΰΨΠΐΐ)ΉΥΉΡ¥½Έ()AΙ¥Ω…Ρ”MΥ‘‘9½Ρ”΅	εY…°µΝΜMΡΙ¥Ή¤(€€€%µΙΙ½ΙΜ€πτ€ΔΐΐQ΅•Έ(€€€€€€€%1•Έ΅µ9½Ρ•Μ¤€ψ€ΐQ΅•Έµ9½Ρ•Μ€τµ9½Ρ•Μ€€°(€€€€€€€µ9½Ρ•Μ€τµ9½Ρ•Μ€EΥ½Ρ”΅µΝ¤(€€€Ή%)ΉMΥ()AΙ¥Ω…Ρ”MΥ]Ι¥Ρ•UΡΰ΅	εY…°Α…Ρ ΜMΡΙ¥Ή°	εY…°‘…Ρ„ΜMΡΙ¥Ή¤(€€€¥΄ΝΡΙ•…΄Μ=‰©•Π(€€€M•ΠΝΡΙ•…΄€τΙ•…Ρ•=‰©•Π ‰=ΉMΡΙ•…΄¤(€€€ΝΡΙ•…΄ΉQεΑ”€τ€Θ(€€€ΝΡΙ•…΄Ή΅…ΙΝ•Π€τ€‰ΥΡ΄ΰ(€€€ΝΡΙ•…΄Ή=Α•Έ(€€€ΝΡΙ•…΄Ή]Ι¥Ρ•Q•αΠ‘…Ρ„(€€€ΝΡΙ•…΄ΉM…Ω•Q½¥±”Α…Ρ °€Θ(€€€ΝΡΙ•…΄Ή±½Ν”)ΉMΥ
+            ' Ξςδΰςό σοπΰβλενθε θνςεπτειρσ οξρλε κΰζδϋυ δερÿςθ ξαϊεκςξβ.
+            If (mDone Mod 10) = 0 Then DoEvents
+        Next sh
+        If Not finished Then Exit For
+    Next pg
+
+    json = "{" & _
+        """schema"":""coreldraw-text-fast/v2""," & _
+        """exportedAtLocal"":" & Quote(Format$(Now, "yyyy-mm-dd\Thh:nn:ss")) & "," & _
+        """exporter"":""CorelJSONExport""," & _
+        """sourceFile"":" & Quote(doc.FileName) & "," & _
+        """complete"":" & JsonBool(finished) & "," & _
+        """formatScope"":""text-object; individual character spans are not exported""," & _
+        """textObjects"":" & "[" & items & "]," & _
+        """summary"":{""count"":" & CStr(mDone) & ",""errors"":" & CStr(mErrors) & _
+        ",""elapsedSeconds"":" & JsonNumber(ElapsedSeconds()) & "}," & _
+        """warnings"":" & "[" & mNotes & "]}"
+
+    WriteUtf8 target, json
+    mBusy = False
+    If finished Then
+        MsgBox "Òεκρςϋ βϋγπσζενϋ: " & mDone & vbCrLf & _
+               "JSON: " & target & vbCrLf & _
+               "CDR νε θημενΈν.", vbInformation
+    Else
+        MsgBox "έκροξπς ξρςΰνξβλεν οξ λθμθςσ βπεμενθ/ξαϊεκςξβ." & vbCrLf & _
+               "Οξλσχεν ΧΐΡÒΘΧΝΫΙ JSON: " & target & vbCrLf & _
+               "Òεκρςξβ: " & mDone, vbExclamation
+    End If
+    Exit Sub
+
+Failed:
+    problem = Err.Description
+    mBusy = False
+    MsgBox "Ξψθακΰ ύκροξπςΰ: " & problem & vbCrLf & _
+           "CDR νε θημενΈν.", vbCritical
+End Sub
+
+Private Function OneText(ByVal sh As Shape, ByVal pageIndex As Long) As String
+    Dim t As Object, story As Object
+    Dim row As String
+    Dim errorText As String
+    On Error GoTo Failed
+
+    Set t = sh.Text
+    Set story = t.Story
+    row = "{" & _
+        """page"":" & CStr(pageIndex) & "," & _
+        """id"":" & Prop(sh, "StaticID") & "," & _
+        """name"":" & Prop(sh, "Name") & "," & _
+        """layer"":" & Prop(Obj(sh, "Layer"), "Name") & "," & _
+        """kind"":" & Prop(t, "Type") & "," & _
+        """isArtistic"":" & Prop(t, "IsArtisticText") & "," & _
+        """text"":" & Prop(story, "Text") & "," & _
+        """font"":" & TextFormat(story) & "," & _
+        """shapeTextColor"":" & ColorInfo(Obj(Obj(sh, "Fill"), "UniformColor")) & "," & _
+        """style"":" & StyleRef(Obj(sh, "Style")) & "}"
+    OneText = row
+    Exit Function
+
+Failed:
+    errorText = Err.Description
+    mErrors = mErrors + 1
+    AddNote "Νε σδΰλξρό οπξχθςΰςό ςεκρςξβϋι ξαϊεκς νΰ ρςπΰνθφε " & CStr(pageIndex)
+    OneText = "{""page"":" & CStr(pageIndex) & ",""id"":" & Prop(sh, "StaticID") & _
+              ",""error"":" & Quote(errorText) & "}"
+End Function
+
+Private Function TextFormat(ByVal tr As Object) As String
+    TextFormat = "{" & _
+        """family"":" & Prop(tr, "Font") & "," & _
+        """sizePt"":" & Prop(tr, "Size") & "," & _
+        """bold"":" & Prop(tr, "Bold") & "," & _
+        """italic"":" & Prop(tr, "Italic") & "," & _
+        """underline"":" & Prop(tr, "Underline") & "," & _
+        """position"":" & Prop(tr, "Position") & "," & _
+        """styleEnum"":" & Prop(tr, "Style") & "," & _
+        """color"":" & ColorInfo(Obj(Obj(tr, "Fill"), "UniformColor")) & "," & _
+        """styleRef"":" & StyleRef(Obj(tr, "ObjectStyle")) & "}"
+End Function
+
+Private Function ColorInfo(ByVal col As Object) As String
+    If col Is Nothing Then
+        ColorInfo = "null"
+        Exit Function
+    End If
+    ColorInfo = "{""model"":" & Prop(col, "Model") & _
+                ",""name"":" & Prop(col, "Name") & _
+                ",""r"":" & Prop(col, "RGBRed") & _
+                ",""g"":" & Prop(col, "RGBGreen") & _
+                ",""b"":" & Prop(col, "RGBBlue") & _
+                ",""c"":" & Prop(col, "CMYKCyan") & _
+                ",""m"":" & Prop(col, "CMYKMagenta") & _
+                ",""y"":" & Prop(col, "CMYKYellow") & _
+                ",""k"":" & Prop(col, "CMYKBlack") & "}"
+End Function
+
+Private Function StyleRef(ByVal st As Object) As String
+    If st Is Nothing Then
+        StyleRef = "null"
+        Exit Function
+    End If
+    StyleRef = "{""name"":" & Prop(st, "Name") & _
+               ",""basedOn"":" & Prop(Obj(st, "BasedOn"), "Name") & "}"
+End Function
+
+Private Function Obj(ByVal source As Object, ByVal member As String) As Object
+    On Error Resume Next
+    If source Is Nothing Then Exit Function
+    Set Obj = CallByName(source, member, VbGet)
+    Err.Clear
+End Function
+
+Private Function Prop(ByVal source As Object, ByVal member As String) As String
+    Dim value As Variant
+    On Error GoTo NotAvailable
+    If source Is Nothing Then GoTo NotAvailable
+    value = CallByName(source, member, VbGet)
+    If IsNull(value) Or IsEmpty(value) Then GoTo NotAvailable
+    Select Case VarType(value)
+        Case vbString
+            Prop = Quote(CStr(value))
+        Case vbBoolean
+            Prop = JsonBool(CBool(value))
+        Case vbByte, vbInteger, vbLong, vbSingle, vbDouble, vbCurrency, vbDecimal
+            Prop = JsonNumber(CDbl(value))
+        Case Else
+            Prop = Quote(CStr(value))
+    End Select
+    Exit Function
+NotAvailable:
+    Prop = "null"
+End Function
+
+Private Function JsonBool(ByVal value As Boolean) As String
+    If value Then
+        JsonBool = "true"
+    Else
+        JsonBool = "false"
+    End If
+End Function
+
+Private Function JsonNumber(ByVal value As Double) As String
+    JsonNumber = Replace$(Format$(value, "0.########"), ",", ".")
+    If Right$(JsonNumber, 1) = "." Then
+        JsonNumber = Left$(JsonNumber, Len(JsonNumber) - 1)
+    End If
+End Function
+
+Private Function Quote(ByVal value As String) As String
+    Dim i As Long, n As Long, ch As String, out As String
+    out = """"
+    For i = 1 To Len(value)
+        ch = Mid$(value, i, 1)
+        n = AscW(ch)
+        If n < 0 Then n = n + 65536
+        Select Case n
+            Case 34: out = out & "\"""
+            Case 92: out = out & "\\"
+            Case 8:  out = out & "\b"
+            Case 9:  out = out & "\t"
+            Case 10: out = out & "\n"
+            Case 12: out = out & "\f"
+            Case 13: out = out & "\r"
+            Case 0 To 31: out = out & "\u" & Right$("0000" & Hex$(n), 4)
+            Case Else: out = out & ch
+        End Select
+    Next i
+    Quote = out & """"
+End Function
+
+Private Function NewExportPath(ByVal folder As String) As String
+    Dim stem As String, p As String, i As Long
+    stem = folder & "\CorelJSONExport_" & Format$(Now, "yyyy-mm-dd_hh-nn-ss")
+    p = stem & ".json"
+    i = 2
+    Do While Len(Dir$(p)) > 0
+        p = stem & "_" & Format$(i, "00") & ".json"
+        i = i + 1
+    Loop
+    NewExportPath = p
+End Function
+
+Private Function ElapsedSeconds() As Double
+    ElapsedSeconds = CDbl(Timer) - CDbl(mStart)
+    If ElapsedSeconds < 0 Then ElapsedSeconds = ElapsedSeconds + 86400#
+End Function
+
+Private Sub AddNote(ByVal msg As String)
+    If mErrors <= 100 Then
+        If Len(mNotes) > 0 Then mNotes = mNotes & ","
+        mNotes = mNotes & Quote(msg)
+    End If
+End Sub
+
+Private Sub WriteUtf8(ByVal path As String, ByVal data As String)
+    Dim stream As Object
+    Set stream = CreateObject("ADODB.Stream")
+    stream.Type = 2
+    stream.Charset = "utf-8"
+    stream.Open
+    stream.WriteText data
+    stream.SaveToFile path, 2
+    stream.Close
+End Sub
