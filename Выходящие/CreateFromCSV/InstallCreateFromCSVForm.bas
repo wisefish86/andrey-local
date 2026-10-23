@@ -52,47 +52,47 @@ Private Sub AddUI(ByVal designer As Object, ByVal className As String, ByVal con
     If className <> "Forms.TextBox.1" Then c.Caption = caption
 End Sub
 Private Function FormSource() As String
-    FormSource = "Option Explicit" & vbCrLf"
-    FormSource = FormSource & "Private Sub UserForm_Initialize()" & vbCrLf"
-    FormSource = FormSource & "    Me.Controls(""txtCSV"").Text = CSVDefaultPath()" & vbCrLf"
-    FormSource = FormSource & "    Me.Controls(""txtCols"").Text = ""4""" & vbCrLf"
-    FormSource = FormSource & "    Me.Controls(""txtX"").Text = ""10""" & vbCrLf"
-    FormSource = FormSource & "    Me.Controls(""txtY"").Text = ""10""" & vbCrLf"
-    FormSource = FormSource & "End Sub" & vbCrLf"
-    FormSource = FormSource & "Private Sub cmdBrowse_Click()" & vbCrLf"
-    FormSource = FormSource & "    Dim p As String" & vbCrLf"
-    FormSource = FormSource & "    If Documents.Count = 0 Then Exit Sub" & vbCrLf"
-    FormSource = FormSource & "    p = ChooseCSV(ActiveDocument)" & vbCrLf"
-    FormSource = FormSource & "    If Len(p) > 0 Then Me.Controls(""txtCSV"").Text = p" & vbCrLf"
-    FormSource = FormSource & "End Sub" & vbCrLf"
-    FormSource = FormSource & "Private Sub cmdTemplate_Click()" & vbCrLf"
-    FormSource = FormSource & "    Dim p As String" & vbCrLf"
-    FormSource = FormSource & "    p = CreateCSVTemplate()" & vbCrLf"
-    FormSource = FormSource & "    If Len(p) > 0 Then" & vbCrLf"
-    FormSource = FormSource & "        Me.Controls(""txtCSV"").Text = p" & vbCrLf"
-    FormSource = FormSource & "        MsgBox ""CSV template created: "" & p, vbInformation" & vbCrLf"
-    FormSource = FormSource & "    End If" & vbCrLf"
-    FormSource = FormSource & "End Sub" & vbCrLf"
-    FormSource = FormSource & "Private Sub cmdRun_Click()" & vbCrLf"
-    FormSource = FormSource & "    Dim n As Long, x As Double, y As Double" & vbCrLf"
-    FormSource = FormSource & "    If Not IsNumeric(Me.Controls(""txtCols"").Text) Then" & vbCrLf"
-    FormSource = FormSource & "        MsgBox ""Enter a numeric column count."", vbExclamation" & vbCrLf"
-    FormSource = FormSource & "        Exit Sub" & vbCrLf"
-    FormSource = FormSource & "    End If" & vbCrLf"
-    FormSource = FormSource & "    n = CLng(Me.Controls(""txtCols"").Text)" & vbCrLf"
-    FormSource = FormSource & "    If n < 1 Then" & vbCrLf"
-    FormSource = FormSource & "        MsgBox ""Column count must be positive."", vbExclamation" & vbCrLf"
-    FormSource = FormSource & "        Exit Sub" & vbCrLf"
-    FormSource = FormSource & "    End If" & vbCrLf"
-    FormSource = FormSource & "    If Not IsNumeric(Me.Controls(""txtX"").Text) Or Not IsNumeric(Me.Controls(""txtY"").Text) Then" & vbCrLf"
-    FormSource = FormSource & "        MsgBox ""Spacing must be numeric."", vbExclamation" & vbCrLf"
-    FormSource = FormSource & "        Exit Sub" & vbCrLf"
-    FormSource = FormSource & "    End If" & vbCrLf"
-    FormSource = FormSource & "    x = CDbl(Me.Controls(""txtX"").Text)" & vbCrLf"
-    FormSource = FormSource & "    y = CDbl(Me.Controls(""txtY"").Text)" & vbCrLf"
-    FormSource = FormSource & "    RunCreateFromCSV CStr(Me.Controls(""txtCSV"").Text), n, x, y" & vbCrLf"
-    FormSource = FormSource & "End Sub" & vbCrLf"
-    FormSource = FormSource & "Private Sub cmdCancel_Click()" & vbCrLf"
-    FormSource = FormSource & "    Unload Me" & vbCrLf"
+    FormSource = "Option Explicit" & vbCrLf
+    FormSource = FormSource & "Private Sub UserForm_Initialize()" & vbCrLf
+    FormSource = FormSource & "    Me.Controls(""txtCSV"").Text = CSVDefaultPath()" & vbCrLf
+    FormSource = FormSource & "    Me.Controls(""txtCols"").Text = ""4""" & vbCrLf
+    FormSource = FormSource & "    Me.Controls(""txtX"").Text = ""10""" & vbCrLf
+    FormSource = FormSource & "    Me.Controls(""txtY"").Text = ""10""" & vbCrLf
+    FormSource = FormSource & "End Sub" & vbCrLf
+    FormSource = FormSource & "Private Sub cmdBrowse_Click()" & vbCrLf
+    FormSource = FormSource & "    Dim p As String" & vbCrLf
+    FormSource = FormSource & "    If Documents.Count = 0 Then Exit Sub" & vbCrLf
+    FormSource = FormSource & "    p = ChooseCSV(ActiveDocument)" & vbCrLf
+    FormSource = FormSource & "    If Len(p) > 0 Then Me.Controls(""txtCSV"").Text = p" & vbCrLf
+    FormSource = FormSource & "End Sub" & vbCrLf
+    FormSource = FormSource & "Private Sub cmdTemplate_Click()" & vbCrLf
+    FormSource = FormSource & "    Dim p As String" & vbCrLf
+    FormSource = FormSource & "    p = CreateCSVTemplate()" & vbCrLf
+    FormSource = FormSource & "    If Len(p) > 0 Then" & vbCrLf
+    FormSource = FormSource & "        Me.Controls(""txtCSV"").Text = p" & vbCrLf
+    FormSource = FormSource & "        MsgBox ""CSV template created: "" & p, vbInformation" & vbCrLf
+    FormSource = FormSource & "    End If" & vbCrLf
+    FormSource = FormSource & "End Sub" & vbCrLf
+    FormSource = FormSource & "Private Sub cmdRun_Click()" & vbCrLf
+    FormSource = FormSource & "    Dim n As Long, x As Double, y As Double" & vbCrLf
+    FormSource = FormSource & "    If Not IsNumeric(Me.Controls(""txtCols"").Text) Then" & vbCrLf
+    FormSource = FormSource & "        MsgBox ""Enter a numeric column count."", vbExclamation" & vbCrLf
+    FormSource = FormSource & "        Exit Sub" & vbCrLf
+    FormSource = FormSource & "    End If" & vbCrLf
+    FormSource = FormSource & "    n = CLng(Me.Controls(""txtCols"").Text)" & vbCrLf
+    FormSource = FormSource & "    If n < 1 Then" & vbCrLf
+    FormSource = FormSource & "        MsgBox ""Column count must be positive."", vbExclamation" & vbCrLf
+    FormSource = FormSource & "        Exit Sub" & vbCrLf
+    FormSource = FormSource & "    End If" & vbCrLf
+    FormSource = FormSource & "    If Not IsNumeric(Me.Controls(""txtX"").Text) Or Not IsNumeric(Me.Controls(""txtY"").Text) Then" & vbCrLf
+    FormSource = FormSource & "        MsgBox ""Spacing must be numeric."", vbExclamation" & vbCrLf
+    FormSource = FormSource & "        Exit Sub" & vbCrLf
+    FormSource = FormSource & "    End If" & vbCrLf
+    FormSource = FormSource & "    x = CDbl(Me.Controls(""txtX"").Text)" & vbCrLf
+    FormSource = FormSource & "    y = CDbl(Me.Controls(""txtY"").Text)" & vbCrLf
+    FormSource = FormSource & "    RunCreateFromCSV CStr(Me.Controls(""txtCSV"").Text), n, x, y" & vbCrLf
+    FormSource = FormSource & "End Sub" & vbCrLf
+    FormSource = FormSource & "Private Sub cmdCancel_Click()" & vbCrLf
+    FormSource = FormSource & "    Unload Me" & vbCrLf
     FormSource = FormSource & "End Sub"
 End Function
