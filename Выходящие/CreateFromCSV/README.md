@@ -1,17 +1,19 @@
-# CreateFromCSV — автоматическая установка формы
+# CreateFromCSV — UserForm for CorelDRAW 2026
 
-Этот комплект исправляет прежний ошибочный файл `frmCreateFromCSV.frm`, который импортировался как обычный модуль. Вместо нерабочей пары `.frm/.frx` применяется установщик `InstallCreateFromCSVForm.bas`: он создаёт настоящую `UserForm` в разделе `Forms` со всеми полями, кнопками и обработчиками без ручного размещения.
+This version uses the exact binary FRX exported from CorelDRAW 2026 by the user, with an FRM header based on that export.
 
-## Установка
-1. Оставьте основной модуль `CreateFromCSV` (с процедурами `CSVDefaultPath`, `ChooseCSV`, `CreateCSVTemplate`, `RunCreateFromCSV`). Версия с UI: `CreateFromCSV_UI.bas` из прежнего комплекта.
-2. В редакторе VBA удалите ошибочно импортированный **модуль** `frmCreateFromCSV` (экспортировать его не нужно). Правильной формы с таким именем тоже не должно быть.
-3. Выберите ваш проект GMS в редакторе VBA. Разрешите в настройках безопасности Office/VBA **Trust access to the VBA project object model** (доступ к объектной модели проекта VBA). Не включайте этот параметр постоянно, если он не нужен.
-4. Импортируйте `InstallCreateFromCSVForm.bas` через File → Import File.
-5. Запустите `Install_CreateFromCSV_UserForm` **один раз**. Появится настоящая форма `frmCreateFromCSV` в разделе `Forms`.
-6. Сохраните проект GMS. Запуск основного окна — `Main_CreateFromCSV`.
+## Install
+1. Run Синхронизация.bat to retrieve both files.
+2. In VBA, remove any old **module** or form named `frmCreateFromCSV`.
+3. Keep `frmCreateFromCSV.frm` and `frmCreateFromCSV.frx` together in the same folder.
+4. In the intended GMS project use File → Import File and select `frmCreateFromCSV.frm`.
+5. Verify it appears under **Forms**, not Modules. Save the GMS.
+6. Launch the form via your existing CreateFromCSV module.
 
-## Важно
-- Установщик содержит описание интерфейса и события кнопок; отдельный `.frx` ему не нужен, так как форму создаёт сам VBA.
-- Разрешение программного доступа к проекту VBA требуется **только для установки**.
-- Интерфейс установщика на английском, логика основного модуля и CSV не изменены.
-- Установщик проверен по тексту на ошибки формирования строк, **не выполнялся в CorelDRAW**, поэтому импорт/работа в CorelDRAW 2026 ещё требует реального испытания.
+## Important implementation detail
+- The FRX is **unchanged**, taken from the real CorelDRAW export. The FRM uses the genuine Microsoft Forms class GUID.
+- Controls are created at **form runtime** using `Me.Controls.Add` and wired with `WithEvents`. They will appear **when the form is opened**, not in the VBA designer.
+- This avoids changing the opaque MSForms binary structure without CorelDRAW. It does not require enabling access to the VBA project object model.
+- The form references `ChooseCSV(ActiveDocument)`, `CreateCSVTemplate()`, and `RunCreateFromCSV(path, columns, x, y)`. These procedures must exist in your existing `CreateFromCSV` module with compatible signatures. The earlier GUI module may differ and has not been verified.
+- This pair has been assembled and checked in GitHub, **but not tested inside CorelDRAW 2026**. If import fails, please provide the exact error.
+- The previous installer `InstallCreateFromCSVForm.bas` is obsolete; do not run it.
