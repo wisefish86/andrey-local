@@ -57,15 +57,15 @@ End Sub
 Private Sub FitFormToControls(ByVal padX As Single, ByVal padY As Single)
     Dim c As MSForms.Control
     Dim maxRight As Single, maxBottom As Single
-    Dim borderW As Single, borderH As Single
-    borderW = Me.Width - Me.InsideWidth
-    borderH = Me.Height - Me.InsideHeight
     For Each c In Me.Controls
         If c.Left + c.Width > maxRight Then maxRight = c.Left + c.Width
         If c.Top + c.Height > maxBottom Then maxBottom = c.Top + c.Height
     Next c
-    Me.Width = maxRight + padX + borderW
-    Me.Height = maxBottom + padY + borderH
+    ' Size the CLIENT area, not the outer window.
+    ' The previous subtraction of InsideHeight from Height was unreliable
+    ' while the form was initializing and produced a large empty footer.
+    Me.InsideWidth = maxRight + padX
+    Me.InsideHeight = maxBottom + padY
 End Sub
 
 Private Sub AddLabel(ByVal n As String, ByVal t As String, ByVal x As Single, ByVal y As Single, ByVal w As Single, ByVal h As Single, ByVal fontSize As Single, ByVal emphasized As Boolean, ByVal textColor As Long)
