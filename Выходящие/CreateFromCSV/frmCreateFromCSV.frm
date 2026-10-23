@@ -64,8 +64,8 @@ Private Sub FitFormToControls(ByVal padX As Single, ByVal padY As Single)
     ' Size the CLIENT area, not the outer window.
     ' The previous subtraction of InsideHeight from Height was unreliable
     ' while the form was initializing and produced a large empty footer.
-    Me.InsideWidth = maxRight + padX
-    Me.InsideHeight = maxBottom + padY
+    Me.Width = maxRight + padX + 10
+    Me.Height = maxBottom + padY + 32
 End Sub
 
 Private Sub AddLabel(ByVal n As String, ByVal t As String, ByVal x As Single, ByVal y As Single, ByVal w As Single, ByVal h As Single, ByVal fontSize As Single, ByVal emphasized As Boolean, ByVal textColor As Long)
