@@ -1,6 +1,6 @@
 VERSION 5.00
 Begin {C62A69F0-16DC-11CE-9E98-00AA00574A4F} frmCreateFromCSV
-   Caption         =   "Create objects from CSV"
+   Caption         =   RuText("1057,1086,1079,1076,1072,1085,1080,1077,32,1086,1073,1098,1077,1082,1090,1086,1074,32,1080,1079,32,67,83,86")
    ClientHeight    =   4800
    ClientLeft      =   120
    ClientTop       =   465
@@ -26,29 +26,29 @@ Private txtY As MSForms.TextBox
 Private Sub UserForm_Initialize()
     On Error GoTo InitError
     Me.Caption = "CSV Layout  |  CorelDRAW"
-    Me.Width = 492
-    Me.Height = 374
+    Me.Width = 404
+    Me.Height = 288
     Me.BackColor = RGB(247, 249, 252)
 
-    AddLabel "lblTitle", "Create objects from CSV", 20, 16, 446, 27, 15, True, RGB(27, 40, 58)
-    AddLabel "lblSubtitle", "Duplicate a selected group and fill named text fields.", 20, 47, 446, 20, 9, False, RGB(101, 113, 131)
+    AddLabel "lblTitle", RuText("1057,1086,1079,1076,1072,1085,1080,1077,32,1086,1073,1098,1077,1082,1090,1086,1074,32,1080,1079,32,67,83,86"), 16, 10, 366, 25, 13, True, RGB(27, 40, 58)
+    AddLabel "lblSubtitle", RuText("1047,1072,1087,1086,1083,1085,1077,1085,1080,1077,32,1090,1077,1082,1089,1090,1086,1074,1099,1093,32,1087,1086,1083,1077,1081,32,1075,1088,1091,1087,1087,1099"), 16, 36, 366, 17, 9, False, RGB(101, 113, 131)
 
-    AddLabel "lblSectionCSV", "01  DATA SOURCE", 20, 86, 440, 18, 9, True, RGB(53, 91, 153)
-    AddLabel "lblFile", "CSV file", 20, 111, 440, 18, 9, False, RGB(58, 69, 86)
-    Set txtCSV = AddText("txtCSV", 20, 134, 329, 26, "")
-    Set cmdBrowse = AddButton("cmdBrowse", "Browse...", 359, 134, 107, 26, False)
-    Set cmdTemplate = AddButton("cmdTemplate", "Generate CSV template from selected group", 20, 170, 446, 28, False)
+    AddLabel "lblSectionCSV", RuText("48,49,32,32,1044,1040,1053,1053,1067,1045"), 16, 60, 360, 18, 9, True, RGB(53, 91, 153)
+    AddLabel "lblFile", RuText("1060,1072,1081,1083,32,67,83,86"), 16, 80, 360, 18, 9, False, RGB(58, 69, 86)
+    Set txtCSV = AddText("txtCSV", 16, 101, 273, 23, "")
+    Set cmdBrowse = AddButton("cmdBrowse", RuText("1054,1073,1079,1086,1088,46,46,46"), 297, 101, 89, 23, False)
+    Set cmdTemplate = AddButton("cmdTemplate", RuText("1057,1086,1079,1076,1072,1090,1100,32,67,83,86,32,1087,1086,32,1074,1099,1073,1088,1072,1085,1085,1086,1081,32,1075,1088,1091,1087,1087,1077"), 16, 133, 370, 26, False)
 
-    AddLabel "lblSectionLayout", "02  LAYOUT", 20, 217, 440, 18, 9, True, RGB(53, 91, 153)
-    AddLabel "lblCols", "Columns", 20, 241, 130, 18, 9, False, RGB(58, 69, 86)
-    AddLabel "lblX", "Horizontal gap (mm)", 173, 241, 130, 18, 9, False, RGB(58, 69, 86)
-    AddLabel "lblY", "Vertical gap (mm)", 326, 241, 140, 18, 9, False, RGB(58, 69, 86)
-    Set txtCols = AddText("txtCols", 20, 262, 128, 25, "4")
-    Set txtX = AddText("txtX", 173, 262, 128, 25, "10")
-    Set txtY = AddText("txtY", 326, 262, 140, 25, "10")
+    AddLabel "lblSectionLayout", RuText("48,50,32,32,1056,1040,1047,1052,1045,1065,1045,1053,1048,1045"), 16, 172, 360, 18, 9, True, RGB(53, 91, 153)
+    AddLabel "lblCols", RuText("1050,1086,1083,1086,1085,1082,1080"), 16, 192, 105, 18, 9, False, RGB(58, 69, 86)
+    AddLabel "lblX", RuText("1054,1090,1089,1090,1091,1087,32,88,44,32,1084,1084"), 143, 192, 105, 18, 9, False, RGB(58, 69, 86)
+    AddLabel "lblY", RuText("1054,1090,1089,1090,1091,1087,32,89,44,32,1084,1084"), 270, 192, 115, 18, 9, False, RGB(58, 69, 86)
+    Set txtCols = AddText("txtCols", 16, 211, 105, 23, "4")
+    Set txtX = AddText("txtX", 143, 211, 105, 23, "10")
+    Set txtY = AddText("txtY", 270, 211, 116, 23, "10")
 
-    Set cmdRun = AddButton("cmdRun", "Create objects", 20, 310, 293, 32, True)
-    Set cmdClose = AddButton("cmdClose", "Close", 326, 310, 140, 32, False)
+    Set cmdRun = AddButton("cmdRun", RuText("1057,1086,1079,1076,1072,1090,1100,32,1086,1073,1098,1077,1082,1090,1099"), 16, 247, 239, 28, True)
+    Set cmdClose = AddButton("cmdClose", RuText("1047,1072,1082,1088,1099,1090,1100"), 267, 247, 119, 28, False)
     Exit Sub
 InitError:
     MsgBox "Form initialization failed: " & Err.Description, vbExclamation
@@ -71,6 +71,7 @@ Private Function AddText(ByVal n As String, ByVal x As Single, ByVal y As Single
     Set c = Me.Controls.Add("Forms.TextBox.1", n, True)
     c.Left = x: c.Top = y: c.Width = w: c.Height = h
     c.Text = v
+    c.TextAlign = fmTextAlignCenter
     c.Font.Name = "Segoe UI"
     c.Font.Size = 10
     c.BackColor = RGB(255, 255, 255)
@@ -129,3 +130,11 @@ End Sub
 Private Sub cmdClose_Click()
     Unload Me
 End Sub
+
+Private Function RuText(ByVal codes As String) As String
+    Dim a() As String, i As Long
+    a = Split(codes, ",")
+    For i = LBound(a) To UBound(a)
+        RuText = RuText & ChrW$(CLng(a(i)))
+    Next i
+End Function
