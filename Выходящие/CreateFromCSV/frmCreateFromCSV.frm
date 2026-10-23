@@ -85,7 +85,7 @@ Private Function AddText(ByVal n As String, ByVal x As Single, ByVal y As Single
     Set c = Me.Controls.Add("Forms.TextBox.1", n, True)
     c.Left = x: c.Top = y: c.Width = w: c.Height = h
     c.Text = v
-    c.TextAlign = fmTextAlignCenter
+    c.TextAlign = fmTextAlignLeft
     c.Font.Name = "Segoe UI"
     c.Font.Size = 10
     c.BackColor = RGB(255, 255, 255)
@@ -114,9 +114,30 @@ Private Function AddButton(ByVal n As String, ByVal t As String, ByVal x As Sing
 End Function
 
 Private Sub cmdBrowse_Click()
+    Dim folder As String
     Dim p As String
-    p = ChooseCSV(ActiveDocument)
+
+    On Error GoTo BrowseError
+    If Documents.Count = 0 Then
+        MsgBox RuText("1057,1085,1072,1095,1072,1083,1072,32,1086,1090,1082,1088,1086,1081,1090,1077,32,1076,1086,1082,1091,1084,1077,1085,1090,32,67,111,114,101,108,68,82,65,87,46"), vbExclamation
+        Exit Sub
+    End If
+
+    folder = ActiveDocument.FilePath
+    If Len(folder) = 0 Then
+        MsgBox RuText("1057,1085,1072,1095,1072,1083,1072,32,1089,1086,1093,1088,1072,1085,1080,1090,1077,32,1092,1072,1081,1083,32,67,68,82,46"), vbExclamation
+        Exit Sub
+    End If
+    If Right$(folder, 1) <> "\" Then folder = folder & "\"
+    folder = folder & RuText("1092,1072,1081,1083,1099")
+
+    If Len(Dir$(folder, vbDirectory)) = 0 Then MkDir folder
+    p = CorelScriptTools.GetFileBox("CSV (*.csv)|*.csv|All files (*.*)|*.*", _
+        RuText("1042,1099,1073,1086,1088,32,1092,1072,1081,1083,1072,32,67,83,86"), 0, "", "", folder)
     If Len(p) > 0 Then txtCSV.Text = p
+    Exit Sub
+BrowseError:
+    MsgBox RuText("1053,1077,32,1091,1076,1072,1083,1086,1089,1100,32,1086,1090,1082,1088,1099,1090,1100,32,1087,1072,1087,1082,1091,58,32") & Err.Description, vbExclamation
 End Sub
 
 Private Sub cmdTemplate_Click()
