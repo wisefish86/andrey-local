@@ -26,8 +26,6 @@ Private txtY As MSForms.TextBox
 Private Sub UserForm_Initialize()
     On Error GoTo InitError
     Me.Caption = "CSV Layout  |  CorelDRAW"
-    Me.Width = 404
-    Me.Height = 288
     Me.BackColor = RGB(247, 249, 252)
 
     AddLabel "lblTitle", RuText("1057,1086,1079,1076,1072,1085,1080,1077,32,1086,1073,1098,1077,1082,1090,1086,1074,32,1080,1079,32,67,83,86"), 16, 10, 366, 25, 13, True, RGB(27, 40, 58)
@@ -49,9 +47,25 @@ Private Sub UserForm_Initialize()
 
     Set cmdRun = AddButton("cmdRun", RuText("1057,1086,1079,1076,1072,1090,1100,32,1086,1073,1098,1077,1082,1090,1099"), 16, 247, 239, 28, True)
     Set cmdClose = AddButton("cmdClose", RuText("1047,1072,1082,1088,1099,1090,1100"), 267, 247, 119, 28, False)
+
+    FitFormToControls 12, 12
     Exit Sub
 InitError:
     MsgBox "Form initialization failed: " & Err.Description, vbExclamation
+End Sub
+
+Private Sub FitFormToControls(ByVal padX As Single, ByVal padY As Single)
+    Dim c As MSForms.Control
+    Dim maxRight As Single, maxBottom As Single
+    Dim borderW As Single, borderH As Single
+    borderW = Me.Width - Me.InsideWidth
+    borderH = Me.Height - Me.InsideHeight
+    For Each c In Me.Controls
+        If c.Left + c.Width > maxRight Then maxRight = c.Left + c.Width
+        If c.Top + c.Height > maxBottom Then maxBottom = c.Top + c.Height
+    Next c
+    Me.Width = maxRight + padX + borderW
+    Me.Height = maxBottom + padY + borderH
 End Sub
 
 Private Sub AddLabel(ByVal n As String, ByVal t As String, ByVal x As Single, ByVal y As Single, ByVal w As Single, ByVal h As Single, ByVal fontSize As Single, ByVal emphasized As Boolean, ByVal textColor As Long)
