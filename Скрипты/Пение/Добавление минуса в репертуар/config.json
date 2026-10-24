@@ -1,5 +1,5 @@
 {
-  "version": 12,
+  "version": 13,
   "paths": {
     "staging_root": "D:\\YandexDisk\\Проекты\\Пение\\Минусы\\1. Основной репертуар\\- - Добавляю в репертуар",
     "library_root": "D:\\YandexDisk\\Проекты\\Пение\\Минусы\\1. Основной репертуар"
@@ -485,7 +485,7 @@
       "id": "language",
       "label": "Язык",
       "section": "search",
-      "control": "multi_select",
+      "control": "single_select",
       "storage": {
         "kind": "tit1_group",
         "frame": "TIT1",
@@ -493,9 +493,7 @@
         "prefix_casefold": true
       },
       "placeholder_value": "Я-#",
-      "default": [
-        "Я-#"
-      ],
+      "default": "Я-#",
       "options": [
         [
           "Я-#",
@@ -697,6 +695,11 @@
         "expanded": false
       },
       {
+        "id": "lyrics",
+        "label": "Текст песни",
+        "expanded": false
+      },
+      {
         "id": "audio_analysis",
         "label": "Анализ аудио",
         "expanded": false
@@ -831,5 +834,15 @@
       "label": "Аудиоредактор",
       "path": ""
     }
+  },
+  "lyrics": {
+    "storage": {
+      "kind": "lyrics",
+      "frame": "USLT",
+      "language": "eng",
+      "description": ""
+    },
+    "min_height": 260,
+    "preserve_sylt": true
   }
 }
