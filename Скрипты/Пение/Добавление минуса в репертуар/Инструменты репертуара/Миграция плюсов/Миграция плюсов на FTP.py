@@ -314,29 +314,71 @@ def write_problem_report(
     problem_statuses = {"no_plus", "ambiguous_plus", "slug_collision", "tag_read_error"}
     problems = [item for item in items if item.get("status") in problem_statuses]
 
+    def problem_priority(item: dict[str, Any]) -> tuple[int, str]:
+        minus_count = int(item.get("minus_count", 0))
+        plus_count = len(item.get("plus_candidates", []))
+        status = item.get("status", "")
+        if status == "ambiguous_plus" and minus_count > 1 and plus_count > 1:
+            priority = 0
+        elif status == "ambiguous_plus":
+            priority = 1
+        elif status == "no_plus":
+            priority = 2
+        else:
+            priority = 3
+        return priority, str(item.get("folder", "")).casefold()
+
+    problems.sort(key=problem_priority)
+    multiple_both = [
+        item for item in problems
+        if item.get("status") == "ambiguous_plus"
+        and int(item.get("minus_count", 0)) > 1
+        and len(item.get("plus_candidates", [])) > 1
+    ]
+
     lines = [
         "ПРОБЛЕМНЫЕ ПАПКИ — миграция плюсов",
         f"Сформировано: {datetime.now().isoformat(timespec='seconds')}",
         "",
+        "ВАЖНО: эти папки скрипт НЕ МИГРИРУЕТ автоматически.",
+        "Сначала исправь файлы вручную и снова запусти ПРОВЕРКА.",
+        "",
         f"Всего проблемных папок: {len(problems)}",
         f"Без плюса: {sum(1 for x in problems if x.get('status') == 'no_plus')}",
-        f"Несколько кандидатов: {sum(1 for x in problems if x.get('status') == 'ambiguous_plus')}",
+        f"Несколько кандидатов на плюс: {sum(1 for x in problems if x.get('status') == 'ambiguous_plus')}",
+        f"Особо неоднозначные (несколько минусов + несколько плюсов): {len(multiple_both)}",
         "",
     ]
 
     for item in problems:
         status = item.get("status", "")
+        minus_count = int(item.get("minus_count", 0))
+        plus_count = len(item.get("plus_candidates", []))
         title = {
             "no_plus": "НЕТ ПЛЮСА",
             "ambiguous_plus": "НЕСКОЛЬКО ПЛЮСОВ",
             "slug_collision": "КОЛЛИЗИЯ ИМЕНИ",
             "tag_read_error": "ОШИБКА ЧТЕНИЯ ТЕГОВ",
         }.get(status, status)
+        if status == "ambiguous_plus" and minus_count > 1 and plus_count > 1:
+            title = "НЕСКОЛЬКО МИНУСОВ + НЕСКОЛЬКО ПЛЮСОВ"
+
+        lines.append("=" * 88)
         lines.append(f"[{title}] {item.get('folder', '')}")
-        for minus in item.get("minuses", []):
-            lines.append(f"  МИНУС: {Path(minus).name}")
-        for plus in item.get("plus_candidates", []):
-            lines.append(f"  ПЛЮС?: {Path(plus).name}")
+        lines.append(f"  Минусов ֎: {minus_count}")
+        lines.append(f"  Кандидатов на плюс: {plus_count}")
+        lines.append("")
+
+        if item.get("minuses"):
+            lines.append("  МИНУСЫ:")
+            for minus in item.get("minuses", []):
+                lines.append(f"    - {Path(minus).name}")
+
+        if item.get("plus_candidates"):
+            lines.append("  MP3 БЕЗ ֎ — КАНДИДАТЫ НА ПЛЮС:")
+            for plus in item.get("plus_candidates", []):
+                lines.append(f"    - {Path(plus).name}")
+
         note = clean(item.get("note"))
         if note:
             lines.append(f"  ПРИЧИНА: {note}")
