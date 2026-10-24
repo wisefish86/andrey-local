@@ -1,0 +1,98 @@
+{
+  "version": 1,
+  "delimiter": ";",
+  "path_columns": ["ПолныйПуть", "FILEPATH"],
+  "ignore_columns": ["Индекс"],
+  "direct_id3_columns": true,
+  "fields": {
+    "Исполнитель": {
+      "kind": "text",
+      "frame": "TPE1",
+      "empty": "clear"
+    },
+    "Название": {
+      "kind": "text",
+      "frame": "TIT2",
+      "empty": "clear"
+    },
+    "НазваниеЧистое": {
+      "kind": "text",
+      "frame": "MVNM",
+      "empty": "clear"
+    },
+    "Альбом": {
+      "kind": "text",
+      "frame": "TALB",
+      "empty": "clear"
+    },
+    "АльбомАртист": {
+      "kind": "text",
+      "frame": "TPE2",
+      "empty": "clear"
+    },
+    "Год": {
+      "kind": "text",
+      "frame": "TDRC",
+      "empty": "clear",
+      "validator": "year"
+    },
+    "Жанр": {
+      "kind": "text",
+      "frame": "TCON",
+      "empty": "clear"
+    },
+    "Настроение": {
+      "kind": "text",
+      "frame": "TMOO",
+      "empty": "clear"
+    },
+    "Теги": {
+      "kind": "text",
+      "frame": "TIT1",
+      "multi": true,
+      "empty": "clear"
+    },
+    "Ситуация": {
+      "kind": "txxx",
+      "frame": "TXXX:OCCASION",
+      "empty": "clear"
+    },
+    "Комментарий": {
+      "kind": "comment",
+      "frame": "COMM",
+      "empty": "clear"
+    },
+    "Композитор": {
+      "kind": "text",
+      "frame": "TCOM",
+      "empty": "clear"
+    },
+    "АвторСлов": {
+      "kind": "text",
+      "frame": "TEXT",
+      "empty": "clear"
+    },
+    "Издатель": {
+      "kind": "text",
+      "frame": "TPUB",
+      "empty": "clear"
+    },
+    "Рейтинг": {
+      "kind": "rating",
+      "frame": "POPM",
+      "empty": "preserve",
+      "validator": "rating_0_255"
+    },
+    "WWW": {
+      "kind": "wxxx",
+      "frame": "WXXX",
+      "description": "",
+      "empty": "clear"
+    },
+    "WWWSOURCE": {
+      "kind": "url",
+      "frame": "WOAS",
+      "empty": "clear"
+    }
+  }
+}
