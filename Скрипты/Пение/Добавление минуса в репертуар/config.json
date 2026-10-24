@@ -1,5 +1,5 @@
 {
-  "version": 17,
+  "version": 18,
   "paths": {
     "staging_root": "D:\\YandexDisk\\Проекты\\Пение\\Минусы\\1. Основной репертуар\\- - Добавляю в репертуар",
     "library_root": "D:\\YandexDisk\\Проекты\\Пение\\Минусы\\1. Основной репертуар"
@@ -740,6 +740,11 @@
         "id": "file_tools",
         "label": "Файлы песни",
         "expanded": false
+      },
+      {
+        "id": "tools",
+        "label": "Инструменты репертуара",
+        "expanded": false
       }
     ]
   },
@@ -910,5 +915,24 @@
     "overwrite_remote_if_size_diff": false,
     "http_check": true,
     "http_check_timeout_seconds": 10
+  },
+  "site_export": {
+    "marker": "֎",
+    "exclude_dirs": [
+      "Files",
+      "Additi0ns",
+      "Additions",
+      "Editions",
+      "- - Добавляю в репертуар"
+    ],
+    "output_file": "data/site/repertoire.json",
+    "include_lyrics": false,
+    "pretty_json": true,
+    "schema_version": 1
+  },
+  "tools": {
+    "site_rescan": "Инструменты репертуара/Пересканировать репертуар для Singer Andrey.bat",
+    "migrate_plus_check": "Инструменты репертуара/Миграция плюсов - ПРОВЕРКА.bat",
+    "migrate_plus_apply": "Инструменты репертуара/Миграция плюсов - ПРИМЕНИТЬ.bat"
   }
 }
