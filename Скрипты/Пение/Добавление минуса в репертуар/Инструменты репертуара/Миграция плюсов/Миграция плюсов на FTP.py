@@ -707,11 +707,119 @@ class FTPUploader:
             if progress_shown:
                 print()
 
+        final_reply_timeout = max(
+            5,
+            int(self.mig_cfg.get("ftp_final_reply_timeout_seconds", 15)),
+        )
+        recovery_checks = max(
+            1,
+            int(self.mig_cfg.get("ftp_final_reply_recovery_checks", 6)),
+        )
+        recovery_delay = max(
+            0.2,
+            float(
+                self.mig_cfg.get(
+                    "ftp_final_reply_recovery_delay_seconds",
+                    2.0,
+                )
+            ),
+        )
+
         self.stage = (
             "ожидание ответа FTP-сервера после передачи "
             f"({sent / 1024 / 1024:.1f}/{total_mb:.1f} МБ)"
         )
-        ftp.voidresp()
+        if ftp.sock is not None:
+            ftp.sock.settimeout(final_reply_timeout)
+
+        try:
+            ftp.voidresp()
+        except (TimeoutError, EOFError, OSError, ftplib.error_temp) as exc:
+            print(
+                "  ! Файл передан на 100%, но сервер не прислал "
+                f"финальный FTP-ответ за {final_reply_timeout} с. "
+                "Переподключаюсь и проверяю размер временного файла.",
+                flush=True,
+            )
+            self.close()
+
+            check_ftp: ftplib.FTP | None = None
+            last_size: int | None = None
+            last_check_error = ""
+
+            for check_index in range(1, recovery_checks + 1):
+                if check_index > 1:
+                    time.sleep(recovery_delay)
+
+                try:
+                    if check_ftp is None:
+                        check_ftp = self.connect()
+
+                    self.stage = (
+                        "проверка размера временного файла после "
+                        "тайм-аута финального ответа"
+                    )
+                    last_size = ftp_remote_size(check_ftp, remote_name)
+
+                    if last_size == local_size:
+                        print(
+                            "  ↻ Сервер не прислал финальный ответ, "
+                            "но временный файл подтверждён по точному размеру "
+                            f"{local_size} байт. Повторная загрузка не нужна.",
+                            flush=True,
+                        )
+                        self.ftp = check_ftp
+                        return check_ftp, sent
+
+                    if last_size is None:
+                        size_detail = "SIZE недоступен"
+                    else:
+                        delta = local_size - last_size
+                        size_detail = (
+                            f"{last_size}/{local_size} байт; "
+                            f"разница {delta:+d} байт"
+                        )
+
+                    print(
+                        f"    ↻ проверка {check_index}/{recovery_checks}: "
+                        f"{size_detail}",
+                        flush=True,
+                    )
+
+                except (
+                    TimeoutError,
+                    ConnectionError,
+                    EOFError,
+                    OSError,
+                    ftplib.error_temp,
+                ) as check_exc:
+                    last_check_error = (
+                        f"{type(check_exc).__name__}: {check_exc}"
+                    )
+                    self.close()
+                    check_ftp = None
+                    print(
+                        f"    ! проверка {check_index}/{recovery_checks}: "
+                        f"{last_check_error}",
+                        flush=True,
+                    )
+
+            self.close()
+            if last_size is None:
+                detail = last_check_error or "SIZE не удалось получить"
+            else:
+                delta = local_size - last_size
+                detail = (
+                    f"последний размер {last_size}/{local_size} байт; "
+                    f"разница {delta:+d} байт"
+                )
+            raise ConnectionError(
+                "После полной передачи сервер не подтвердил завершение, "
+                f"а точный размер временного файла не совпал: {detail}"
+            ) from exc
+
+        if ftp.sock is not None:
+            ftp.sock.settimeout(int(self.cfg.get("timeout_seconds", 60)))
         self.ftp = ftp
         return ftp, sent
 
@@ -762,11 +870,12 @@ class FTPUploader:
                 "повторная загрузка не нужна."
             )
         else:
-            if temp_exists is True and temp_existing_size:
+            if temp_exists is True and temp_existing_size is not None:
+                delta = local_size - temp_existing_size
                 print(
-                    "  ↻ найден незавершённый временный файл: "
-                    f"{temp_existing_size / 1024 / 1024:.1f}/"
-                    f"{local_size / 1024 / 1024:.1f} МБ; "
+                    "  ↻ найден временный файл с несовпадающим размером: "
+                    f"{temp_existing_size}/{local_size} байт "
+                    f"(разница {delta:+d} байт); "
                     "загрузка начнётся заново."
                 )
 
