@@ -621,6 +621,56 @@ class MainWindow(QMainWindow):
         file_tools_section.add_layout(file_tools_layout)
         body_layout.addWidget(file_tools_section)
 
+        # 7. Инструменты репертуара
+        tools_section = self._make_section("tools")
+        tools_widget = QWidget()
+        tools_layout = QGridLayout(tools_widget)
+        tools_layout.setContentsMargins(0, 0, 0, 0)
+        tools_layout.setHorizontalSpacing(10)
+        tools_layout.setVerticalSpacing(8)
+
+        rescan_site_btn = QPushButton("↻ Пересканировать для Singer Andrey")
+        rescan_site_btn.setToolTip(
+            "Перечитать все MP3-минусовки из основного репертуара и создать repertoire.json"
+        )
+        rescan_site_btn.clicked.connect(
+            lambda: self.launch_repertoire_tool("site_rescan")
+        )
+
+        open_site_json_btn = QPushButton("📄 Открыть repertoire.json")
+        open_site_json_btn.setToolTip("Открыть последний JSON-экспорт репертуара")
+        open_site_json_btn.clicked.connect(self.open_site_export)
+
+        migrate_check_btn = QPushButton("🔎 Миграция плюсов — проверка")
+        migrate_check_btn.setToolTip("Dry-run: ничего не загружает и не меняет")
+        migrate_check_btn.clicked.connect(
+            lambda: self.launch_repertoire_tool("migrate_plus_check")
+        )
+
+        migrate_apply_btn = QPushButton("⬆ Миграция плюсов — применить")
+        migrate_apply_btn.setToolTip(
+            "Пакетно загрузить однозначные плюсы на FTP и записать WOAS; "
+            "в BAT дополнительно требуется подтверждение APPLY"
+        )
+        migrate_apply_btn.clicked.connect(
+            lambda: self.launch_repertoire_tool("migrate_plus_apply")
+        )
+
+        tools_hint = QLabel(
+            "Редкие операции над всем репертуаром. "
+            "Перескан сайта читает ID3 напрямую и не изменяет MP3."
+        )
+        tools_hint.setWordWrap(True)
+        tools_hint.setObjectName("muted")
+
+        tools_layout.addWidget(rescan_site_btn, 0, 0)
+        tools_layout.addWidget(open_site_json_btn, 0, 1)
+        tools_layout.addWidget(migrate_check_btn, 1, 0)
+        tools_layout.addWidget(migrate_apply_btn, 1, 1)
+        tools_layout.addWidget(tools_hint, 2, 0, 1, 2)
+        tools_section.add_widget(tools_widget)
+        body_layout.addWidget(tools_section)
+
         self.warning_label = QLabel("")
         self.warning_label.setWordWrap(True)
         self.warning_label.setObjectName("warning")
@@ -2236,6 +2286,64 @@ class MainWindow(QMainWindow):
             return
         if not QDesktopServices.openUrl(QUrl(url)):
             QMessageBox.warning(self, "Ссылка на плюс", f"Не удалось открыть:\n{url}")
+
+    def launch_repertoire_tool(self, tool_id: str):
+        rel = clean(self.config.get("tools", {}).get(tool_id))
+        if not rel:
+            QMessageBox.warning(
+                self,
+                "Инструменты репертуара",
+                f"Для {tool_id} не задан путь в config.json → tools.",
+            )
+            return
+
+        path = APP_ROOT / Path(rel)
+        if not path.is_file():
+            QMessageBox.critical(
+                self,
+                "Инструменты репертуара",
+                f"Инструмент не найден:\n{path}",
+            )
+            return
+
+        try:
+            if os.name == "nt":
+                os.startfile(str(path))
+            else:
+                subprocess.Popen([str(path)])
+            self.status.setText(f"Запущено: {path.name}")
+        except Exception as exc:
+            QMessageBox.critical(
+                self,
+                "Инструменты репертуара",
+                f"Не удалось запустить {path.name}:\n{exc}",
+            )
+
+    def open_site_export(self):
+        rel = clean(
+            self.config.get("site_export", {}).get(
+                "output_file",
+                "data/site/repertoire.json",
+            )
+        )
+        path = APP_ROOT / Path(rel)
+        if not path.is_file():
+            QMessageBox.information(
+                self,
+                "repertoire.json",
+                "Экспорт ещё не создан. Сначала нажми "
+                "«Пересканировать для Singer Andrey».",
+            )
+            return
+
+        try:
+            QDesktopServices.openUrl(QUrl.fromLocalFile(str(path)))
+        except Exception as exc:
+            QMessageBox.critical(
+                self,
+                "repertoire.json",
+                f"Не удалось открыть файл:\n{exc}",
+            )
 
     def create_additions_folder(self):
         if not self.current_path:
