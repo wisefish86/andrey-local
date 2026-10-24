@@ -215,3 +215,45 @@ def write_field(tags: ID3, spec: dict[str, Any], desired) -> None:
         )
     else:
         raise ValueError(f"Unsupported field kind: {kind}")
+
+
+
+def _frame_allowed(frame, policy: dict[str, Any]) -> bool:
+    frame_id = clean(getattr(frame, "FrameID", ""))
+    keep_ids = {clean(x).upper() for x in policy.get("keep_frame_ids", []) if clean(x)}
+
+    if frame_id == "TXXX":
+        allowed_desc = {
+            clean(x).casefold()
+            for x in policy.get("keep_txxx_descriptions", [])
+            if clean(x)
+        }
+        return clean(getattr(frame, "desc", "")).casefold() in allowed_desc
+
+    if frame_id == "SYLT":
+        return bool(policy.get("preserve_sylt", False))
+
+    return frame_id.upper() in keep_ids
+
+
+def disallowed_tag_keys(tags: ID3, policy: dict[str, Any]) -> list[str]:
+    return [
+        frame.HashKey
+        for frame in list(tags.values())
+        if not _frame_allowed(frame, policy)
+    ]
+
+
+def prune_tags(tags: ID3, policy: dict[str, Any]) -> list[str]:
+    """Remove every ID3 frame not explicitly allowed by policy."""
+    removed: list[str] = []
+    for frame in list(tags.values()):
+        if _frame_allowed(frame, policy):
+            continue
+        key = frame.HashKey
+        removed.append(key)
+        if key in tags:
+            del tags[key]
+        else:
+            tags.delall(key)
+    return removed
