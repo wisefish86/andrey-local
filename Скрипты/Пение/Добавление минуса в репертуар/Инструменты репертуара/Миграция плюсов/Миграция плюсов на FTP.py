@@ -697,18 +697,8 @@ def main() -> int:
         )
         return 0
 
-    blocking_statuses = {"no_plus", "ambiguous_plus", "slug_collision", "tag_read_error"}
-    blocking = [item for item in items if item.get("status") in blocking_statuses]
-    if blocking:
-        print()
-        print("=" * 72)
-        print("ПРИМЕНЕНИЕ ЗАБЛОКИРОВАНО")
-        print(f"Осталось проблемных папок: {len(blocking)}")
-        print(f"Исправь их по файлу: {problem_path}")
-        print("После исправлений снова запусти ПРОВЕРКА.")
-        print("Массовая миграция начнётся только когда проблемных папок будет 0.")
-        print("=" * 72)
-        return 3
+    problem_statuses = {"no_plus", "ambiguous_plus", "slug_collision", "tag_read_error"}
+    problems = [item for item in items if item.get("status") in problem_statuses]
 
     ready_folders = sum(1 for x in items if x["status"] == "ready")
     ready_minuses = sum(
@@ -717,9 +707,14 @@ def main() -> int:
         if x["status"] == "ready"
     )
     print(
-        f"\nБудет обработано папок: {ready_folders}; "
+        f"\nБудет автоматически обработано папок: {ready_folders}; "
         f"минусовок WOAS: {ready_minuses}."
     )
+    if problems:
+        print(
+            f"Проблемных папок будет пропущено без любых изменений: {len(problems)}."
+        )
+        print(f"Список для ручной обработки: {problem_path}")
 
     if not args.yes:
         answer = input("Для продолжения введи APPLY: ").strip()
