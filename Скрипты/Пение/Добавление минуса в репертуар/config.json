@@ -599,6 +599,6 @@
     "additions_folder": "Additi0ns",
     "files_folder": "Files",
     "open_after_create": true,
-    "trimmed_copy_strip_info": true
+    "files_copy_remove_marker_only": true
   }
 }
