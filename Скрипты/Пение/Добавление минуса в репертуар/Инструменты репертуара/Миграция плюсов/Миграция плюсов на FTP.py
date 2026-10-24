@@ -516,10 +516,12 @@ class FTPUploader:
         if current_ftp.sock is None:
             raise ConnectionError("FTP control-соединение отсутствует.")
 
-        # TYPE I — control-команда. Если она тайм-аутится, весь control-канал
-        # уже ненадёжен и внешний retry должен пересоздать FTP-сессию.
+        # Control-команды FTP должны использовать обычный control timeout.
+        # Короткий connect_timeout относится ТОЛЬКО к TCP-подключению
+        # отдельного data-сокета.
+        control_timeout = int(self.cfg.get("timeout_seconds", 60))
         self.stage = "переключение FTP в бинарный режим"
-        current_ftp.sock.settimeout(connect_timeout)
+        current_ftp.sock.settimeout(control_timeout)
         current_ftp.voidcmd("TYPE I")
 
         for mode in modes:
@@ -596,6 +598,8 @@ class FTPUploader:
 
                 try:
                     self.stage = f"запуск STOR через {label} data-порт {port}"
+                    if current_ftp.sock is not None:
+                        current_ftp.sock.settimeout(control_timeout)
                     response = current_ftp.sendcmd(command)
                     if response[:1] == "2":
                         response = current_ftp.getresp()
