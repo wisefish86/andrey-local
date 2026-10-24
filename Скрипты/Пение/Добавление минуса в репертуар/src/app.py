@@ -1489,11 +1489,22 @@ class MainWindow(QMainWindow):
     def _language_changed(self):
         if not self.title_manual:
             self.display_title.setText(self.generated_title())
+        if not self.filename_manual:
+            self.filename.setText(self.generated_filename())
 
     def generated_filename(self) -> str:
         title = self.clean_title.text().strip()
         artist = self.artist.text().strip()
-        return f"{title}{self._tone_suffix()}{self._length_suffix()} _____ {artist}{self._info_suffix()}.mp3"
+        language_symbol = (
+            self._title_symbol()
+            if bool(self.config.get("filename", {}).get("include_language_symbol", True))
+            else ""
+        )
+        prefix = f"{language_symbol} " if language_symbol else ""
+        return (
+            f"{prefix}{title}{self._tone_suffix()}{self._length_suffix()} "
+            f"_____ {artist}{self._info_suffix()}.mp3"
+        )
 
     def generated_folder_name(self) -> str:
         base_name = self._strip_version_suffix(self.clean_title.text())
