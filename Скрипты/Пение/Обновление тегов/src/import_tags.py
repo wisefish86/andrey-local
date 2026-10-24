@@ -12,7 +12,16 @@ from pathlib import Path
 from typing import Any
 
 TOOL_ROOT = Path(__file__).resolve().parents[1]
-PENIE_ROOT = Path(__file__).resolve().parents[2]
+
+
+def find_penie_root(start: Path) -> Path:
+    for candidate in [start, *start.parents]:
+        if (candidate / "_common" / "id3_io.py").is_file():
+            return candidate
+    raise RuntimeError("Не найден корень Пение с _common/id3_io.py")
+
+
+PENIE_ROOT = find_penie_root(Path(__file__).resolve().parent)
 if str(PENIE_ROOT) not in sys.path:
     sys.path.insert(0, str(PENIE_ROOT))
 
