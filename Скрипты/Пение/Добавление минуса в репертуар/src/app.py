@@ -1984,6 +1984,7 @@ class MainWindow(QMainWindow):
 
             url = public_base + "/" + quote(remote_name)
             self.source_url.setText(url)
+            self._update_plus_delete_enabled()
 
             stage = "запись ссылки в WOAS"
             self._save_plus_url_to_current_mp3(url)
@@ -2076,8 +2077,128 @@ class MainWindow(QMainWindow):
         }.get(state, "none")
         self._set_section_status("plus", section_state)
 
+    def _update_plus_delete_enabled(self):
+        enabled = bool(
+            self.config.get("plus_upload", {}).get("allow_delete", False)
+            and self.current_path
+            and self.current_path.is_file()
+            and self.source_url.text().strip()
+        )
+        self.delete_plus_btn.setEnabled(enabled)
+
     def _mark_plus_url_dirty(self):
         self._set_plus_link_status("idle", "— ссылка не проверена")
+        self._update_plus_delete_enabled()
+
+    def _remote_name_from_public_url(self, url: str) -> str:
+        cfg = self.config.get("plus_upload", {})
+        public_base = clean(cfg.get("public_base_url")).rstrip("/")
+        if not public_base:
+            raise ValueError("Не задан public_base_url в config.json.")
+
+        base = urlsplit(public_base)
+        target = urlsplit(url)
+        if target.scheme.casefold() != base.scheme.casefold() or target.netloc.casefold() != base.netloc.casefold():
+            raise ValueError("Ссылка ведёт не на настроенный сервер плюсов.")
+
+        base_path = base.path.rstrip("/") + "/"
+        if not target.path.startswith(base_path):
+            raise ValueError("Ссылка находится вне настроенного каталога плюсов.")
+
+        remote_name = unquote(target.path[len(base_path):]).strip()
+        if not remote_name or "/" in remote_name or "\\" in remote_name or remote_name in {".", ".."}:
+            raise ValueError("Не удалось безопасно определить имя файла на FTP.")
+        return remote_name
+
+    def delete_plus_from_ftp(self):
+        if not self.current_path or not self.current_path.is_file():
+            QMessageBox.warning(self, "Плюс песни", "Сначала выбери основной MP3-минус.")
+            return
+
+        url = self.source_url.text().strip()
+        if not url:
+            QMessageBox.warning(self, "Плюс песни", "В WOAS нет ссылки на плюс.")
+            return
+
+        try:
+            remote_name = self._remote_name_from_public_url(url)
+        except Exception as exc:
+            QMessageBox.critical(self, "Удаление с FTP", str(exc))
+            return
+
+        answer = QMessageBox.question(
+            self,
+            "Удалить плюс с FTP?",
+            f"Файл будет удалён без корзины:\n\n{remote_name}\n\n{url}",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No,
+        )
+        if answer != QMessageBox.Yes:
+            return
+
+        cfg = self.config.get("plus_upload", {})
+        password = self._ftp_password()
+        if not password:
+            return
+
+        ftp = ftplib.FTP()
+        stage = "подключение к FTP"
+        remote_deleted = False
+        QApplication.setOverrideCursor(Qt.WaitCursor)
+
+        try:
+            stage = "подключение к FTP"
+            ftp.connect(
+                clean(cfg.get("server")),
+                int(cfg.get("port", 21)),
+                timeout=int(cfg.get("timeout_seconds", 60)),
+            )
+
+            stage = "вход на FTP"
+            ftp.login(clean(cfg.get("username")), password)
+            ftp.set_pasv(bool(cfg.get("passive", True)))
+
+            stage = "переход в каталог плюсов"
+            self._ftp_ensure_dir(ftp, clean(cfg.get("remote_dir")))
+
+            stage = "удаление файла"
+            ftp.delete(remote_name)
+            remote_deleted = True
+
+            stage = "очистка WOAS"
+            self._save_plus_url_to_current_mp3("")
+            self.source_url.clear()
+            self._update_plus_delete_enabled()
+            self._set_plus_link_status("idle", "— файл удалён с FTP")
+            self.plus_drop.label.setText(
+                f"{remote_name} · удалён с FTP"
+                if not self.plus_path
+                else f"{self.plus_path.name} · локальный файл выбран"
+            )
+            self.status.setText("Плюс удалён с FTP; WOAS очищен.")
+            QMessageBox.information(
+                self,
+                "Плюс удалён",
+                "Файл удалён с FTP, ссылка очищена в текущем MP3.",
+            )
+
+        except Exception as exc:
+            extra = (
+                "\n\nФайл уже удалён с FTP, но не удалось очистить WOAS."
+                if remote_deleted
+                else ""
+            )
+            QMessageBox.critical(
+                self,
+                "Удаление с FTP",
+                f"Этап: {stage}\n\n{type(exc).__name__}: {exc}{extra}",
+            )
+        finally:
+            try:
+                ftp.close()
+            except Exception:
+                pass
+            QApplication.restoreOverrideCursor()
 
     def check_plus_url(self, show_dialog: bool = True):
         url = self.source_url.text().strip()
