@@ -1093,9 +1093,12 @@ class MainWindow(QMainWindow):
             with QSignalBlocker(self.clean_title):
                 self.clean_title.setText(desired)
 
-    def _version_changed(self):
+    def _version_changed(self, _text: str = ""):
         self._apply_version_to_name_field()
         self._last_version_value = self._version_value()
+        # Version is part of the naming template: rebuild Title immediately.
+        self.title_manual = False
+        self.display_title.setText(self.generated_title())
         self._auto_names_changed()
 
     def _set_tone(self, value: str):
