@@ -639,6 +639,8 @@ class MainWindow(QMainWindow):
         self.current_path = path
         self.path_label.setText(str(path))
         self.drop.label.setText(path.name)
+        self.title_manual = False
+        self.display_title.clear()
 
         existing_artist = self._first(read_text(tags, "TPE1"))
         existing_name = self._first(read_text(tags, "MVNM"))
@@ -647,7 +649,7 @@ class MainWindow(QMainWindow):
 
         parse_cfg = self.config.get("filename", {}).get("source_parse", {})
         prefer_filename = bool(parse_cfg.get("prefer_filename_artist_title", True))
-        if prefer_filename:
+        if prefer_filename and inferred.get("artist_title_recognized"):
             self.artist.setText(inferred["artist"] or existing_artist)
             self.clean_title.setText(inferred["clean_title"] or existing_name)
         else:
@@ -873,6 +875,7 @@ class MainWindow(QMainWindow):
         separator = filename_cfg.get("separator", "_____")
         title_part, canonical_sep, artist_part = left.partition(separator)
 
+        artist_title_recognized = bool(canonical_sep)
         if canonical_sep:
             # Current canonical format: Название _____ Исполнитель
             title_part = title_part.strip()
@@ -889,6 +892,7 @@ class MainWindow(QMainWindow):
                 if found and before.strip() and after.strip():
                     artist = before.strip()
                     title_part = after.strip()
+                    artist_title_recognized = True
                     break
 
         length = ""
@@ -938,6 +942,36 @@ class MainWindow(QMainWindow):
                     version_info = ", ".join(current)
                 title_part = title_part[:note_match.start()].strip()
 
+        # A source note may have hidden version/tone/F-S immediately before it.
+        if not length:
+            lm = re.search(r"\s*\[(F|S)\]\s*$", title_part, re.IGNORECASE)
+            if lm:
+                length = lm.group(1).upper()
+                title_part = title_part[:lm.start()].strip()
+
+        if not tone:
+            legacy_zero = re.search(r"\s*\[0\]\s*$", title_part)
+            if legacy_zero:
+                title_part = title_part[:legacy_zero.start()].strip()
+            tm = re.search(r"\s*\[(N|[+-]?[1-3])\]\s*$", title_part, re.IGNORECASE)
+            if tm:
+                tone = tm.group(1).upper() if tm.group(1).upper() == "N" else tm.group(1)
+                title_part = title_part[:tm.start()].strip()
+
+        if not version:
+            vm = re.search(r"\s*\(([^()]+)\)\s*$", title_part)
+            if vm:
+                candidate = vm.group(1).strip()
+                known = {
+                    str(v).casefold(): str(v)
+                    for v, _label in filename_cfg.get("version_options", [])
+                    if v
+                }
+                matched = known.get(candidate.casefold())
+                if matched:
+                    version = matched
+                    title_part = title_part[:vm.start()].strip()
+
         return {
             "clean_title": title_part.strip(),
             "artist": artist.strip(),
@@ -945,6 +979,7 @@ class MainWindow(QMainWindow):
             "tone": tone,
             "length": length,
             "version_info": version_info,
+            "artist_title_recognized": artist_title_recognized,
         }
 
     def _extract_version(self, text: str) -> str:
