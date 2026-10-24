@@ -1875,8 +1875,10 @@ class MainWindow(QMainWindow):
             self.status.setText("Ошибка. Автоматическая обработка остановлена.")
 
     @staticmethod
-    def _format_sylt_timestamp(milliseconds: int) -> str:
-        total = max(0, int(milliseconds))
+    def _format_sylt_timestamp(value: int, time_format: int = 2) -> str:
+        if int(time_format) == 1:
+            return f"[frame {max(0, int(value))}]"
+        total = max(0, int(value))
         minutes, rest = divmod(total, 60000)
         seconds, millis = divmod(rest, 1000)
         return f"[{minutes:02d}:{seconds:02d}.{millis:03d}]"
@@ -1900,7 +1902,10 @@ class MainWindow(QMainWindow):
                 except Exception:
                     continue
                 rows.append(
-                    f"{self._format_sylt_timestamp(timestamp)} {str(lyric_text).strip()}".rstrip()
+                    (
+                        f"{self._format_sylt_timestamp(timestamp, getattr(frame, 'format', 2))} "
+                        f"{str(lyric_text).strip()}"
+                    ).rstrip()
                 )
             total_lines += len(rows)
             if len(frames) > 1:
