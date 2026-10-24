@@ -897,6 +897,10 @@ class MainWindow(QMainWindow):
             title_part = title_part[:lm.start()].strip()
 
         tone = ""
+        legacy_zero = re.search(r"\s*\[0\]\s*$", title_part)
+        if legacy_zero:
+            title_part = title_part[:legacy_zero.start()].strip()
+
         tm = re.search(r"\s*\[(N|[+-]?[1-3])\]\s*$", title_part, re.IGNORECASE)
         if tm:
             tone = tm.group(1).upper() if tm.group(1).upper() == "N" else tm.group(1)
@@ -961,7 +965,7 @@ class MainWindow(QMainWindow):
 
     @staticmethod
     def _extract_tone(text: str) -> str:
-        matches = re.findall(r"\[(N|[+-]?\d+)\]", clean(text), re.IGNORECASE)
+        matches = re.findall(r"\[(N|[+-]?[1-3])\]", clean(text), re.IGNORECASE)
         for value in matches:
             if value.upper() in {"F", "S"}:
                 continue
@@ -979,30 +983,80 @@ class MainWindow(QMainWindow):
         value = clean(self.length_version.currentData()).upper()
         return f" [{value}]" if value in {"F", "S"} else ""
 
+    def _known_version_values(self) -> list[str]:
+        return [
+            clean(value)
+            for value, _label in self.config.get("filename", {}).get("version_options", [])
+            if clean(value)
+        ]
+
+    def _strip_version_suffix(self, title: str) -> str:
+        result = clean(title)
+        candidates = set(self._known_version_values())
+        current = self._version_value() if hasattr(self, "version") else ""
+        if current:
+            candidates.add(current)
+        for candidate in sorted(candidates, key=len, reverse=True):
+            suffix = f" ({candidate})"
+            if result.casefold().endswith(suffix.casefold()):
+                return result[:-len(suffix)].rstrip()
+        return result
+
     def _set_version(self, value: str):
         value = clean(value)
+        matched_index = -1
         for i in range(self.version.count()):
-            if clean(self.version.itemData(i)).casefold() == value.casefold():
-                self.version.setCurrentIndex(i)
-                return
-        if value:
-            self.version.setEditText(value)
-        else:
-            idx = self.version.findData("")
-            self.version.setCurrentIndex(max(idx, 0))
+            data = clean(self.version.itemData(i))
+            if data.casefold() == value.casefold():
+                matched_index = i
+                break
+
+        with QSignalBlocker(self.version):
+            if matched_index >= 0:
+                self.version.setCurrentIndex(matched_index)
+            elif value:
+                self.version.setEditText(value)
+            else:
+                idx = self.version.findData("")
+                self.version.setCurrentIndex(max(idx, 0))
+
+        self._apply_version_to_name_field()
+        self._auto_names_changed()
 
     def _version_value(self) -> str:
         data = self.version.currentData()
-        if data is not None and clean(self.version.currentText()) == clean(self.version.itemText(self.version.currentIndex())):
+        if (
+            data is not None
+            and clean(self.version.currentText())
+            == clean(self.version.itemText(self.version.currentIndex()))
+        ):
             return clean(data)
         text = clean(self.version.currentText())
-        if not text or text.casefold() == "обычная":
+        if not text or text == "—":
             return ""
         return text
 
     def _version_suffix(self) -> str:
         version = self._version_value()
         return f" ({version})" if version else ""
+
+    def _apply_version_to_name_field(self):
+        if not self.config.get("filename", {}).get("version_in_name_field", True):
+            return
+        if not hasattr(self, "clean_title"):
+            return
+
+        base = self._strip_version_suffix(self.clean_title.text())
+        version = self._version_value()
+        desired = f"{base} ({version})" if base and version else base
+
+        if self.clean_title.text().strip() != desired:
+            with QSignalBlocker(self.clean_title):
+                self.clean_title.setText(desired)
+
+    def _version_changed(self):
+        self._apply_version_to_name_field()
+        self._auto_names_changed()
 
     def _set_tone(self, value: str):
         value = clean(value).strip("[]") or clean(self.config["filename"].get("tone_default", ""))
@@ -1043,7 +1097,7 @@ class MainWindow(QMainWindow):
     def generated_title(self) -> str:
         name = self.clean_title.text().strip()
         symbol = self._title_symbol()
-        return f"{symbol} {name}{self._version_suffix()}{self._tone_suffix()}{self._length_suffix()}".strip()
+        return f"{symbol} {name}{self._tone_suffix()}{self._length_suffix()}".strip()
 
     def reset_title_template(self):
         self.title_manual = False
@@ -1056,10 +1110,11 @@ class MainWindow(QMainWindow):
     def generated_filename(self) -> str:
         title = self.clean_title.text().strip()
         artist = self.artist.text().strip()
-        return f"{title}{self._version_suffix()}{self._tone_suffix()}{self._length_suffix()} _____ {artist}{self._info_suffix()}.mp3"
+        return f"{title}{self._tone_suffix()}{self._length_suffix()} _____ {artist}{self._info_suffix()}.mp3"
 
     def generated_folder_name(self) -> str:
-        return f"{self.clean_title.text().strip()} _____ {self.artist.text().strip()}"
+        base_name = self._strip_version_suffix(self.clean_title.text())
+        return f"{base_name} _____ {self.artist.text().strip()}"
 
     def reset_filename_template(self):
         self.filename_manual = False
