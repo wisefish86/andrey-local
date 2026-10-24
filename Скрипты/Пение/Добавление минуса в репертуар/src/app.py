@@ -400,12 +400,10 @@ class MainWindow(QMainWindow):
         reset_title.clicked.connect(self.reset_title_template)
         grid.addWidget(reset_title, 2, 5)
 
-        grid.addWidget(self.language_label, 3, 0)
-        grid.addWidget(self.language_control, 3, 1)
-        grid.addWidget(QLabel("Тональность"), 3, 2)
-        grid.addWidget(self.tone, 3, 3)
-        grid.addWidget(QLabel("F / S"), 3, 4)
-        grid.addWidget(self.length_version, 3, 5)
+        grid.addWidget(QLabel("Тональность"), 3, 0)
+        grid.addWidget(self.tone, 3, 1)
+        grid.addWidget(QLabel("F / S"), 3, 2)
+        grid.addWidget(self.length_version, 3, 3)
 
         trim_cfg = self.config.get("title", {}).get("flags", {}).get("trim", {})
         self.trim_needed = QCheckBox(
@@ -413,15 +411,15 @@ class MainWindow(QMainWindow):
         )
         self.trim_needed.setChecked(bool(trim_cfg.get("default", False)))
         self.trim_needed.setToolTip("Добавить ножницы перед Title, чтобы отметить минус на укорочение")
-        grid.addWidget(self.trim_needed, 4, 1, 1, 5)
+        grid.addWidget(self.trim_needed, 3, 4, 1, 2)
 
-        grid.addWidget(QLabel("Примечание"), 5, 0)
-        grid.addWidget(self.version_info, 5, 1, 1, 4)
+        grid.addWidget(QLabel("Примечание"), 4, 0)
+        grid.addWidget(self.version_info, 4, 1, 1, 4)
         help_btn = QToolButton()
         help_btn.setText("ⓘ")
         help_btn.setToolTip("Справка по обозначениям")
         help_btn.clicked.connect(self.show_help)
-        grid.addWidget(help_btn, 5, 5)
+        grid.addWidget(help_btn, 4, 5)
 
         chips = QHBoxLayout()
         chips.setSpacing(5)
@@ -432,7 +430,10 @@ class MainWindow(QMainWindow):
             chip.clicked.connect(lambda _checked=False, v=value: self._append_note_chip(v))
             chips.addWidget(chip)
         chips.addStretch(1)
-        grid.addLayout(chips, 6, 1, 1, 5)
+        grid.addLayout(chips, 5, 1, 1, 5)
+
+        grid.addWidget(self.language_label, 6, 0)
+        grid.addWidget(self.language_control, 6, 1, 1, 2)
 
         grid.addWidget(QLabel("Файл минуса"), 7, 0)
         grid.addWidget(self.filename, 7, 1, 1, 4)
@@ -1489,20 +1490,12 @@ class MainWindow(QMainWindow):
     def _language_changed(self):
         if not self.title_manual:
             self.display_title.setText(self.generated_title())
-        if not self.filename_manual:
-            self.filename.setText(self.generated_filename())
 
     def generated_filename(self) -> str:
         title = self.clean_title.text().strip()
         artist = self.artist.text().strip()
-        language_symbol = (
-            self._title_symbol()
-            if bool(self.config.get("filename", {}).get("include_language_symbol", True))
-            else ""
-        )
-        prefix = f"{language_symbol} " if language_symbol else ""
         return (
-            f"{prefix}{title}{self._tone_suffix()}{self._length_suffix()} "
+            f"{title}{self._tone_suffix()}{self._length_suffix()} "
             f"_____ {artist}{self._info_suffix()}.mp3"
         )
 
