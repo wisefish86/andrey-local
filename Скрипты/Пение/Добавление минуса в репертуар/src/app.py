@@ -8,7 +8,6 @@ import re
 import shutil
 import subprocess
 import sys
-import unicodedata
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -58,6 +57,7 @@ from _common.id3_io import (
     read_url,
     write_field,
 )
+from _common.plus_storage import ftp_ensure_dir, slugify_remote_name
 
 APP_ROOT = Path(__file__).resolve().parents[1]
 CONFIG_PATH = APP_ROOT / "config.json"
@@ -1765,52 +1765,11 @@ class MainWindow(QMainWindow):
 
     @staticmethod
     def _ftp_ensure_dir(ftp: ftplib.FTP, remote_dir: str):
-        ftp.cwd("/")
-        for part in [p for p in remote_dir.strip("/").split("/") if p]:
-            try:
-                ftp.cwd(part)
-            except ftplib.error_perm:
-                ftp.mkd(part)
-                ftp.cwd(part)
+        ftp_ensure_dir(ftp, remote_dir)
 
     def _slugify_remote_name(self, path: Path) -> str:
         cfg = self.config.get("plus_upload", {}).get("slug", {})
-        if not cfg.get("enabled", True):
-            return path.name
-
-        stem = path.stem
-        separator = clean(cfg.get("separator")) or "-"
-        translit = cfg.get("transliteration_map", {})
-
-        if cfg.get("transliterate_cyrillic", True):
-            converted = []
-            for char in stem:
-                lower = char.lower()
-                if lower in translit:
-                    converted.append(str(translit[lower]))
-                else:
-                    converted.append(char)
-            stem = "".join(converted)
-
-        stem = unicodedata.normalize("NFKD", stem)
-        stem = stem.encode("ascii", "ignore").decode("ascii")
-
-        if cfg.get("lowercase", True):
-            stem = stem.lower()
-
-        stem = re.sub(r"[^a-zA-Z0-9]+", separator, stem)
-        stem = re.sub(re.escape(separator) + r"{2,}", separator, stem)
-        stem = stem.strip(separator)
-
-        max_len = int(cfg.get("max_stem_length", 120))
-        if max_len > 0:
-            stem = stem[:max_len].rstrip(separator)
-
-        if not stem:
-            stem = "audio"
-
-        extension = path.suffix.lower() or ".mp3"
-        return stem + extension
+        return slugify_remote_name(path, cfg)
 
     @staticmethod
     def _ftp_remote_exists(ftp: ftplib.FTP, remote_name: str):
