@@ -64,6 +64,20 @@
 
 Параметры находятся в `config.json → migration_plus_links`: `skip_existing_working_woas`, `ftp_retry_attempts`, `ftp_retry_delay_seconds`, `ftp_retry_max_delay_seconds`, `ftp_recovery_cycles`, `ftp_recovery_cooldown_seconds`, `ftp_upload_block_size_kb`, `ftp_progress_interval_seconds`, `ftp_data_connect_timeout_seconds`, `ftp_data_port_attempts_per_mode`, `ftp_data_port_retry_delay_seconds`, `ftp_data_timeout_seconds`, `ftp_final_reply_timeout_seconds`, `ftp_final_reply_recovery_checks`, `ftp_final_reply_recovery_delay_seconds`, `ftp_passive_data_modes`, `abort_batch_on_ftp_retry_exhausted`.
 
+### Массовая миграция через WinSCP
+
+Для разовой массовой загрузки предпочтителен отдельный сценарий:
+
+`Миграция плюсов/WinSCP/`
+
+1. `1. Подготовить плюсы для WinSCP.bat` — собирает только ещё нужные плюсы в одну папку, сразу с итоговыми транслитерированными именами, и создаёт манифест соответствий.
+2. Содержимое `data/migration_plus_links/winscp_upload` загружается одной пачкой через WinSCP в `plus_upload.remote_dir`.
+3. `2. Прописать WOAS после WinSCP.bat` — FTP не использует: проверяет публичные HTTPS URL и записывает WOAS только для реально доступных файлов.
+
+Уже существующие рабочие WOAS сохраняются. Если канонический файл уже доступен по HTTPS, повторно включать его в папку загрузки не нужно. Если после WinSCP какие-то URL не работают, они перечисляются в `WinSCP - НЕ ЗАГРУЖЕНО.txt`, а соответствующие минусовки не изменяются.
+
+Прямой Python FTP-маршрут остаётся для диагностики и единичных операций, но для большой разовой миграции WinSCP-схема надёжнее и проще.
+
 ## GUI-комбайн
 
 Все основные операции можно запускать из финального блока **«Инструменты репертуара»** основной программы.
