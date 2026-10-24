@@ -100,94 +100,55 @@ def prepare(config: dict[str, Any], open_folder: bool) -> int:
     if not library_root.is_dir():
         raise RuntimeError(f"Не найден library_root: {library_root}")
 
+    print("Сканирую локальный репертуар...", flush=True)
+
+    filter_mode = MIG.clean(mig_cfg.get("default_filter")) or "all"
+    items = MIG.scan_library(library_root, config, filter_mode, "")
+    ready = [item for item in items if item.get("status") == "ready"]
+
+    print(
+        f"Найдено однозначных плюсов для WinSCP: {len(ready)}",
+        flush=True,
+    )
+
     if upload_dir.exists():
+        print(f"Очищаю предыдущую временную папку: {upload_dir}", flush=True)
         shutil.rmtree(upload_dir)
     upload_dir.mkdir(parents=True, exist_ok=True)
     manifest_path.parent.mkdir(parents=True, exist_ok=True)
     reports_dir.mkdir(parents=True, exist_ok=True)
 
-    timeout = int(
-        mig_cfg.get(
-            "http_check_timeout_seconds",
-            config.get("plus_upload", {}).get("http_check_timeout_seconds", 10),
-        )
-    )
-    filter_mode = MIG.clean(mig_cfg.get("default_filter")) or "all"
-    items = MIG.scan_library(library_root, config, filter_mode, "")
-
-    http_cache: dict[str, tuple[bool, str]] = {}
     manifest_items: list[dict[str, Any]] = []
-    skipped_working_folders = 0
-    already_online = 0
     copied = 0
-    pending_minuses_total = 0
-    working_minuses_total = 0
 
-    for item in items:
-        if item.get("status") != "ready":
-            continue
-
-        pending_minuses: list[str] = []
-        working_minuses: list[dict[str, str]] = []
-
-        for row in item.get("old_woas", []):
-            minus_file = str(row.get("file", ""))
-            old_url = MIG.clean(row.get("woas"))
-            if old_url:
-                ok, detail = http_cached(old_url, timeout, http_cache)
-                if ok:
-                    working_minuses.append(
-                        {
-                            "file": minus_file,
-                            "woas": old_url,
-                            "check": detail,
-                        }
-                    )
-                    continue
-            pending_minuses.append(minus_file)
-
-        if not pending_minuses:
-            skipped_working_folders += 1
-            working_minuses_total += len(working_minuses)
-            continue
-
-        canonical_url = str(item.get("url", ""))
-        canonical_ok, canonical_detail = http_cached(
-            canonical_url,
-            timeout,
-            http_cache,
-        )
-
+    for index, item in enumerate(ready, 1):
         plus_path = Path(item["plus"])
         remote_name = str(item["remote_name"])
-        upload_needed = not canonical_ok
+        destination = upload_dir / remote_name
 
-        if upload_needed:
-            shutil.copy2(plus_path, upload_dir / remote_name)
-            copied += 1
-        else:
-            already_online += 1
+        print(
+            f"[{index}/{len(ready)}] {plus_path.name} -> {remote_name}",
+            flush=True,
+        )
 
-        pending_minuses_total += len(pending_minuses)
-        working_minuses_total += len(working_minuses)
+        shutil.copy2(plus_path, destination)
+        copied += 1
 
         manifest_items.append(
             {
                 "folder": item.get("folder", ""),
                 "plus": str(plus_path),
                 "remote_name": remote_name,
-                "url": canonical_url,
+                "url": str(item.get("url", "")),
                 "local_size": plus_path.stat().st_size,
-                "upload_needed": upload_needed,
-                "canonical_http_check": canonical_detail,
-                "pending_minuses": pending_minuses,
-                "working_minuses_preserved": working_minuses,
+                "minuses": list(item.get("minuses", [])),
+                "old_woas_at_prepare": list(item.get("old_woas", [])),
             }
         )
 
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     payload = {
-        "schema_version": 1,
+        "schema_version": 2,
         "created_at": datetime.now().isoformat(timespec="seconds"),
         "source": "andrey-local / WinSCP plus migration",
         "remote_dir": MIG.clean(
@@ -198,12 +159,11 @@ def prepare(config: dict[str, Any], open_folder: bool) -> int:
         ),
         "upload_dir": str(upload_dir),
         "summary": {
-            "manifest_items": len(manifest_items),
             "files_to_upload": copied,
-            "canonical_already_online": already_online,
-            "folders_skipped_all_woas_working": skipped_working_folders,
-            "pending_minuses": pending_minuses_total,
-            "working_minuses_preserved": working_minuses_total,
+            "minuses_total": sum(
+                len(item.get("minuses", []))
+                for item in manifest_items
+            ),
             "ambiguous_plus": sum(
                 1 for x in items if x.get("status") == "ambiguous_plus"
             ),
@@ -232,17 +192,19 @@ def prepare(config: dict[str, Any], open_folder: bool) -> int:
             [
                 "МИГРАЦИЯ ПЛЮСОВ ЧЕРЕЗ WinSCP",
                 "",
-                "Загрузить содержимое папки:",
+                "Загрузить ВСЕ MP3 из папки:",
                 str(upload_dir),
                 "",
                 "В FTP-папку:",
                 payload["remote_dir"],
                 "",
                 f"Файлов для загрузки: {copied}",
-                f"Уже доступны по HTTPS и не копировались: {already_online}",
                 "",
                 "ВАЖНО: загружать СОДЕРЖИМОЕ папки winscp_upload,",
                 "а не саму папку winscp_upload отдельным уровнем.",
+                "",
+                "Если WinSCP спросит про уже существующий файл с тем же именем,",
+                "можно пропустить его при совпадающем размере или заменить.",
                 "",
                 "После завершения WinSCP запусти:",
                 "2. Прописать WOAS после WinSCP.bat",
@@ -251,13 +213,12 @@ def prepare(config: dict[str, Any], open_folder: bool) -> int:
         encoding="utf-8",
     )
 
-    print("Готово: пакет для WinSCP подготовлен.")
-    print(f"Файлов для загрузки: {copied}")
-    print(f"Уже есть на сайте: {already_online}")
-    print(f"Минусовок ждут WOAS: {pending_minuses_total}")
-    print(f"Папка: {upload_dir}")
-    print(f"FTP-папка назначения: {payload['remote_dir']}")
-    print(f"Манифест: {manifest_path}")
+    print()
+    print("Готово: пакет для WinSCP подготовлен.", flush=True)
+    print(f"Файлов для загрузки: {copied}", flush=True)
+    print(f"Папка: {upload_dir}", flush=True)
+    print(f"FTP-папка назначения: {payload['remote_dir']}", flush=True)
+    print(f"Манифест: {manifest_path}", flush=True)
 
     if open_folder and os.name == "nt":
         os.startfile(upload_dir)  # type: ignore[attr-defined]
@@ -320,7 +281,8 @@ def apply_links(config: dict[str, Any]) -> int:
             continue
 
         minus_results: list[dict[str, str]] = []
-        for minus_text in item.get("pending_minuses", []):
+        minus_paths = item.get("minuses", item.get("pending_minuses", []))
+        for minus_text in minus_paths:
             minus = Path(minus_text)
 
             if not minus.is_file():
