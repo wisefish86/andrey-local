@@ -405,11 +405,23 @@ def load_ftp_password(config: dict[str, Any]) -> str:
     return getpass.getpass("FTP-пароль: ")
 
 
+class FTPRetriesExhausted(RuntimeError):
+    def __init__(self, stage: str, attempts: int, exc: BaseException):
+        self.stage = stage
+        self.attempts = attempts
+        self.original = exc
+        super().__init__(
+            f"FTP [{stage}]: {type(exc).__name__}: {exc}; "
+            f"исчерпано попыток: {attempts}"
+        )
+
+
 class FTPUploader:
     def __init__(self, config: dict[str, Any], password: str):
         self.cfg = config.get("plus_upload", {})
         self.password = password
         self.ftp: ftplib.FTP | None = None
+        self.stage = "инициализация"
 
     def close(self) -> None:
         if self.ftp is None:
@@ -426,22 +438,32 @@ class FTPUploader:
     def connect(self) -> ftplib.FTP:
         self.close()
         ftp = ftplib.FTP()
+
+        self.stage = "подключение к серверу"
         ftp.connect(
             clean(self.cfg.get("server")),
             int(self.cfg.get("port", 21)),
             timeout=int(self.cfg.get("timeout_seconds", 60)),
         )
+
+        self.stage = "авторизация"
         ftp.login(clean(self.cfg.get("username")), self.password)
         ftp.set_pasv(bool(self.cfg.get("passive", True)))
+
+        self.stage = "переход в FTP-папку"
         ftp_ensure_dir(ftp, clean(self.cfg.get("remote_dir")))
+
         self.ftp = ftp
+        self.stage = "готово"
         return ftp
 
     def ensure(self) -> ftplib.FTP:
         if self.ftp is None:
             return self.connect()
         try:
+            self.stage = "проверка соединения"
             self.ftp.voidcmd("NOOP")
+            self.stage = "готово"
             return self.ftp
         except Exception:
             return self.connect()
@@ -452,9 +474,14 @@ class FTPUploader:
         remote_name: str,
         overwrite: bool,
     ) -> tuple[str, int | None]:
+        self.stage = "подготовка соединения"
         ftp = self.ensure()
         local_size = local_path.stat().st_size
+
+        self.stage = "проверка существующего файла"
         exists = ftp_remote_exists(ftp, remote_name)
+
+        self.stage = "проверка размера существующего файла"
         remote_size = ftp_remote_size(ftp, remote_name) if exists is True else None
 
         if exists is True and remote_size == local_size:
@@ -473,11 +500,13 @@ class FTPUploader:
             )
 
         temp_name = f".__migrate__{remote_name}"
+        self.stage = "очистка временного файла"
         try:
             ftp.delete(temp_name)
         except ftplib.error_perm:
             pass
 
+        self.stage = f"загрузка файла ({local_size / 1024 / 1024:.1f} МБ)"
         with local_path.open("rb") as source:
             ftp.storbinary(
                 f"STOR {temp_name}",
@@ -485,6 +514,7 @@ class FTPUploader:
                 blocksize=256 * 1024,
             )
 
+        self.stage = "проверка размера временного файла"
         temp_size = ftp_remote_size(ftp, temp_name)
         if temp_size is not None and temp_size != local_size:
             raise RuntimeError(
@@ -493,14 +523,17 @@ class FTPUploader:
             )
 
         if exists is True:
+            self.stage = "удаление старого файла"
             try:
                 ftp.delete(remote_name)
             except ftplib.error_perm as exc:
                 if str(exc)[:3] != "550":
                     raise
 
+        self.stage = "переименование временного файла"
         ftp.rename(temp_name, remote_name)
 
+        self.stage = "проверка итогового файла"
         final_size = ftp_remote_size(ftp, remote_name)
         if final_size is not None and final_size != local_size:
             raise RuntimeError(
@@ -508,6 +541,7 @@ class FTPUploader:
                 f"{final_size} != {local_size}"
             )
 
+        self.stage = "готово"
         return "uploaded", final_size
 
 
@@ -565,11 +599,11 @@ def apply_items(
     items: list[dict[str, Any]],
     config: dict[str, Any],
     overwrite_remote: bool,
-) -> None:
+) -> bool:
     ready = [item for item in items if item["status"] == "ready"]
     if not ready:
         print("Нет однозначных элементов для применения.")
-        return
+        return False
 
     password = load_ftp_password(config)
     if not password:
@@ -589,7 +623,11 @@ def apply_items(
     )
     ftp_retry_attempts = max(1, int(mig_cfg.get("ftp_retry_attempts", 3)))
     ftp_retry_delay = max(0.0, float(mig_cfg.get("ftp_retry_delay_seconds", 2)))
+    abort_batch_on_ftp_failure = bool(
+        mig_cfg.get("abort_batch_on_ftp_retry_exhausted", True)
+    )
     existing_http_cache: dict[str, tuple[bool, str]] = {}
+    batch_aborted = False
 
     try:
         total = len(ready)
@@ -656,11 +694,17 @@ def apply_items(
                         OSError,
                         ftplib.error_temp,
                     ) as exc:
+                        failed_stage = uploader.stage
                         uploader.close()
                         if attempt >= ftp_retry_attempts:
-                            raise
+                            raise FTPRetriesExhausted(
+                                failed_stage,
+                                ftp_retry_attempts,
+                                exc,
+                            ) from exc
                         print(
-                            f"  ! FTP {type(exc).__name__}: {exc}; "
+                            f"  ! FTP [{failed_stage}] "
+                            f"{type(exc).__name__}: {exc}; "
                             f"повтор {attempt + 1}/{ftp_retry_attempts} "
                             "после переподключения."
                         )
@@ -729,6 +773,26 @@ def apply_items(
                         f"  ✓ обновлено минусовок: {updated_count}{suffix} → {url}"
                     )
 
+            except FTPRetriesExhausted as exc:
+                item["status"] = "apply_error"
+                item["note"] = str(exc)
+                print(f"  ! {item['note']}")
+
+                if abort_batch_on_ftp_failure:
+                    batch_aborted = True
+                    for remaining in ready[index:]:
+                        if remaining.get("status") == "ready":
+                            remaining["status"] = "not_run_after_ftp_abort"
+                            remaining["note"] = (
+                                "Не запускалось: пакет остановлен после "
+                                "исчерпания FTP-повторов на предыдущем файле."
+                            )
+                    print(
+                        "  ⛔ FTP не восстановился после всех повторов. "
+                        "Останавливаю весь APPLY, следующие файлы не трогаю."
+                    )
+                    break
+
             except Exception as exc:
                 item["status"] = "apply_error"
                 item["note"] = f"{type(exc).__name__}: {exc}"
@@ -736,6 +800,8 @@ def apply_items(
 
     finally:
         uploader.close()
+
+    return batch_aborted
 
 
 def print_summary(items: list[dict[str, Any]]) -> None:
@@ -803,7 +869,7 @@ def main() -> int:
             print("Отменено.")
             return 0
 
-    apply_items(
+    batch_aborted = apply_items(
         items,
         config,
         overwrite_remote=args.overwrite_remote
@@ -819,6 +885,14 @@ def main() -> int:
     )
     print(f"\nApply JSON: {apply_json}")
     print(f"Apply CSV:  {apply_csv}")
+
+    if batch_aborted:
+        print(
+            "\nМиграция аварийно остановлена из-за недоступного FTP. "
+            "Уже обработанные файлы сохранены; следующие не запускались."
+        )
+        return 3
+
     return 0
 
 
