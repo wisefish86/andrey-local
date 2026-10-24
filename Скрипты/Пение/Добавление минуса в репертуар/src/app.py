@@ -59,6 +59,7 @@ class MultiSelectButton(QToolButton):
         self._placeholder = placeholder_value
         self._actions: dict[str, QAction] = {}
         self._labels: dict[str, str] = {}
+        self._known_values: set[str] = set()
         menu = self.menu() or None
         if menu is None:
             from PySide6.QtWidgets import QMenu
@@ -77,6 +78,18 @@ class MultiSelectButton(QToolButton):
         self.menu().addAction(action)
         self._actions[value] = action
         self._labels[value] = label
+        if not unknown:
+            self._known_values.add(value)
+
+    def clear_dynamic_options(self):
+        for value in list(self._actions):
+            if value in self._known_values:
+                continue
+            action = self._actions.pop(value)
+            self._labels.pop(value, None)
+            self.menu().removeAction(action)
+            action.deleteLater()
+        self._refresh_text()
 
     def _on_toggled(self, value: str, checked: bool):
         if checked and self._placeholder and value == self._placeholder:
@@ -152,6 +165,7 @@ class MainWindow(QMainWindow):
         self.controls: dict[str, QWidget] = {}
         self.field_defs: dict[str, dict[str, Any]] = {f["id"]: f for f in self.config["fields"]}
         self.tit1_unknown: list[str] = []
+        self.invalid_fields: dict[str, list[str]] = {}
         self._build_ui()
         self._apply_style()
         self.setWindowTitle("Добавление минуса в репертуар")
@@ -237,6 +251,9 @@ class MainWindow(QMainWindow):
         for tone in self.config["filename"].get("tone_options", ["N", "-3", "-2", "-1", "0", "+1", "+2", "+3"]):
             label = "N — неизвестно" if tone == "N" else tone
             self.tone.addItem(label, tone)
+        self.length_version = QComboBox()
+        for value, label in self.config["filename"].get("length_options", [["", "—"], ["F", "F — полная"], ["S", "S — сокращённая"]]):
+            self.length_version.addItem(label, value)
         self.year = QLineEdit()
         self.year.setMaximumWidth(110)
         self.source_url = QLineEdit()
@@ -247,17 +264,19 @@ class MainWindow(QMainWindow):
 
         data_grid.addWidget(QLabel("Тональность"), 0, 0)
         data_grid.addWidget(self.tone, 0, 1)
-        data_grid.addWidget(QLabel("Год"), 0, 2)
-        data_grid.addWidget(self.year, 0, 3)
+        data_grid.addWidget(QLabel("F / S"), 0, 2)
+        data_grid.addWidget(self.length_version, 0, 3)
+        data_grid.addWidget(QLabel("Год"), 0, 4)
+        data_grid.addWidget(self.year, 0, 5)
         data_grid.addWidget(QLabel("Ссылка на плюс"), 1, 0)
-        data_grid.addWidget(self.source_url, 1, 1, 1, 3)
+        data_grid.addWidget(self.source_url, 1, 1, 1, 5)
         data_grid.addWidget(QLabel("Примечание"), 2, 0)
-        data_grid.addWidget(self.version_info, 2, 1, 1, 2)
+        data_grid.addWidget(self.version_info, 2, 1, 1, 4)
         help_btn = QToolButton()
         help_btn.setText("ⓘ")
         help_btn.setToolTip("Обозначения: мз, buy, +click, +Б и другие")
         help_btn.clicked.connect(self.show_help)
-        data_grid.addWidget(help_btn, 2, 3)
+        data_grid.addWidget(help_btn, 2, 5)
         body_layout.addWidget(data_box)
 
         sections = QHBoxLayout()
@@ -347,6 +366,7 @@ class MainWindow(QMainWindow):
             widget.textChanged.connect(self._auto_names_changed)
         self.version.currentTextChanged.connect(self._auto_names_changed)
         self.tone.currentIndexChanged.connect(self._auto_names_changed)
+        self.length_version.currentIndexChanged.connect(self._auto_names_changed)
         self.display_title.textEdited.connect(lambda _t: setattr(self, "title_manual", True))
         self.filename.textEdited.connect(lambda _t: setattr(self, "filename_manual", True))
         self.folder_name.textEdited.connect(lambda _t: setattr(self, "folder_manual", True))
@@ -358,6 +378,7 @@ class MainWindow(QMainWindow):
             language_control.changed.connect(self._language_changed)
         self._reset_controls_to_defaults()
         self._set_tone(self.config["filename"].get("tone_default", "N"))
+        self._set_length(self.config["filename"].get("length_default", ""))
 
     def _make_field_control(self, field: dict[str, Any]):
         if field["control"] == "single_select":
@@ -365,9 +386,16 @@ class MainWindow(QMainWindow):
             combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
             for value, label in field.get("options", []):
                 combo.addItem(label, value)
+            combo.currentIndexChanged.connect(
+                lambda _index, f=field, control=combo: self._revalidate_control(f, control)
+            )
             return combo
         if field["control"] == "multi_select":
-            return MultiSelectButton(field.get("options", []), field.get("placeholder_value", ""))
+            button = MultiSelectButton(field.get("options", []), field.get("placeholder_value", ""))
+            button.changed.connect(
+                lambda f=field, control=button: self._revalidate_control(f, control)
+            )
+            return button
         raise ValueError(f"Unsupported control: {field['control']}")
 
     def _apply_style(self):
@@ -376,6 +404,7 @@ class MainWindow(QMainWindow):
             QGroupBox { border: 1px solid #353b44; border-radius: 8px; margin-top: 10px; padding: 12px; font-weight: 600; }
             QGroupBox::title { subcontrol-origin: margin; left: 10px; padding: 0 5px; }
             QLineEdit, QComboBox, QToolButton { background: #20252c; border: 1px solid #3d4652; border-radius: 6px; padding: 7px; min-height: 20px; }
+            QComboBox[invalid="true"], QToolButton[invalid="true"] { border: 2px solid #d85353; background: #342226; }
             QPushButton { background: #272d35; border: 1px solid #414a56; border-radius: 6px; padding: 8px 12px; }
             QPushButton:hover, QToolButton:hover { background: #313945; }
             QPushButton#primary { background: #276749; border-color: #3c8a68; font-weight: 700; padding: 10px 18px; }
@@ -418,7 +447,10 @@ class MainWindow(QMainWindow):
         if not self.clean_title.text().strip():
             self.clean_title.setText(inferred["clean_title"])
         self._set_version(inferred["version"])
-        self._set_tone(inferred["tone"] or self.config["filename"].get("tone_default", "N"))
+        tone_from_title = self._extract_tone(existing_title)
+        length_from_title = self._extract_length(existing_title)
+        self._set_tone(inferred["tone"] or tone_from_title or self.config["filename"].get("tone_default", "N"))
+        self._set_length(inferred["length"] or length_from_title)
         self.version_info.setText(inferred["version_info"])
 
         tit1_values = read_text(tags, "TIT1")
@@ -476,17 +508,81 @@ class MainWindow(QMainWindow):
             return list(default)
         return [default] if default else []
 
-    def _set_control_values(self, field, control, values: list[str]):
-        values = values or self._default_values(field)
+    def _allowed_values(self, field) -> list[str]:
+        return [clean(value) for value, _label in field.get("options", [])]
+
+    def _canonicalize_values(self, field, values: list[str]) -> list[str]:
+        allowed = self._allowed_values(field)
+        storage = field.get("storage", {})
+        casefold = bool(storage.get("prefix_casefold"))
+        result = []
+        for raw in values:
+            value = clean(raw)
+            if not value:
+                continue
+            if value in allowed:
+                result.append(value)
+                continue
+            if casefold:
+                matched = next((a for a in allowed if a.casefold() == value.casefold()), None)
+                if matched:
+                    result.append(matched)
+                    continue
+            result.append(value)
+        return list(dict.fromkeys(result))
+
+    def _set_invalid_state(self, field, control, invalid_values: list[str]):
+        field_id = field["id"]
+        if invalid_values:
+            self.invalid_fields[field_id] = invalid_values
+            control.setProperty("invalid", True)
+            control.setToolTip(
+                "Значение есть в MP3, но отсутствует в текущей схеме: "
+                + ", ".join(invalid_values)
+                + "\nВыбери актуальное значение перед сохранением."
+            )
+        else:
+            self.invalid_fields.pop(field_id, None)
+            control.setProperty("invalid", False)
+            control.setToolTip("")
+        control.style().unpolish(control)
+        control.style().polish(control)
+
+    def _clear_dynamic_values(self, field, control):
+        allowed = set(self._allowed_values(field))
         if isinstance(control, QComboBox):
-            value = values[0] if values else ""
+            for index in range(control.count() - 1, -1, -1):
+                value = clean(control.itemData(index))
+                if value and value not in allowed:
+                    control.removeItem(index)
+        else:
+            control.clear_dynamic_options()
+
+    def _set_control_values(self, field, control, values: list[str]):
+        self._clear_dynamic_values(field, control)
+        source_values = self._canonicalize_values(field, values)
+        values_to_show = source_values or self._default_values(field)
+        allowed = set(self._allowed_values(field))
+        invalid = [value for value in source_values if value not in allowed]
+
+        if isinstance(control, QComboBox):
+            value = values_to_show[0] if values_to_show else ""
             idx = control.findData(value)
             if idx < 0 and value:
                 control.addItem("⚠ " + value, value)
                 idx = control.count() - 1
-            control.setCurrentIndex(max(idx, 0))
+            with QSignalBlocker(control):
+                control.setCurrentIndex(max(idx, 0))
         else:
-            control.set_values(values)
+            control.set_values(values_to_show)
+
+        self._set_invalid_state(field, control, invalid)
+
+    def _revalidate_control(self, field, control):
+        values = self._canonicalize_values(field, self._get_control_values(field, control))
+        allowed = set(self._allowed_values(field))
+        invalid = [value for value in values if value not in allowed]
+        self._set_invalid_state(field, control, invalid)
 
     def _get_control_values(self, field, control) -> list[str]:
         if isinstance(control, QComboBox):
@@ -518,10 +614,16 @@ class MainWindow(QMainWindow):
         title_part, sep2, artist_part = left.partition(separator)
         title_part = title_part.strip()
         artist = artist_part.strip() if sep2 else ""
+        length = ""
+        lm = re.search(r"\s*\[(F|S)\]\s*$", title_part, re.IGNORECASE)
+        if lm:
+            length = lm.group(1).upper()
+            title_part = title_part[:lm.start()].strip()
+
         tone = ""
-        m = re.search(r"\s*\[([^\]]+)\]\s*$", title_part)
+        m = re.search(r"\s*\[(N|[+-]?\d+)\]\s*$", title_part, re.IGNORECASE)
         if m:
-            tone = m.group(1).strip()
+            tone = m.group(1).upper() if m.group(1).upper() == "N" else m.group(1)
             title_part = title_part[:m.start()].strip()
 
         version = ""
@@ -533,7 +635,32 @@ class MainWindow(QMainWindow):
                 version = candidate
                 title_part = title_part[:vm.start()].strip()
 
-        return {"clean_title": title_part, "artist": artist, "version": version, "tone": tone, "version_info": version_info}
+        return {"clean_title": title_part, "artist": artist, "version": version, "tone": tone, "length": length, "version_info": version_info}
+
+    @staticmethod
+    def _extract_length(text: str) -> str:
+        match = re.search(r"\[(F|S)\]", clean(text), re.IGNORECASE)
+        return match.group(1).upper() if match else ""
+
+    @staticmethod
+    def _extract_tone(text: str) -> str:
+        matches = re.findall(r"\[(N|[+-]?\d+)\]", clean(text), re.IGNORECASE)
+        for value in matches:
+            if value.upper() in {"F", "S"}:
+                continue
+            return value.upper() if value.upper() == "N" else value
+        return ""
+
+    def _set_length(self, value: str):
+        value = clean(value).upper()
+        idx = self.length_version.findData(value)
+        if idx < 0:
+            idx = self.length_version.findData("")
+        self.length_version.setCurrentIndex(max(idx, 0))
+
+    def _length_suffix(self) -> str:
+        value = clean(self.length_version.currentData()).upper()
+        return f" [{value}]" if value in {"F", "S"} else ""
 
     def _set_version(self, value: str):
         value = clean(value)
@@ -599,7 +726,7 @@ class MainWindow(QMainWindow):
     def generated_title(self) -> str:
         name = self.clean_title.text().strip()
         symbol = self._title_symbol()
-        return f"{symbol} {name}{self._version_suffix()}".strip()
+        return f"{symbol} {name}{self._version_suffix()}{self._tone_suffix()}{self._length_suffix()}".strip()
 
     def reset_title_template(self):
         self.title_manual = False
@@ -612,7 +739,7 @@ class MainWindow(QMainWindow):
     def generated_filename(self) -> str:
         title = self.clean_title.text().strip()
         artist = self.artist.text().strip()
-        return f"{title}{self._version_suffix()}{self._tone_suffix()} _____ {artist}{self._info_suffix()}.mp3"
+        return f"{title}{self._version_suffix()}{self._tone_suffix()}{self._length_suffix()} _____ {artist}{self._info_suffix()}.mp3"
 
     def generated_folder_name(self) -> str:
         return f"{self.clean_title.text().strip()} _____ {self.artist.text().strip()}"
@@ -682,6 +809,16 @@ class MainWindow(QMainWindow):
     def _validate(self) -> tuple[Path, Path | None, Path | None]:
         if not self.current_path or not self.current_path.is_file():
             raise ValueError("Исходный MP3 не найден.")
+        if self.invalid_fields:
+            details = []
+            for field_id, values in self.invalid_fields.items():
+                label = self.field_defs.get(field_id, {}).get("label", field_id)
+                details.append(f"{label}: {', '.join(values)}")
+            raise ValueError(
+                "В MP3 есть значения, которых нет в текущей схеме тегов:\n"
+                + "\n".join(details)
+                + "\n\nИсправь красные поля перед сохранением."
+            )
         if not self.artist.text().strip():
             raise ValueError("Не заполнен исполнитель.")
         if not self.clean_title.text().strip():
@@ -903,6 +1040,8 @@ class MainWindow(QMainWindow):
         self.folder_manual = False
         self._set_version("")
         self._set_tone(self.config["filename"].get("tone_default", "N"))
+        self._set_length(self.config["filename"].get("length_default", ""))
+        self.invalid_fields.clear()
         self._reset_controls_to_defaults()
         self.rename_folder.setChecked(False)
         self.move_folder.setChecked(False)
