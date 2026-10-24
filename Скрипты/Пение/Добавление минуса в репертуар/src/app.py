@@ -11,7 +11,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Any
-from urllib.parse import quote, unquote, urlsplit
+from urllib.parse import quote, quote_plus, unquote, urlsplit
 
 from PySide6.QtCore import Qt, QSignalBlocker, Signal, QTimer
 from PySide6.QtGui import QAction, QDesktopServices
@@ -151,10 +151,14 @@ class DropFrame(QFrame):
         self.setAcceptDrops(True)
         self.setObjectName("dropFrame")
         layout = QVBoxLayout(self)
+        layout.setContentsMargins(12, 10, 12, 10)
+        layout.setSpacing(3)
         self.label = QLabel("Перетащи сюда MP3-минусовку")
+        self.label.setMinimumHeight(24)
         self.label.setAlignment(Qt.AlignCenter)
         self.label.setObjectName("dropTitle")
         hint = QLabel("или нажми «Выбрать MP3»")
+        hint.setMinimumHeight(22)
         hint.setAlignment(Qt.AlignCenter)
         hint.setObjectName("muted")
         layout.addWidget(self.label)
@@ -313,7 +317,8 @@ class MainWindow(QMainWindow):
 
         top = QHBoxLayout()
         self.drop = DropFrame()
-        self.drop.setMaximumHeight(72)
+        self.drop.setMinimumHeight(78)
+        self.drop.setMaximumHeight(92)
         self.drop.fileDropped.connect(self.load_file)
         top.addWidget(self.drop, 1)
         choose = QPushButton("Выбрать MP3")
@@ -367,6 +372,14 @@ class MainWindow(QMainWindow):
         for value, label in self.config["filename"].get("length_options", [["", "—"], ["F", "F — полная"], ["S", "S — сокращённая"]]):
             self.length_version.addItem(label, value)
 
+        language_field = self.field_defs.get("language")
+        if language_field is None:
+            raise RuntimeError("В config.json отсутствует поле language")
+        self.language_control = self._make_field_control(language_field)
+        self.language_label = QLabel(language_field["label"])
+        self.controls["language"] = self.language_control
+        self.field_labels["language"] = self.language_label
+
         self.version_info = QLineEdit()
         self.version_info.setPlaceholderText("Свободный текст или быстрые чипы ниже")
         self.filename = QLineEdit()
@@ -386,25 +399,28 @@ class MainWindow(QMainWindow):
         reset_title.clicked.connect(self.reset_title_template)
         grid.addWidget(reset_title, 2, 5)
 
-        grid.addWidget(QLabel("Тональность"), 3, 0)
-        grid.addWidget(self.tone, 3, 1)
-        grid.addWidget(QLabel("F / S"), 3, 2)
-        grid.addWidget(self.length_version, 3, 3)
+        grid.addWidget(self.language_label, 3, 0)
+        grid.addWidget(self.language_control, 3, 1)
+        grid.addWidget(QLabel("Тональность"), 3, 2)
+        grid.addWidget(self.tone, 3, 3)
+        grid.addWidget(QLabel("F / S"), 3, 4)
+        grid.addWidget(self.length_version, 3, 5)
+
         trim_cfg = self.config.get("title", {}).get("flags", {}).get("trim", {})
         self.trim_needed = QCheckBox(
             f"{clean(trim_cfg.get('symbol')) or '✂️'} {clean(trim_cfg.get('label')) or 'Укоротить'}"
         )
         self.trim_needed.setChecked(bool(trim_cfg.get("default", False)))
         self.trim_needed.setToolTip("Добавить ножницы перед Title, чтобы отметить минус на укорочение")
-        grid.addWidget(self.trim_needed, 3, 4, 1, 2)
+        grid.addWidget(self.trim_needed, 4, 1, 1, 5)
 
-        grid.addWidget(QLabel("Примечание"), 4, 0)
-        grid.addWidget(self.version_info, 4, 1, 1, 4)
+        grid.addWidget(QLabel("Примечание"), 5, 0)
+        grid.addWidget(self.version_info, 5, 1, 1, 4)
         help_btn = QToolButton()
         help_btn.setText("ⓘ")
         help_btn.setToolTip("Справка по обозначениям")
         help_btn.clicked.connect(self.show_help)
-        grid.addWidget(help_btn, 4, 5)
+        grid.addWidget(help_btn, 5, 5)
 
         chips = QHBoxLayout()
         chips.setSpacing(5)
@@ -415,28 +431,28 @@ class MainWindow(QMainWindow):
             chip.clicked.connect(lambda _checked=False, v=value: self._append_note_chip(v))
             chips.addWidget(chip)
         chips.addStretch(1)
-        grid.addLayout(chips, 5, 1, 1, 5)
+        grid.addLayout(chips, 6, 1, 1, 5)
 
-        grid.addWidget(QLabel("Файл минуса"), 6, 0)
-        grid.addWidget(self.filename, 6, 1, 1, 4)
+        grid.addWidget(QLabel("Файл минуса"), 7, 0)
+        grid.addWidget(self.filename, 7, 1, 1, 4)
         reset_name = QPushButton("По шаблону")
         reset_name.clicked.connect(self.reset_filename_template)
-        grid.addWidget(reset_name, 6, 5)
+        grid.addWidget(reset_name, 7, 5)
 
-        grid.addWidget(QLabel("Папка песни"), 7, 0)
-        grid.addWidget(self.folder_name, 7, 1, 1, 4)
+        grid.addWidget(QLabel("Папка песни"), 8, 0)
+        grid.addWidget(self.folder_name, 8, 1, 1, 4)
         reset_folder = QPushButton("По шаблону")
         reset_folder.clicked.connect(self.reset_folder_template)
-        grid.addWidget(reset_folder, 7, 5)
+        grid.addWidget(reset_folder, 8, 5)
 
         self.rename_folder = QCheckBox("Переименовать папку песни по шаблону")
         self.move_folder = QCheckBox("Перенести папку песни в основной репертуар")
-        grid.addWidget(self.rename_folder, 8, 1, 1, 2)
-        grid.addWidget(self.move_folder, 8, 3, 1, 3)
+        grid.addWidget(self.rename_folder, 9, 1, 1, 2)
+        grid.addWidget(self.move_folder, 9, 3, 1, 3)
 
         self.target_label = QLabel("")
         self.target_label.setObjectName("muted")
-        grid.addWidget(self.target_label, 9, 1, 1, 5)
+        grid.addWidget(self.target_label, 10, 1, 1, 5)
 
         song_section.add_widget(song_widget)
         body_layout.addWidget(song_section)
@@ -457,9 +473,20 @@ class MainWindow(QMainWindow):
 
         self.year = QLineEdit()
         self.year.setMaximumWidth(120)
-        search_form.addRow("Год", self.year)
+        year_row = QHBoxLayout()
+        year_row.setContentsMargins(0, 0, 0, 0)
+        year_row.setSpacing(7)
+        year_row.addWidget(self.year)
+        year_search = QPushButton("🔎 Найти год в Google")
+        year_search.setToolTip("Искать дату выхода песни по исполнителю и названию")
+        year_search.clicked.connect(self.search_year_google)
+        year_row.addWidget(year_search)
+        year_row.addStretch(1)
+        search_form.addRow("Год", year_row)
 
         for field in self.config["fields"]:
+            if field["id"] == "language":
+                continue
             control = self._make_field_control(field)
             field_label = QLabel(field["label"])
             self.controls[field["id"]] = control
@@ -629,45 +656,116 @@ class MainWindow(QMainWindow):
         tools_layout.setHorizontalSpacing(10)
         tools_layout.setVerticalSpacing(8)
 
-        rescan_site_btn = QPushButton("↻ Пересканировать для Singer Andrey")
-        rescan_site_btn.setToolTip(
-            "Перечитать все MP3-минусовки из основного репертуара и создать repertoire.json"
-        )
-        rescan_site_btn.clicked.connect(
-            lambda: self.launch_repertoire_tool("site_rescan")
-        )
+        def tool_button(text: str, tooltip: str, callback):
+            button = QPushButton(text)
+            button.setToolTip(tooltip)
+            button.clicked.connect(callback)
+            return button
 
-        open_site_json_btn = QPushButton("📄 Открыть repertoire.json")
-        open_site_json_btn.setToolTip("Открыть последний JSON-экспорт репертуара")
-        open_site_json_btn.clicked.connect(self.open_site_export)
-
-        migrate_check_btn = QPushButton("🔎 Миграция плюсов — проверка")
-        migrate_check_btn.setToolTip("Dry-run: ничего не загружает и не меняет")
-        migrate_check_btn.clicked.connect(
-            lambda: self.launch_repertoire_tool("migrate_plus_check")
+        tools_layout.addWidget(
+            tool_button(
+                "↻ Пересканировать для Singer Andrey",
+                "Перечитать все MP3-минусовки и создать repertoire.json",
+                lambda: self.launch_repertoire_tool("site_rescan"),
+            ),
+            0, 0,
         )
-
-        migrate_apply_btn = QPushButton("⬆ Миграция плюсов — применить")
-        migrate_apply_btn.setToolTip(
-            "Пакетно загрузить однозначные плюсы на FTP и записать WOAS; "
-            "в BAT дополнительно требуется подтверждение APPLY"
+        tools_layout.addWidget(
+            tool_button(
+                "📄 Открыть repertoire.json",
+                "Открыть последний JSON-экспорт репертуара",
+                self.open_site_export,
+            ),
+            0, 1,
         )
-        migrate_apply_btn.clicked.connect(
-            lambda: self.launch_repertoire_tool("migrate_plus_apply")
+        tools_layout.addWidget(
+            tool_button(
+                "🔎 Миграция плюсов — проверка",
+                "Dry-run: ничего не загружает и не меняет",
+                lambda: self.launch_repertoire_tool("migrate_plus_check"),
+            ),
+            1, 0,
+        )
+        tools_layout.addWidget(
+            tool_button(
+                "⚠ Проблемные папки",
+                "Открыть последний список папок без плюса или с несколькими кандидатами",
+                self.open_migration_problems,
+            ),
+            1, 1,
+        )
+        tools_layout.addWidget(
+            tool_button(
+                "⬆ Миграция плюсов — применить",
+                "Загрузить однозначные плюсы на FTP и записать WOAS",
+                lambda: self.launch_repertoire_tool("migrate_plus_apply"),
+            ),
+            2, 0,
+        )
+        tools_layout.addWidget(
+            tool_button(
+                "🧾 Импорт тегов из CSV",
+                "Открыть универсальный импорт тегов",
+                lambda: self.launch_repertoire_tool("import_tags"),
+            ),
+            2, 1,
+        )
+        tools_layout.addWidget(
+            tool_button(
+                "📝 Исправление лирики",
+                "Открыть инструмент проверки/исправления встроенной лирики",
+                lambda: self.launch_repertoire_tool("fix_lyrics"),
+            ),
+            3, 0,
+        )
+        tools_layout.addWidget(
+            tool_button(
+                "📂 Распределение минусов",
+                "Запустить распределение минусов по папкам для Syncthing",
+                lambda: self.launch_repertoire_tool("distribute_minuses"),
+            ),
+            3, 1,
+        )
+        tools_layout.addWidget(
+            tool_button(
+                "🎵 Подготовить текущий MP3 для фонотеки",
+                "Передать текущий MP3 в старый инструмент подготовки фонотеки",
+                lambda: self.launch_repertoire_tool("prepare_phonotheque", pass_current_file=True),
+            ),
+            4, 0,
+        )
+        tools_layout.addWidget(
+            tool_button(
+                "📁 Открыть все инструменты",
+                "Открыть папку со всеми сервисными утилитами, включая нормализацию аудио/видео",
+                self.open_tools_folder,
+            ),
+            4, 1,
+        )
+        tools_layout.addWidget(
+            tool_button(
+                "ⓘ Справка по программе",
+                "Открыть встроенную справку основной программы",
+                self.show_help,
+            ),
+            5, 0,
+        )
+        tools_layout.addWidget(
+            tool_button(
+                "📖 Справка по инструментам",
+                "Открыть README контейнера инструментов",
+                lambda: self.open_configured_file("tools_help", "Справка по инструментам"),
+            ),
+            5, 1,
         )
 
         tools_hint = QLabel(
-            "Редкие операции над всем репертуаром. "
-            "Перескан сайта читает ID3 напрямую и не изменяет MP3."
+            "Все редкие операции над минусами собраны здесь и физически лежат "
+            "в подпапках «Инструменты репертуара»."
         )
         tools_hint.setWordWrap(True)
         tools_hint.setObjectName("muted")
-
-        tools_layout.addWidget(rescan_site_btn, 0, 0)
-        tools_layout.addWidget(open_site_json_btn, 0, 1)
-        tools_layout.addWidget(migrate_check_btn, 1, 0)
-        tools_layout.addWidget(migrate_apply_btn, 1, 1)
-        tools_layout.addWidget(tools_hint, 2, 0, 1, 2)
+        tools_layout.addWidget(tools_hint, 6, 0, 1, 2)
         tools_section.add_widget(tools_widget)
         body_layout.addWidget(tools_section)
 
@@ -756,6 +854,11 @@ class MainWindow(QMainWindow):
             QToolButton { text-align: center; }
             QLabel[attention="true"] { color: #f2c94c; }
             QComboBox[invalid="true"], QToolButton[invalid="true"] { border: 2px solid #d85353; background: #342226; }
+            QCheckBox { spacing: 8px; }
+            QCheckBox::indicator { width: 17px; height: 17px; border: 2px solid #71869d; border-radius: 4px; background: #11161c; }
+            QCheckBox::indicator:hover { border-color: #a7c2dc; background: #18212b; }
+            QCheckBox::indicator:checked { border-color: #8bc5ff; background: #4b8fce; }
+            QCheckBox::indicator:disabled { border-color: #46515d; background: #171b20; }
             QPushButton { background: #272d35; border: 1px solid #414a56; border-radius: 6px; padding: 8px 12px; }
             QPushButton:hover, QToolButton:hover { background: #313945; }
             QPushButton#primary { background: #276749; border-color: #3c8a68; font-weight: 700; padding: 10px 18px; }
@@ -1366,6 +1469,22 @@ class MainWindow(QMainWindow):
                 if idx >= 0:
                     control.setCurrentIndex(idx)
                 break
+
+    def search_year_google(self):
+        artist = self.artist.text().strip()
+        name = self._strip_version_suffix(self.clean_title.text())
+        template = clean(
+            self.config.get("search", {}).get(
+                "year_google_query",
+                "{artist} {name} дата выхода песни год релиза",
+            )
+        )
+        query = template.format(artist=artist, name=name).strip()
+        if not query:
+            query = f"{artist} {name} дата выхода песни год релиза".strip()
+        url = "https://www.google.com/search?q=" + quote_plus(query)
+        if not QDesktopServices.openUrl(QUrl(url)):
+            QMessageBox.warning(self, "Поиск года", "Не удалось открыть браузер.")
 
     def _update_target_preview(self):
         if not self.current_path:
@@ -2287,7 +2406,7 @@ class MainWindow(QMainWindow):
         if not QDesktopServices.openUrl(QUrl(url)):
             QMessageBox.warning(self, "Ссылка на плюс", f"Не удалось открыть:\n{url}")
 
-    def launch_repertoire_tool(self, tool_id: str):
+    def launch_repertoire_tool(self, tool_id: str, pass_current_file: bool = False):
         rel = clean(self.config.get("tools", {}).get(tool_id))
         if not rel:
             QMessageBox.warning(
@@ -2306,17 +2425,59 @@ class MainWindow(QMainWindow):
             )
             return
 
+        if pass_current_file and (not self.current_path or not self.current_path.is_file()):
+            QMessageBox.warning(
+                self,
+                "Инструменты репертуара",
+                "Сначала выбери текущий MP3.",
+            )
+            return
+
         try:
             if os.name == "nt":
-                os.startfile(str(path))
+                if pass_current_file:
+                    subprocess.Popen(
+                        ["cmd.exe", "/c", str(path), str(self.current_path)],
+                        creationflags=getattr(subprocess, "CREATE_NEW_CONSOLE", 0),
+                    )
+                else:
+                    os.startfile(str(path))
             else:
-                subprocess.Popen([str(path)])
+                args = [str(path)]
+                if pass_current_file:
+                    args.append(str(self.current_path))
+                subprocess.Popen(args)
             self.status.setText(f"Запущено: {path.name}")
         except Exception as exc:
             QMessageBox.critical(
                 self,
                 "Инструменты репертуара",
                 f"Не удалось запустить {path.name}:\n{exc}",
+            )
+
+    def open_configured_file(self, tool_id: str, title: str):
+        rel = clean(self.config.get("tools", {}).get(tool_id))
+        path = APP_ROOT / Path(rel) if rel else None
+        if not path or not path.is_file():
+            QMessageBox.information(
+                self,
+                title,
+                f"Файл ещё не создан или не найден:\n{path or rel}",
+            )
+            return
+        if not QDesktopServices.openUrl(QUrl.fromLocalFile(str(path))):
+            QMessageBox.warning(self, title, f"Не удалось открыть:\n{path}")
+
+    def open_migration_problems(self):
+        self.open_configured_file("migration_problems", "Проблемные папки")
+
+    def open_tools_folder(self):
+        path = APP_ROOT / "Инструменты репертуара"
+        if not QDesktopServices.openUrl(QUrl.fromLocalFile(str(path))):
+            QMessageBox.warning(
+                self,
+                "Инструменты репертуара",
+                f"Не удалось открыть:\n{path}",
             )
 
     def open_site_export(self):
