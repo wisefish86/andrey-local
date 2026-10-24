@@ -419,6 +419,7 @@ class FTPRetriesExhausted(RuntimeError):
 class FTPUploader:
     def __init__(self, config: dict[str, Any], password: str):
         self.cfg = config.get("plus_upload", {})
+        self.mig_cfg = config.get("migration_plus_links", {})
         self.password = password
         self.ftp: ftplib.FTP | None = None
         self.stage = "инициализация"
@@ -468,6 +469,89 @@ class FTPUploader:
         except Exception:
             return self.connect()
 
+    def _upload_stream(
+        self,
+        ftp: ftplib.FTP,
+        local_path: Path,
+        remote_name: str,
+        local_size: int,
+    ) -> int:
+        block_size = max(
+            8 * 1024,
+            int(self.mig_cfg.get("ftp_upload_block_size_kb", 64)) * 1024,
+        )
+        progress_interval = max(
+            0.2,
+            float(self.mig_cfg.get("ftp_progress_interval_seconds", 1.0)),
+        )
+        data_timeout = max(
+            5,
+            int(
+                self.mig_cfg.get(
+                    "ftp_data_timeout_seconds",
+                    self.cfg.get("timeout_seconds", 60),
+                )
+            ),
+        )
+
+        ftp.voidcmd("TYPE I")
+        self.stage = "открытие FTP data-соединения"
+
+        sent = 0
+        started = time.monotonic()
+        last_progress = started - progress_interval
+        progress_shown = False
+        total_mb = local_size / 1024 / 1024
+
+        try:
+            with local_path.open("rb") as source:
+                with ftp.transfercmd(f"STOR {remote_name}") as conn:
+                    conn.settimeout(data_timeout)
+
+                    while True:
+                        chunk = source.read(block_size)
+                        if not chunk:
+                            break
+
+                        self.stage = (
+                            "передача данных "
+                            f"({sent / 1024 / 1024:.1f}/{total_mb:.1f} МБ)"
+                        )
+                        conn.sendall(chunk)
+                        sent += len(chunk)
+
+                        now = time.monotonic()
+                        if (
+                            now - last_progress >= progress_interval
+                            or sent >= local_size
+                        ):
+                            elapsed = max(now - started, 0.001)
+                            speed_kbps = sent / 1024 / elapsed
+                            percent = (
+                                min(100.0, sent * 100.0 / local_size)
+                                if local_size
+                                else 100.0
+                            )
+                            print(
+                                "\r    ↑ "
+                                f"{sent / 1024 / 1024:.1f}/{total_mb:.1f} МБ "
+                                f"({percent:5.1f}%) · {speed_kbps:.0f} КБ/с",
+                                end="",
+                                flush=True,
+                            )
+                            progress_shown = True
+                            last_progress = now
+        finally:
+            if progress_shown:
+                print()
+
+        self.stage = (
+            "ожидание ответа FTP-сервера после передачи "
+            f"({sent / 1024 / 1024:.1f}/{total_mb:.1f} МБ)"
+        )
+        ftp.voidresp()
+        return sent
+
     def upload(
         self,
         local_path: Path,
@@ -500,18 +584,40 @@ class FTPUploader:
             )
 
         temp_name = f".__migrate__{remote_name}"
-        self.stage = "очистка временного файла"
-        try:
-            ftp.delete(temp_name)
-        except ftplib.error_perm:
-            pass
 
-        self.stage = f"загрузка файла ({local_size / 1024 / 1024:.1f} МБ)"
-        with local_path.open("rb") as source:
-            ftp.storbinary(
-                f"STOR {temp_name}",
-                source,
-                blocksize=256 * 1024,
+        self.stage = "проверка временного файла"
+        temp_exists = ftp_remote_exists(ftp, temp_name)
+        temp_existing_size = (
+            ftp_remote_size(ftp, temp_name)
+            if temp_exists is True
+            else None
+        )
+
+        if temp_exists is True and temp_existing_size == local_size:
+            print(
+                "  ↻ найден полностью переданный временный файл; "
+                "повторная загрузка не нужна."
+            )
+        else:
+            if temp_exists is True and temp_existing_size:
+                print(
+                    "  ↻ найден незавершённый временный файл: "
+                    f"{temp_existing_size / 1024 / 1024:.1f}/"
+                    f"{local_size / 1024 / 1024:.1f} МБ; "
+                    "загрузка начнётся заново."
+                )
+
+            self.stage = "очистка временного файла"
+            try:
+                ftp.delete(temp_name)
+            except ftplib.error_perm:
+                pass
+
+            self._upload_stream(
+                ftp,
+                local_path,
+                temp_name,
+                local_size,
             )
 
         self.stage = "проверка размера временного файла"
