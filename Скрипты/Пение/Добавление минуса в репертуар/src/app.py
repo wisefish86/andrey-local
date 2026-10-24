@@ -2230,6 +2230,8 @@ class MainWindow(QMainWindow):
             return
 
         remote_name = self._slugify_remote_name(self.plus_path)
+        local_size = self.plus_path.stat().st_size
+        url = public_base + "/" + quote(remote_name)
         temp_name = f".__uploading__{remote_name}"
         ftp = ftplib.FTP()
         stage = "подключение к FTP"
@@ -2254,10 +2256,45 @@ class MainWindow(QMainWindow):
             stage = "проверка существующего файла"
             exists = self._ftp_remote_exists(ftp, remote_name)
             if exists is True:
+                stage = "проверка размера существующего файла"
+                existing_size = self._ftp_remote_size(ftp, remote_name)
+
+                if existing_size == local_size:
+                    self.source_url.setText(url)
+                    self._update_plus_delete_enabled()
+
+                    stage = "запись существующей ссылки в WOAS"
+                    self._save_plus_url_to_current_mp3(url)
+
+                    self.plus_drop.label.setText(
+                        f"✓ {remote_name} · уже на FTP, ссылка использована"
+                    )
+                    self.status.setText(
+                        "Плюс уже есть на FTP; повторная загрузка не нужна. "
+                        "Ссылка сохранена в WOAS текущего минуса."
+                    )
+                    self.check_plus_url(True)
+
+                    if cfg.get("open_public_url_after_upload"):
+                        QDesktopServices.openUrl(QUrl(url))
+                    return
+
+                if existing_size is None:
+                    size_note = (
+                        "Размер существующего файла сервер определить не дал."
+                    )
+                else:
+                    size_note = (
+                        f"Размер на FTP: {existing_size} байт.\n"
+                        f"Локальный файл: {local_size} байт."
+                    )
+
                 answer = QMessageBox.question(
                     self,
                     "Файл уже есть",
-                    f"{remote_name}\n\nФайл уже существует на FTP. Перезаписать?",
+                    f"{remote_name}\n\n{size_note}\n\n"
+                    "Автоматически использовать существующий файл нельзя. "
+                    "Перезаписать его текущим плюсом?",
                     QMessageBox.Yes | QMessageBox.No,
                     QMessageBox.No,
                 )
@@ -2290,7 +2327,6 @@ class MainWindow(QMainWindow):
 
             stage = "проверка размера загруженного файла"
             remote_size = self._ftp_remote_size(ftp, temp_name)
-            local_size = self.plus_path.stat().st_size
             if remote_size is not None and remote_size != local_size:
                 raise RuntimeError(
                     f"Размер временного файла на FTP не совпал: {remote_size} != {local_size}"
@@ -2324,7 +2360,6 @@ class MainWindow(QMainWindow):
                     f"Размер итогового файла на FTP не совпал: {final_size} != {local_size}"
                 )
 
-            url = public_base + "/" + quote(remote_name)
             self.source_url.setText(url)
             self._update_plus_delete_enabled()
 
