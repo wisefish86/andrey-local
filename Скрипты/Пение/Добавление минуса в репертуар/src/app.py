@@ -56,6 +56,7 @@ class MultiSelectButton(QToolButton):
         self.setPopupMode(QToolButton.InstantPopup)
         self.setToolButtonStyle(Qt.ToolButtonTextOnly)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.setMinimumHeight(36)
         self._placeholder = placeholder_value
         self._actions: dict[str, QAction] = {}
         self._labels: dict[str, str] = {}
@@ -163,6 +164,7 @@ class MainWindow(QMainWindow):
         self.folder_manual = False
         self.title_manual = False
         self.controls: dict[str, QWidget] = {}
+        self.field_labels: dict[str, QLabel] = {}
         self.field_defs: dict[str, dict[str, Any]] = {f["id"]: f for f in self.config["fields"]}
         self.tit1_unknown: list[str] = []
         self.unmapped_structured_tags: list[str] = []
@@ -249,9 +251,17 @@ class MainWindow(QMainWindow):
         data_grid.setVerticalSpacing(7)
 
         self.tone = QComboBox()
-        for tone in self.config["filename"].get("tone_options", ["N", "-3", "-2", "-1", "0", "+1", "+2", "+3"]):
-            label = "N — неизвестно" if tone == "N" else tone
-            self.tone.addItem(label, tone)
+        tone_options = self.config["filename"].get(
+            "tone_options",
+            [["", "—"], ["N", "N — неизвестно"], ["-3", "-3"], ["-2", "-2"], ["-1", "-1"], ["0", "0"], ["+1", "+1"], ["+2", "+2"], ["+3", "+3"]]
+        )
+        for item in tone_options:
+            if isinstance(item, (list, tuple)) and len(item) == 2:
+                value, label = item
+            else:
+                value = str(item)
+                label = "N — неизвестно" if value == "N" else value
+            self.tone.addItem(label, value)
         self.length_version = QComboBox()
         for value, label in self.config["filename"].get("length_options", [["", "—"], ["F", "F — полная"], ["S", "S — сокращённая"]]):
             self.length_version.addItem(label, value)
@@ -291,16 +301,18 @@ class MainWindow(QMainWindow):
 
         for field in self.config["fields"]:
             control = self._make_field_control(field)
+            field_label = QLabel(field["label"])
             self.controls[field["id"]] = control
+            self.field_labels[field["id"]] = field_label
             section = field["section"]
             if section == "performance":
-                perf_form.addRow(field["label"], control)
+                perf_form.addRow(field_label, control)
             elif section == "search":
-                search_form.addRow(field["label"], control)
+                search_form.addRow(field_label, control)
             elif section == "extra":
                 row = extra_index // 2
                 col = (extra_index % 2) * 2
-                extra_grid.addWidget(QLabel(field["label"]), row, col)
+                extra_grid.addWidget(field_label, row, col)
                 extra_grid.addWidget(control, row, col + 1)
                 extra_index += 1
 
@@ -378,7 +390,7 @@ class MainWindow(QMainWindow):
         if isinstance(language_control, MultiSelectButton):
             language_control.changed.connect(self._language_changed)
         self._reset_controls_to_defaults()
-        self._set_tone(self.config["filename"].get("tone_default", "N"))
+        self._set_tone(self.config["filename"].get("tone_default", ""))
         self._set_length(self.config["filename"].get("length_default", ""))
 
     def _make_field_control(self, field: dict[str, Any]):
@@ -405,6 +417,8 @@ class MainWindow(QMainWindow):
             QGroupBox { border: 1px solid #353b44; border-radius: 8px; margin-top: 10px; padding: 12px; font-weight: 600; }
             QGroupBox::title { subcontrol-origin: margin; left: 10px; padding: 0 5px; }
             QLineEdit, QComboBox, QToolButton { background: #20252c; border: 1px solid #3d4652; border-radius: 6px; padding: 7px; min-height: 20px; }
+            QToolButton { text-align: center; }
+            QLabel[attention="true"] { color: #f2c94c; }
             QComboBox[invalid="true"], QToolButton[invalid="true"] { border: 2px solid #d85353; background: #342226; }
             QPushButton { background: #272d35; border: 1px solid #414a56; border-radius: 6px; padding: 8px 12px; }
             QPushButton:hover, QToolButton:hover { background: #313945; }
@@ -450,7 +464,7 @@ class MainWindow(QMainWindow):
         self._set_version(inferred["version"] or self._extract_version(existing_title))
         tone_from_title = self._extract_tone(existing_title)
         length_from_title = self._extract_length(existing_title)
-        self._set_tone(inferred["tone"] or tone_from_title or self.config["filename"].get("tone_default", "N"))
+        self._set_tone(inferred["tone"] or tone_from_title or self.config["filename"].get("tone_default", ""))
         self._set_length(inferred["length"] or length_from_title)
         self.version_info.setText(inferred["version_info"])
 
@@ -582,12 +596,36 @@ class MainWindow(QMainWindow):
             control.set_values(values_to_show)
 
         self._set_invalid_state(field, control, invalid)
+        self._update_attention_label(field, control)
 
     def _revalidate_control(self, field, control):
         values = self._canonicalize_values(field, self._get_control_values(field, control))
         allowed = set(self._allowed_values(field))
         invalid = [value for value in values if value not in allowed]
         self._set_invalid_state(field, control, invalid)
+        self._update_attention_label(field, control)
+
+    def _update_attention_label(self, field, control):
+        label = self.field_labels.get(field["id"])
+        if label is None:
+            return
+
+        needs_attention = False
+        if field.get("attention_required"):
+            values = self._canonicalize_values(field, self._get_control_values(field, control))
+            placeholder = clean(field.get("placeholder_value"))
+            mode = field.get("attention_mode", "placeholder")
+            if mode == "placeholder":
+                needs_attention = bool(placeholder and placeholder in values)
+            elif mode == "empty_or_placeholder":
+                needs_attention = (not values) or bool(placeholder and placeholder in values)
+
+        label.setProperty("attention", needs_attention)
+        font = label.font()
+        font.setUnderline(needs_attention)
+        label.setFont(font)
+        label.style().unpolish(label)
+        label.style().polish(label)
 
     def _get_control_values(self, field, control) -> list[str]:
         if isinstance(control, QComboBox):
@@ -716,7 +754,7 @@ class MainWindow(QMainWindow):
         return f" ({version})" if version else ""
 
     def _set_tone(self, value: str):
-        value = clean(value).strip("[]") or self.config["filename"].get("tone_default", "N")
+        value = clean(value).strip("[]") or clean(self.config["filename"].get("tone_default", ""))
         idx = self.tone.findData(value)
         if idx < 0:
             self.tone.addItem("⚠ " + value, value)
@@ -724,8 +762,8 @@ class MainWindow(QMainWindow):
         self.tone.setCurrentIndex(idx)
 
     def _tone_suffix(self) -> str:
-        tone = clean(self.tone.currentData()) or self.config["filename"].get("tone_default", "N")
-        return f" [{tone}]"
+        tone = clean(self.tone.currentData()) or clean(self.config["filename"].get("tone_default", ""))
+        return f" [{tone}]" if tone else ""
 
     def _info_suffix(self) -> str:
         info = self.version_info.text().strip()
@@ -1073,7 +1111,7 @@ class MainWindow(QMainWindow):
         self.filename_manual = False
         self.folder_manual = False
         self._set_version("")
-        self._set_tone(self.config["filename"].get("tone_default", "N"))
+        self._set_tone(self.config["filename"].get("tone_default", ""))
         self._set_length(self.config["filename"].get("length_default", ""))
         self.invalid_fields.clear()
         self.unmapped_structured_tags.clear()
