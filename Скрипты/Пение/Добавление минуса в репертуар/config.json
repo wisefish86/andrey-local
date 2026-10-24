@@ -1,5 +1,5 @@
 {
-  "version": 5,
+  "version": 6,
   "paths": {
     "staging_root": "D:\\YandexDisk\\Проекты\\Пение\\Минусы\\1. Основной репертуар\\- - Добавляю в репертуар",
     "library_root": "D:\\YandexDisk\\Проекты\\Пение\\Минусы\\1. Основной репертуар"
@@ -750,10 +750,12 @@
     "server": "andreway.ru",
     "port": 21,
     "username": "andreway",
-    "remote_dir": "/www/magazinot.ru/files/andrey-spoet/audio/plus",
-    "public_base_url": "https://magazinot.ru/files/andrey-spoet/audio/plus",
+    "remote_dir": "/www/andreway.ru/singer-audio/plus",
+    "public_base_url": "https://andreway.ru/singer-audio/plus",
     "secret_file": "secrets.local.json",
     "password_key": "ftp_password",
-    "open_public_url_after_upload": false
+    "open_public_url_after_upload": false,
+    "timeout_seconds": 60,
+    "passive": true
   }
 }
