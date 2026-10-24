@@ -1,5 +1,5 @@
 {
-  "version": 8,
+  "version": 9,
   "paths": {
     "staging_root": "D:\\YandexDisk\\Проекты\\Пение\\Минусы\\1. Основной репертуар\\- - Добавляю в репертуар",
     "library_root": "D:\\YandexDisk\\Проекты\\Пение\\Минусы\\1. Основной репертуар"
@@ -688,6 +688,11 @@
         "expanded": false
       },
       {
+        "id": "audio_analysis",
+        "label": "Анализ аудио",
+        "expanded": false
+      },
+      {
         "id": "plus",
         "label": "Плюс песни",
         "expanded": false
@@ -758,5 +763,11 @@
     "timeout_seconds": 60,
     "passive": true,
     "http_check_timeout_seconds": 10
+  },
+  "audio_analysis": {
+    "foobar_path": "C:\\Program Files\\foobar2000\\foobar2000.exe",
+    "bpm_frame": "TBPM",
+    "replaygain_gain_frame": "TXXX:replaygain_track_gain",
+    "replaygain_peak_frame": "TXXX:replaygain_track_peak"
   }
 }
