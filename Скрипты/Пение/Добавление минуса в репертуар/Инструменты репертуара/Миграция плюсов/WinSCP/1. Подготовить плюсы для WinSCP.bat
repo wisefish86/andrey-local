@@ -3,7 +3,7 @@ chcp 65001 >nul
 setlocal
 cd /d "%~dp0"
 
-python "Миграция через WinSCP.py" --prepare --open-folder
+py -3 "Миграция через WinSCP.py" --prepare --open-folder
 set "RC=%ERRORLEVEL%"
 
 echo.
