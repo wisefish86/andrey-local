@@ -8,8 +8,14 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-TOOLS_ROOT = Path(__file__).resolve().parent
-APP_ROOT = TOOLS_ROOT.parent
+def find_app_root(start: Path) -> Path:
+    for candidate in [start, *start.parents]:
+        if (candidate / "config.json").is_file() and (candidate / "src").is_dir():
+            return candidate
+    raise RuntimeError("Не найден корень программы с config.json")
+
+
+APP_ROOT = find_app_root(Path(__file__).resolve().parent)
 PENIE_ROOT = APP_ROOT.parent
 if str(PENIE_ROOT) not in sys.path:
     sys.path.insert(0, str(PENIE_ROOT))
