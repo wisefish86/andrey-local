@@ -1,5 +1,5 @@
 {
-  "version": 21,
+  "version": 22,
   "paths": {
     "staging_root": "D:\\YandexDisk\\Проекты\\Пение\\Минусы\\1. Основной репертуар\\- - Добавляю в репертуар",
     "library_root": "D:\\YandexDisk\\Проекты\\Пение\\Минусы\\1. Основной репертуар"
@@ -104,7 +104,8 @@
         "original": "ориг"
       }
     },
-    "version_in_name_field": true
+    "version_in_name_field": true,
+    "include_language_symbol": true
   },
   "title": {
     "symbols": {
