@@ -1595,18 +1595,24 @@ class MainWindow(QMainWindow):
             final_name = requested_name if rename_requested else current_folder.name
             if not final_name:
                 raise ValueError("Имя папки песни пустое.")
+            target = library_root / final_name
+            if self._same_path(target, current_folder):
+                return {"mode": "none", "target": None, "source": current_folder}
             return {
                 "mode": "move_and_rename_folder" if rename_requested else "move_folder",
-                "target": library_root / final_name,
+                "target": target,
                 "source": current_folder,
             }
 
         if rename_requested:
             if not requested_name:
                 raise ValueError("Имя папки песни пустое.")
+            target = current_folder.with_name(requested_name)
+            if self._same_path(target, current_folder):
+                return {"mode": "none", "target": None, "source": current_folder}
             return {
                 "mode": "rename_folder",
-                "target": current_folder.with_name(requested_name),
+                "target": target,
                 "source": current_folder,
             }
 
@@ -1816,7 +1822,11 @@ class MainWindow(QMainWindow):
                 folder_target.mkdir(parents=False, exist_ok=False)
                 target_file = folder_target / working_path.name
                 working_path = Path(shutil.move(str(working_path), str(target_file)))
-            elif folder_mode in {"rename_folder", "move_folder", "move_and_rename_folder"}:
+            elif (
+                folder_mode in {"rename_folder", "move_folder", "move_and_rename_folder"}
+                and folder_target
+                and not self._same_path(folder_target, original_folder)
+            ):
                 moved_folder = Path(shutil.move(str(original_folder), str(folder_target)))
                 working_path = moved_folder / working_path.name
 
