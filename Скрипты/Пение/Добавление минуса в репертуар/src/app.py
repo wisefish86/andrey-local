@@ -7,6 +7,7 @@ import re
 import shutil
 import subprocess
 import sys
+import unicodedata
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -557,7 +558,7 @@ class MainWindow(QMainWindow):
 
         for widget in (self.artist, self.clean_title, self.version_info):
             widget.textChanged.connect(self._auto_names_changed)
-        self.version.currentTextChanged.connect(self._auto_names_changed)
+        self.version.currentTextChanged.connect(self._version_changed)
         self.tone.currentIndexChanged.connect(self._auto_names_changed)
         self.length_version.currentIndexChanged.connect(self._auto_names_changed)
         self.display_title.textEdited.connect(lambda _t: setattr(self, "title_manual", True))
@@ -637,18 +638,25 @@ class MainWindow(QMainWindow):
         self.current_path = path
         self.path_label.setText(str(path))
         self.drop.label.setText(path.name)
-        self.artist.setText(self._first(read_text(tags, "TPE1")))
-        self.clean_title.setText(self._first(read_text(tags, "MVNM")))
+
+        existing_artist = self._first(read_text(tags, "TPE1"))
+        existing_name = self._first(read_text(tags, "MVNM"))
         existing_title = self._first(read_text(tags, "TIT2"))
+        inferred = self._parse_filename(path)
+
+        parse_cfg = self.config.get("filename", {}).get("source_parse", {})
+        prefer_filename = bool(parse_cfg.get("prefer_filename_artist_title", True))
+        if prefer_filename:
+            self.artist.setText(inferred["artist"] or existing_artist)
+            self.clean_title.setText(inferred["clean_title"] or existing_name)
+        else:
+            self.artist.setText(existing_artist or inferred["artist"])
+            self.clean_title.setText(existing_name or inferred["clean_title"])
+
         self.year.setText(self._first(read_text(tags, "TDRC")))
         self.source_url.setText(read_url(tags, "WOAS"))
         self._set_plus_link_status("idle", "— ссылка не проверена")
 
-        inferred = self._parse_filename(path)
-        if not self.artist.text().strip():
-            self.artist.setText(inferred["artist"])
-        if not self.clean_title.text().strip():
-            self.clean_title.setText(inferred["clean_title"])
         self._set_version(inferred["version"] or self._extract_version(existing_title))
         tone_from_title = self._extract_tone(existing_title)
         length_from_title = self._extract_length(existing_title)
@@ -683,12 +691,7 @@ class MainWindow(QMainWindow):
         self._show_unknown_warning()
 
         self.title_manual = False
-        generated_title = self.generated_title()
-        if existing_title:
-            self.display_title.setText(existing_title)
-            self.title_manual = existing_title != generated_title
-        else:
-            self.display_title.setText(generated_title)
+        self.display_title.setText(self.generated_title())
 
         self.filename_manual = False
         self.folder_manual = False
@@ -858,12 +861,35 @@ class MainWindow(QMainWindow):
 
     def _parse_filename(self, path: Path) -> dict[str, str]:
         stem = path.stem
-        left, sep, info = stem.partition(self.config["filename"].get("info_separator", "֎"))
+        filename_cfg = self.config.get("filename", {})
+        parse_cfg = filename_cfg.get("source_parse", {})
+        info_separator = filename_cfg.get("info_separator", "֎")
+
+        left, sep, info = stem.partition(info_separator)
         version_info = info.strip() if sep else ""
-        separator = self.config["filename"].get("separator", "_____")
-        title_part, sep2, artist_part = left.partition(separator)
-        title_part = title_part.strip()
-        artist = artist_part.strip() if sep2 else ""
+        left = left.strip()
+
+        separator = filename_cfg.get("separator", "_____")
+        title_part, canonical_sep, artist_part = left.partition(separator)
+
+        if canonical_sep:
+            # Current canonical format: Название _____ Исполнитель
+            title_part = title_part.strip()
+            artist = artist_part.strip()
+        else:
+            # Ordinary source file: Исполнитель - Название
+            artist = ""
+            title_part = left
+            for source_sep in parse_cfg.get(
+                "artist_title_separators",
+                [" - ", " – ", " — "],
+            ):
+                before, found, after = left.partition(source_sep)
+                if found and before.strip() and after.strip():
+                    artist = before.strip()
+                    title_part = after.strip()
+                    break
+
         length = ""
         lm = re.search(r"\s*\[(F|S)\]\s*$", title_part, re.IGNORECASE)
         if lm:
@@ -871,21 +897,50 @@ class MainWindow(QMainWindow):
             title_part = title_part[:lm.start()].strip()
 
         tone = ""
-        m = re.search(r"\s*\[(N|[+-]?\d+)\]\s*$", title_part, re.IGNORECASE)
-        if m:
-            tone = m.group(1).upper() if m.group(1).upper() == "N" else m.group(1)
-            title_part = title_part[:m.start()].strip()
+        tm = re.search(r"\s*\[(N|[+-]?[1-3])\]\s*$", title_part, re.IGNORECASE)
+        if tm:
+            tone = tm.group(1).upper() if tm.group(1).upper() == "N" else tm.group(1)
+            title_part = title_part[:tm.start()].strip()
 
         version = ""
         vm = re.search(r"\s*\(([^()]+)\)\s*$", title_part)
         if vm:
             candidate = vm.group(1).strip()
-            known = {str(v).casefold() for v, _label in self.config["filename"].get("version_options", []) if v}
-            if candidate.casefold() in known:
-                version = candidate
+            known = {
+                str(v).casefold(): str(v)
+                for v, _label in filename_cfg.get("version_options", [])
+                if v
+            }
+            matched = known.get(candidate.casefold())
+            if matched:
+                version = matched
                 title_part = title_part[:vm.start()].strip()
 
-        return {"clean_title": title_part, "artist": artist, "version": version, "tone": tone, "length": length, "version_info": version_info}
+        # Legacy/source bracket note, e.g. [мастер запись].
+        if parse_cfg.get("trailing_bracket_to_note", True):
+            note_match = re.search(r"\s*\[([^\]]+)\]\s*$", title_part)
+            if note_match:
+                raw_note = note_match.group(1).strip()
+                aliases = {
+                    clean(k).casefold(): clean(v)
+                    for k, v in parse_cfg.get("note_aliases", {}).items()
+                }
+                note_value = aliases.get(raw_note.casefold(), raw_note)
+                if note_value:
+                    current = [p.strip() for p in version_info.split(",") if p.strip()]
+                    if note_value not in current:
+                        current.append(note_value)
+                    version_info = ", ".join(current)
+                title_part = title_part[:note_match.start()].strip()
+
+        return {
+            "clean_title": title_part.strip(),
+            "artist": artist.strip(),
+            "version": version,
+            "tone": tone,
+            "length": length,
+            "version_info": version_info,
+        }
 
     def _extract_version(self, text: str) -> str:
         match = re.search(r"\(([^()]+)\)", clean(text))
