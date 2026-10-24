@@ -120,9 +120,22 @@ def read_lyrics(tags: ID3, language: str = "eng", description: str = "") -> str:
 def write_lyrics(tags: ID3, value: str, language: str = "eng", description: str = "") -> None:
     language = clean(language) or "eng"
     description = clean(description)
-    for frame in list(tags.getall("USLT")):
-        if clean(getattr(frame, "lang", "")).casefold() == language.casefold() and clean(getattr(frame, "desc", "")).casefold() == description.casefold():
-            tags.delall(frame.HashKey)
+    frames = list(tags.getall("USLT"))
+    exact = [
+        frame for frame in frames
+        if clean(getattr(frame, "lang", "")).casefold() == language.casefold()
+        and clean(getattr(frame, "desc", "")).casefold() == description.casefold()
+    ]
+
+    targets = exact
+    # Legacy files often have one USLT with another language code.
+    # Replace that single primary frame instead of creating a duplicate.
+    if not targets and len(frames) == 1:
+        targets = frames
+
+    for frame in targets:
+        tags.delall(frame.HashKey)
+
     if value:
         tags.add(id3.USLT(encoding=3, lang=language, desc=description, text=str(value)))
 
