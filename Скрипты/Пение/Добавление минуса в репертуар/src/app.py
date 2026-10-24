@@ -733,6 +733,14 @@ class MainWindow(QMainWindow):
         self.source_url.setText(read_url(tags, "WOAS"))
         self._set_plus_link_status("idle", "— ссылка не проверена")
 
+        lyrics_spec = dict(self.config.get("lyrics", {}).get(
+            "storage",
+            {"kind": "lyrics", "frame": "USLT", "language": "eng", "description": ""},
+        ))
+        with QSignalBlocker(self.lyrics_edit):
+            self.lyrics_edit.setPlainText(read_field(tags, lyrics_spec))
+        self._update_lyrics_meta()
+
         self._set_version(inferred["version"] or self._extract_version(existing_title))
         tone_from_title = self._extract_tone(existing_title)
         length_from_title = self._extract_length(existing_title)
@@ -860,6 +868,8 @@ class MainWindow(QMainWindow):
         invalid = [value for value in source_values if value not in allowed]
 
         if isinstance(control, QComboBox):
+            if len(source_values) > 1:
+                invalid.append("несколько значений: " + ", ".join(source_values))
             value = values_to_show[0] if values_to_show else ""
             idx = control.findData(value)
             if idx < 0 and value:
@@ -1366,6 +1376,15 @@ class MainWindow(QMainWindow):
             if current != desired:
                 plan.append((label, spec, current, desired))
 
+        lyrics_spec = dict(self.config.get("lyrics", {}).get(
+            "storage",
+            {"kind": "lyrics", "frame": "USLT", "language": "eng", "description": ""},
+        ))
+        lyrics_desired = self.lyrics_edit.toPlainText().strip()
+        lyrics_current = read_field(tags, lyrics_spec)
+        if lyrics_current != lyrics_desired:
+            plan.append(("Текст песни", lyrics_spec, lyrics_current, lyrics_desired))
+
         tit1_desired = self._build_desired_tit1()
         tit1_spec = {"kind": "text", "frame": "TIT1", "multi": True}
         tit1_current = read_field(tags, tit1_spec)
@@ -1461,6 +1480,25 @@ class MainWindow(QMainWindow):
             QMessageBox.critical(self, "Ошибка", str(exc) + rollback_note)
             self.status.setText("Ошибка. Автоматическая обработка остановлена.")
 
+    def paste_lyrics(self):
+        text = QApplication.clipboard().text()
+        if text:
+            self.lyrics_edit.setPlainText(text)
+
+    def clear_lyrics(self):
+        self.lyrics_edit.clear()
+
+    def _lyrics_changed(self):
+        self._update_lyrics_meta()
+
+    def _update_lyrics_meta(self):
+        text = self.lyrics_edit.toPlainText()
+        stripped = text.strip()
+        lines = len(text.splitlines()) if stripped else 0
+        chars = len(text)
+        self.lyrics_count_label.setText(f"{lines} строк · {chars} символов")
+        self._set_section_status("lyrics", "ok" if stripped else "none")
+
     def _application_state_changed(self, state):
         if state == Qt.ApplicationState.ApplicationActive and self.current_path:
             QTimer.singleShot(200, lambda: self.refresh_audio_analysis(False))
@@ -1505,6 +1543,7 @@ class MainWindow(QMainWindow):
 
     def refresh_audio_analysis(self, show_message: bool = False):
         if not self.current_path or not self.current_path.is_file():
+            self._set_section_status("audio_analysis", "none")
             self._set_analysis_status(self.bpm_status_label, "idle", "— BPM не проверен")
             self._set_analysis_status(
                 self.replaygain_status_label,
@@ -1553,9 +1592,15 @@ class MainWindow(QMainWindow):
                     "— ReplayGain не рассчитан",
                 )
 
+            self._set_section_status(
+                "audio_analysis",
+                "ok" if bpm and gain and peak else "none",
+            )
+
             if show_message:
                 self.status.setText("BPM и ReplayGain перечитаны из MP3.")
         except Exception as exc:
+            self._set_section_status("audio_analysis", "error")
             self._set_analysis_status(self.bpm_status_label, "error", "✕ ошибка чтения")
             self._set_analysis_status(
                 self.replaygain_status_label,
@@ -1945,6 +1990,13 @@ class MainWindow(QMainWindow):
         }
         self.plus_link_status.setText(text)
         self.plus_link_status.setStyleSheet(f"color: {colors.get(state, '#9ba6b2')};")
+        section_state = {
+            "idle": "none",
+            "checking": "progress",
+            "ok": "ok",
+            "error": "error",
+        }.get(state, "none")
+        self._set_section_status("plus", section_state)
 
     def _mark_plus_url_dirty(self):
         self._set_plus_link_status("idle", "— ссылка не проверена")
@@ -2095,6 +2147,8 @@ class MainWindow(QMainWindow):
         self.path_label.setText("Файл не выбран")
         for edit in (self.artist, self.clean_title, self.display_title, self.year, self.source_url, self.version_info, self.filename, self.folder_name):
             edit.clear()
+        self.lyrics_edit.clear()
+        self._set_section_status("lyrics", "none")
         self.title_manual = False
         self.filename_manual = False
         self.folder_manual = False
@@ -2116,6 +2170,7 @@ class MainWindow(QMainWindow):
         self.files_copy_btn.setEnabled(False)
         self.foobar_btn.setEnabled(False)
         self.refresh_analysis_btn.setEnabled(False)
+        self._set_section_status("audio_analysis", "none")
         self._set_analysis_status(self.bpm_status_label, "idle", "— BPM не проверен")
         self._set_analysis_status(
             self.replaygain_status_label,
