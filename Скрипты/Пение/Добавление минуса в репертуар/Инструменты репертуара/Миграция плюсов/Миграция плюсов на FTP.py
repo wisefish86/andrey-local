@@ -895,6 +895,14 @@ def apply_items(
         ftp_retry_delay_base,
         float(mig_cfg.get("ftp_retry_max_delay_seconds", 20)),
     )
+    ftp_recovery_cycles = max(
+        0,
+        int(mig_cfg.get("ftp_recovery_cycles", 12)),
+    )
+    ftp_recovery_cooldown = max(
+        0.0,
+        float(mig_cfg.get("ftp_recovery_cooldown_seconds", 60)),
+    )
     abort_batch_on_ftp_failure = bool(
         mig_cfg.get("abort_batch_on_ftp_retry_exhausted", True)
     )
@@ -951,41 +959,68 @@ def apply_items(
 
                 action = ""
                 remote_size: int | None = None
-                for attempt in range(1, ftp_retry_attempts + 1):
-                    try:
-                        action, remote_size = uploader.upload(
-                            plus,
-                            remote_name,
-                            overwrite=overwrite_remote,
-                        )
+                recovery_cycle = 0
+
+                while True:
+                    exhausted_error: FTPRetriesExhausted | None = None
+
+                    for attempt in range(1, ftp_retry_attempts + 1):
+                        try:
+                            action, remote_size = uploader.upload(
+                                plus,
+                                remote_name,
+                                overwrite=overwrite_remote,
+                            )
+                            exhausted_error = None
+                            break
+                        except (
+                            TimeoutError,
+                            ConnectionError,
+                            EOFError,
+                            OSError,
+                            ftplib.error_temp,
+                        ) as exc:
+                            failed_stage = uploader.stage
+                            uploader.close()
+
+                            if attempt >= ftp_retry_attempts:
+                                exhausted_error = FTPRetriesExhausted(
+                                    failed_stage,
+                                    ftp_retry_attempts,
+                                    exc,
+                                )
+                                break
+
+                            retry_delay = min(
+                                ftp_retry_delay_max,
+                                ftp_retry_delay_base * (2 ** (attempt - 1)),
+                            )
+                            print(
+                                f"  ! FTP [{failed_stage}] "
+                                f"{type(exc).__name__}: {exc}; "
+                                f"повтор {attempt + 1}/{ftp_retry_attempts} "
+                                f"после паузы {retry_delay:g} с и переподключения."
+                            )
+                            if retry_delay:
+                                time.sleep(retry_delay)
+
+                    if exhausted_error is None:
                         break
-                    except (
-                        TimeoutError,
-                        ConnectionError,
-                        EOFError,
-                        OSError,
-                        ftplib.error_temp,
-                    ) as exc:
-                        failed_stage = uploader.stage
-                        uploader.close()
-                        if attempt >= ftp_retry_attempts:
-                            raise FTPRetriesExhausted(
-                                failed_stage,
-                                ftp_retry_attempts,
-                                exc,
-                            ) from exc
-                        retry_delay = min(
-                            ftp_retry_delay_max,
-                            ftp_retry_delay_base * (2 ** (attempt - 1)),
-                        )
-                        print(
-                            f"  ! FTP [{failed_stage}] "
-                            f"{type(exc).__name__}: {exc}; "
-                            f"повтор {attempt + 1}/{ftp_retry_attempts} "
-                            f"после паузы {retry_delay:g} с и переподключения."
-                        )
-                        if retry_delay:
-                            time.sleep(retry_delay)
+
+                    if recovery_cycle >= ftp_recovery_cycles:
+                        raise exhausted_error
+
+                    recovery_cycle += 1
+                    uploader.close()
+                    print(
+                        f"  🕒 FTP временно недоступен. "
+                        f"Не останавливаю пакет: пауза "
+                        f"{ftp_recovery_cooldown:g} с, затем повторю "
+                        f"этот же файл "
+                        f"(восстановление {recovery_cycle}/{ftp_recovery_cycles})."
+                    )
+                    if ftp_recovery_cooldown:
+                        time.sleep(ftp_recovery_cooldown)
 
                 item["ftp_action"] = action
                 item["remote_size"] = remote_size
