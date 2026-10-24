@@ -652,7 +652,7 @@ class MainWindow(QMainWindow):
         current_folder = path.parent
         already_in_library = current_folder.parent.resolve() == library_root.resolve()
         self.move_folder.setEnabled(current_folder.resolve() != library_root.resolve())
-        self.move_folder.setChecked(not already_in_library and bool(self.config["folder"].get("move_from_staging_default", True)))
+        self.move_folder.setChecked(not already_in_library and bool(self.config["folder"].get("move_to_library_default", True)))
         self.move_folder.setToolTip(
             "Можно перенести текущую папку песни в основной репертуар независимо от её исходного расположения."
         )
