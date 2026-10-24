@@ -76,3 +76,31 @@ def ftp_remote_size(ftp: ftplib.FTP, remote_name: str) -> int | None:
         raise
     except Exception:
         return None
+
+
+
+def ftp_remote_exists(ftp: ftplib.FTP, remote_name: str) -> bool | None:
+    """True/False when server can answer reliably, None when existence is unknown."""
+    try:
+        ftp.sendcmd(f"MLST {remote_name}")
+        return True
+    except ftplib.error_perm as exc:
+        code = str(exc)[:3]
+        if code == "550":
+            return False
+        if code not in {"500", "501", "502", "504"}:
+            raise
+
+    try:
+        ftp.voidcmd("TYPE I")
+        size = ftp.size(remote_name)
+        return size is not None
+    except ftplib.error_perm as exc:
+        code = str(exc)[:3]
+        if code == "550":
+            return False
+        if code in {"500", "501", "502", "504"}:
+            return None
+        raise
+    except Exception:
+        return None
