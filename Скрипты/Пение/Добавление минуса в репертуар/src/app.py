@@ -165,6 +165,7 @@ class MainWindow(QMainWindow):
         self.controls: dict[str, QWidget] = {}
         self.field_defs: dict[str, dict[str, Any]] = {f["id"]: f for f in self.config["fields"]}
         self.tit1_unknown: list[str] = []
+        self.unmapped_structured_tags: list[str] = []
         self.invalid_fields: dict[str, list[str]] = {}
         self._build_ui()
         self._apply_style()
@@ -446,7 +447,7 @@ class MainWindow(QMainWindow):
             self.artist.setText(inferred["artist"])
         if not self.clean_title.text().strip():
             self.clean_title.setText(inferred["clean_title"])
-        self._set_version(inferred["version"])
+        self._set_version(inferred["version"] or self._extract_version(existing_title))
         tone_from_title = self._extract_tone(existing_title)
         length_from_title = self._extract_length(existing_title)
         self._set_tone(inferred["tone"] or tone_from_title or self.config["filename"].get("tone_default", "N"))
@@ -472,6 +473,10 @@ class MainWindow(QMainWindow):
         self.tit1_unknown = [
             v for v in tit1_values
             if not any(self._matches_prefix(v, prefix, {"prefix_casefold": cf}) for prefix, cf in managed_prefixes)
+        ]
+        self.unmapped_structured_tags = [
+            value for value in self.tit1_unknown
+            if re.match(r"^[^\s;]{1,8}-", value)
         ]
         self._show_unknown_warning()
 
@@ -601,9 +606,20 @@ class MainWindow(QMainWindow):
         return value.startswith(prefix)
 
     def _show_unknown_warning(self):
-        if self.tit1_unknown:
-            self.warning_label.setText("Неизвестные/служебные значения TIT1 будут сохранены: " + "; ".join(self.tit1_unknown))
+        if self.unmapped_structured_tags:
+            self.warning_label.setStyleSheet("color: #ef6b6b; font-weight: 600;")
+            self.warning_label.setText(
+                "⚠ Теги не входят в текущую схему и требуют исправления: "
+                + "; ".join(self.unmapped_structured_tags)
+            )
+        elif self.tit1_unknown:
+            self.warning_label.setStyleSheet("color: #f0b45d;")
+            self.warning_label.setText(
+                "Неуправляемые значения TIT1 будут сохранены: "
+                + "; ".join(self.tit1_unknown)
+            )
         else:
+            self.warning_label.setStyleSheet("")
             self.warning_label.setText("")
 
     def _parse_filename(self, path: Path) -> dict[str, str]:
@@ -636,6 +652,18 @@ class MainWindow(QMainWindow):
                 title_part = title_part[:vm.start()].strip()
 
         return {"clean_title": title_part, "artist": artist, "version": version, "tone": tone, "length": length, "version_info": version_info}
+
+    def _extract_version(self, text: str) -> str:
+        match = re.search(r"\(([^()]+)\)", clean(text))
+        if not match:
+            return ""
+        candidate = match.group(1).strip()
+        known = {
+            clean(value).casefold(): clean(value)
+            for value, _label in self.config["filename"].get("version_options", [])
+            if clean(value)
+        }
+        return known.get(candidate.casefold(), "")
 
     @staticmethod
     def _extract_length(text: str) -> str:
@@ -809,6 +837,12 @@ class MainWindow(QMainWindow):
     def _validate(self) -> tuple[Path, Path | None, Path | None]:
         if not self.current_path or not self.current_path.is_file():
             raise ValueError("Исходный MP3 не найден.")
+        if self.unmapped_structured_tags:
+            raise ValueError(
+                "В TIT1 есть теги, которых нет в текущей схеме:\n"
+                + "; ".join(self.unmapped_structured_tags)
+                + "\n\nИсправь их перед сохранением."
+            )
         if self.invalid_fields:
             details = []
             for field_id, values in self.invalid_fields.items():
@@ -1042,6 +1076,8 @@ class MainWindow(QMainWindow):
         self._set_tone(self.config["filename"].get("tone_default", "N"))
         self._set_length(self.config["filename"].get("length_default", ""))
         self.invalid_fields.clear()
+        self.unmapped_structured_tags.clear()
+        self.tit1_unknown.clear()
         self._reset_controls_to_defaults()
         self.rename_folder.setChecked(False)
         self.move_folder.setChecked(False)
