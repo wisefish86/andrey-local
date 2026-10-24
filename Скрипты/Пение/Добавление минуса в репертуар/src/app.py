@@ -1564,11 +1564,11 @@ class MainWindow(QMainWindow):
             return
 
         self._link_check_reply = None
-        status = reply.attribute(QNetworkRequest.HttpStatusCodeAttribute)
+        status = reply.attribute(QNetworkRequest.Attribute.HttpStatusCodeAttribute)
         error = reply.error()
         url = reply.url().toString()
 
-        if error == QNetworkReply.NoError and status is not None and 200 <= int(status) < 400:
+        if error == QNetworkReply.NetworkError.NoError and status is not None and 200 <= int(status) < 400:
             self._set_plus_link_status("ok", f"✓ ссылка работает · HTTP {int(status)}")
             self.status.setText("Ссылка на плюс работает.")
             if show_dialog:
@@ -1578,7 +1578,7 @@ class MainWindow(QMainWindow):
                     f"Ссылка работает.\nHTTP {int(status)}\n\n{url}",
                 )
         else:
-            if error == QNetworkReply.OperationCanceledError:
+            if error == QNetworkReply.NetworkError.OperationCanceledError:
                 reason = "таймаут проверки"
             else:
                 reason = reply.errorString() or "неизвестная ошибка"
