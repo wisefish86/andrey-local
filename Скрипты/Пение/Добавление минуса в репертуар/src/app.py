@@ -1448,14 +1448,20 @@ class MainWindow(QMainWindow):
     def save_all(self):
         if not self.current_path:
             return
+
         plan = []
         tags_written = False
+        removed_frames: list[str] = []
+        original_tags_snapshot = None
         original_path = self.current_path
         working_path = original_path
+
         try:
             dest_file, folder_target, original_folder = self._validate()
             tags = load_tags(original_path)
+            original_tags_snapshot = copy.deepcopy(tags)
             plan = self._make_plan(tags)
+
             self._log_operation({
                 "time": datetime.now().isoformat(timespec="seconds"),
                 "status": "planned",
@@ -1467,6 +1473,11 @@ class MainWindow(QMainWindow):
 
             for _label, spec, _old, desired in plan:
                 write_field(tags, spec, desired)
+
+            cleanup_cfg = dict(self.config.get("id3_cleanup", {}))
+            if cleanup_cfg.get("enabled", False):
+                removed_frames = prune_tags(tags, cleanup_cfg)
+
             tags.save(original_path, v2_version=4)
             tags_written = True
 
@@ -1474,7 +1485,17 @@ class MainWindow(QMainWindow):
             for label, spec, _old, desired in plan:
                 actual = read_field(verify, spec)
                 if actual != desired:
-                    raise RuntimeError(f"Проверка тега «{label}» не прошла: {actual!r} != {desired!r}")
+                    raise RuntimeError(
+                        f"Проверка тега «{label}» не прошла: {actual!r} != {desired!r}"
+                    )
+
+            if cleanup_cfg.get("enabled", False):
+                unexpected = disallowed_tag_keys(verify, cleanup_cfg)
+                if unexpected:
+                    raise RuntimeError(
+                        "После очистки остались запрещённые ID3-кадры: "
+                        + ", ".join(unexpected)
+                    )
 
             if dest_file != original_path:
                 working_path = original_path.rename(dest_file)
@@ -1490,28 +1511,50 @@ class MainWindow(QMainWindow):
                 "time": datetime.now().isoformat(timespec="seconds"),
                 "status": "success",
                 "result": str(working_path),
+                "removed_id3_frames": removed_frames,
             })
-            QMessageBox.information(self, "Готово", f"Теги сохранены.\n\n{working_path}")
-            self.status.setText("Готово. Файл сохранён и проверен.")
+
+            cleanup_text = (
+                f"\nУдалено лишних ID3-кадров: {len(removed_frames)}."
+                if removed_frames
+                else ""
+            )
+            QMessageBox.information(
+                self,
+                "Готово",
+                f"Теги сохранены и проверены.{cleanup_text}\n\n{working_path}",
+            )
+            self.status.setText("Готово. Файл сохранён, проверен и очищен.")
             self.load_file(str(working_path))
+
         except Exception as exc:
             rollback_note = ""
-            if tags_written and plan:
+            if tags_written and original_tags_snapshot is not None:
                 candidates = [working_path, original_path]
                 rollback_path = next((p for p in candidates if p and p.exists()), None)
                 if rollback_path:
                     try:
-                        rollback_tags = load_tags(rollback_path)
-                        for _label, spec, old, _desired in plan:
-                            write_field(rollback_tags, spec, old)
-                        rollback_tags.save(rollback_path, v2_version=4)
-                        rollback_note = "\n\nИсходные управляемые теги восстановлены."
+                        original_tags_snapshot.save(rollback_path, v2_version=4)
+                        rollback_note = (
+                            "\n\nИсходный полный набор ID3-тегов восстановлен."
+                        )
                     except Exception as rollback_exc:
-                        rollback_note = f"\n\nНе удалось автоматически откатить теги: {rollback_exc}"
+                        rollback_note = (
+                            "\n\nНе удалось автоматически восстановить исходные ID3: "
+                            f"{rollback_exc}"
+                        )
+
             try:
-                self._log_operation({"time": datetime.now().isoformat(timespec="seconds"), "status": "error", "error": str(exc), "file": str(working_path or original_path)})
+                self._log_operation({
+                    "time": datetime.now().isoformat(timespec="seconds"),
+                    "status": "error",
+                    "error": str(exc),
+                    "file": str(working_path or original_path),
+                    "removed_id3_frames": removed_frames,
+                })
             except Exception:
                 pass
+
             QMessageBox.critical(self, "Ошибка", str(exc) + rollback_note)
             self.status.setText("Ошибка. Автоматическая обработка остановлена.")
 
