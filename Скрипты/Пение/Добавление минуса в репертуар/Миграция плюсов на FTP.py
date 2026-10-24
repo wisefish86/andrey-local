@@ -22,7 +22,12 @@ if str(PENIE_ROOT) not in sys.path:
     sys.path.insert(0, str(PENIE_ROOT))
 
 from _common.id3_io import clean, load_tags, read_url, write_field
-from _common.plus_storage import ftp_ensure_dir, ftp_remote_size, slugify_remote_name
+from _common.plus_storage import (
+    ftp_ensure_dir,
+    ftp_remote_exists,
+    ftp_remote_size,
+    slugify_remote_name,
+)
 
 CONFIG_PATH = APP_ROOT / "config.json"
 WOAS_SPEC = {"kind": "url", "frame": "WOAS"}
@@ -350,12 +355,19 @@ class FTPUploader:
     ) -> tuple[str, int | None]:
         ftp = self.ensure()
         local_size = local_path.stat().st_size
-        remote_size = ftp_remote_size(ftp, remote_name)
+        exists = ftp_remote_exists(ftp, remote_name)
+        remote_size = ftp_remote_size(ftp, remote_name) if exists is True else None
 
-        if remote_size == local_size:
+        if exists is True and remote_size == local_size:
             return "reused_same_size", remote_size
 
-        if remote_size is not None and not overwrite:
+        if exists is None and not overwrite:
+            raise RuntimeError(
+                f"FTP-сервер не смог надёжно проверить существование {remote_name}. "
+                "Без --overwrite-remote файл не трогаю."
+            )
+
+        if exists is True and remote_size != local_size and not overwrite:
             raise RuntimeError(
                 f"На FTP уже есть {remote_name} размером {remote_size}, "
                 f"а локальный файл {local_size}. Нужен --overwrite-remote."
@@ -381,7 +393,7 @@ class FTPUploader:
                 f"{temp_size} != {local_size}"
             )
 
-        if remote_size is not None:
+        if exists is True:
             try:
                 ftp.delete(remote_name)
             except ftplib.error_perm as exc:
