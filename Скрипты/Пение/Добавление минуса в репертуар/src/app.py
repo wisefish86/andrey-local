@@ -12,8 +12,9 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import quote
 
-from PySide6.QtCore import Qt, QSignalBlocker, Signal
+from PySide6.QtCore import Qt, QSignalBlocker, Signal, QTimer
 from PySide6.QtGui import QAction, QDesktopServices
+from PySide6.QtNetwork import QNetworkAccessManager, QNetworkReply, QNetworkRequest
 from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
@@ -239,6 +240,8 @@ class MainWindow(QMainWindow):
         self.unmapped_structured_tags: list[str] = []
         self.invalid_fields: dict[str, list[str]] = {}
         self.plus_path: Path | None = None
+        self.network_manager = QNetworkAccessManager(self)
+        self._link_check_reply: QNetworkReply | None = None
         self._build_ui()
         self._apply_style()
         self.setWindowTitle("Добавление минуса в репертуар")
@@ -454,13 +457,29 @@ class MainWindow(QMainWindow):
         self.plus_path_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
         self.source_url = QLineEdit()
         self.source_url.setPlaceholderText("После FTP-загрузки ссылка появится здесь автоматически")
-        open_plus = QPushButton("Открыть ссылку")
-        open_plus.clicked.connect(self.open_plus_url)
+        self.source_url.textEdited.connect(self._mark_plus_url_dirty)
+
+        self.check_plus_btn = QToolButton()
+        self.check_plus_btn.setText("✓")
+        self.check_plus_btn.setToolTip("Проверить, что ссылка действительно открывается")
+        self.check_plus_btn.clicked.connect(lambda: self.check_plus_url(True))
+
+        self.open_plus_btn = QToolButton()
+        self.open_plus_btn.setText("▶")
+        self.open_plus_btn.setToolTip("Открыть / проиграть плюс по публичной ссылке")
+        self.open_plus_btn.clicked.connect(self.open_plus_url)
+
         url_row = QHBoxLayout()
         url_row.addWidget(self.source_url, 1)
-        url_row.addWidget(open_plus)
+        url_row.addWidget(self.check_plus_btn)
+        url_row.addWidget(self.open_plus_btn)
+
+        self.plus_link_status = QLabel("— ссылка не проверена")
+        self.plus_link_status.setObjectName("muted")
+
         plus_form.addRow("Файл плюса", self.plus_path_label)
         plus_form.addRow("Ссылка на плюс", url_row)
+        plus_form.addRow("Проверка", self.plus_link_status)
         plus_section.add_widget(plus_form_widget)
         body_layout.addWidget(plus_section)
 
@@ -595,6 +614,7 @@ class MainWindow(QMainWindow):
         existing_title = self._first(read_text(tags, "TIT2"))
         self.year.setText(self._first(read_text(tags, "TDRC")))
         self.source_url.setText(read_url(tags, "WOAS"))
+        self._set_plus_link_status("idle", "— ссылка не проверена")
 
         inferred = self._parse_filename(path)
         if not self.artist.text().strip():
@@ -661,7 +681,10 @@ class MainWindow(QMainWindow):
         self.open_folder_btn.setEnabled(True)
         self.additions_btn.setEnabled(True)
         self.files_copy_btn.setEnabled(True)
+        self.upload_plus_btn.setEnabled(bool(self.plus_path and self.plus_path.is_file()))
         self.status.setText("MP3 загружен. Проверь поля и сохрани.")
+        if self.source_url.text().strip():
+            QTimer.singleShot(250, lambda: self.check_plus_url(False))
 
     def _default_values(self, field) -> list[str]:
         default = field.get("default", field.get("placeholder_value", ""))
@@ -1200,7 +1223,7 @@ class MainWindow(QMainWindow):
         self.plus_path = path
         self.plus_path_label.setText(str(path))
         self.plus_drop.label.setText(path.name)
-        self.upload_plus_btn.setEnabled(True)
+        self.upload_plus_btn.setEnabled(bool(self.current_path and self.current_path.is_file()))
 
     def _ftp_password(self) -> str:
         cfg = self.config.get("plus_upload", {})
@@ -1289,6 +1312,13 @@ class MainWindow(QMainWindow):
             raise
 
     def upload_plus(self):
+        if not self.current_path or not self.current_path.is_file():
+            QMessageBox.warning(
+                self,
+                "Минус не выбран",
+                "Сначала перетащи основной MP3-минус. После загрузки плюса ссылка должна сразу записаться в его WOAS.",
+            )
+            return
         if not self.plus_path or not self.plus_path.is_file():
             QMessageBox.warning(self, "Плюс песни", "Сначала перетащи или выбери MP3-плюс.")
             return
@@ -1409,7 +1439,13 @@ class MainWindow(QMainWindow):
 
             url = public_base + "/" + quote(remote_name)
             self.source_url.setText(url)
-            self.status.setText("Плюс загружен; ссылка записана в поле.")
+
+            stage = "запись ссылки в WOAS"
+            self._save_plus_url_to_current_mp3(url)
+
+            self.status.setText("Плюс загружен; ссылка сразу сохранена в WOAS. Проверяю URL…")
+            self.check_plus_url(True)
+
             if cfg.get("open_public_url_after_upload"):
                 QDesktopServices.openUrl(QUrl(url))
 
@@ -1433,12 +1469,138 @@ class MainWindow(QMainWindow):
             except Exception:
                 pass
             QApplication.restoreOverrideCursor()
-            self.upload_plus_btn.setEnabled(bool(self.plus_path and self.plus_path.is_file()))
+            self.upload_plus_btn.setEnabled(
+                bool(
+                    self.current_path
+                    and self.current_path.is_file()
+                    and self.plus_path
+                    and self.plus_path.is_file()
+                )
+            )
+
+    def _save_plus_url_to_current_mp3(self, url: str):
+        if not self.current_path or not self.current_path.is_file():
+            raise RuntimeError("Текущий MP3-минус не найден для записи WOAS.")
+
+        spec = {"kind": "url", "frame": "WOAS"}
+        tags = load_tags(self.current_path)
+        old = read_field(tags, spec)
+        if old == url:
+            return
+
+        try:
+            write_field(tags, spec, url)
+            tags.save(self.current_path, v2_version=4)
+            verify = load_tags(self.current_path)
+            actual = read_field(verify, spec)
+            if actual != url:
+                raise RuntimeError(f"WOAS после записи отличается: {actual!r} != {url!r}")
+            self._log_operation({
+                "time": datetime.now().isoformat(timespec="seconds"),
+                "status": "woas_saved_immediately",
+                "file": str(self.current_path),
+                "old": old,
+                "new": url,
+            })
+        except Exception:
+            try:
+                rollback = load_tags(self.current_path)
+                write_field(rollback, spec, old)
+                rollback.save(self.current_path, v2_version=4)
+            except Exception:
+                pass
+            raise
+
+    def _set_plus_link_status(self, state: str, text: str):
+        colors = {
+            "idle": "#9ba6b2",
+            "checking": "#f2c94c",
+            "ok": "#63d69a",
+            "error": "#ef6b6b",
+        }
+        self.plus_link_status.setText(text)
+        self.plus_link_status.setStyleSheet(f"color: {colors.get(state, '#9ba6b2')};")
+
+    def _mark_plus_url_dirty(self):
+        self._set_plus_link_status("idle", "— ссылка не проверена")
+
+    def check_plus_url(self, show_dialog: bool = True):
+        url = self.source_url.text().strip()
+        if not url:
+            self._set_plus_link_status("error", "✕ ссылка не заполнена")
+            if show_dialog:
+                QMessageBox.warning(self, "Проверка ссылки", "Ссылка на плюс не заполнена.")
+            return
+
+        qurl = QUrl(url)
+        if not qurl.isValid() or qurl.scheme().lower() not in {"http", "https"}:
+            self._set_plus_link_status("error", "✕ некорректный URL")
+            if show_dialog:
+                QMessageBox.warning(self, "Проверка ссылки", f"Некорректный URL:\n{url}")
+            return
+
+        if self._link_check_reply is not None and self._link_check_reply.isRunning():
+            self._link_check_reply.abort()
+
+        request = QNetworkRequest(qurl)
+        request.setRawHeader(b"User-Agent", b"Andrey-Repertoire-Link-Check/1.0")
+        self._set_plus_link_status("checking", "… проверяю ссылку")
+
+        reply = self.network_manager.head(request)
+        self._link_check_reply = reply
+
+        timeout_ms = int(self.config.get("plus_upload", {}).get("http_check_timeout_seconds", 10)) * 1000
+        QTimer.singleShot(
+            timeout_ms,
+            lambda r=reply: r.abort() if r.isRunning() else None,
+        )
+        reply.finished.connect(
+            lambda r=reply, dialog=show_dialog: self._finish_plus_url_check(r, dialog)
+        )
+
+    def _finish_plus_url_check(self, reply: QNetworkReply, show_dialog: bool):
+        if reply is not self._link_check_reply:
+            reply.deleteLater()
+            return
+
+        self._link_check_reply = None
+        status = reply.attribute(QNetworkRequest.HttpStatusCodeAttribute)
+        error = reply.error()
+        url = reply.url().toString()
+
+        if error == QNetworkReply.NoError and status is not None and 200 <= int(status) < 400:
+            self._set_plus_link_status("ok", f"✓ ссылка работает · HTTP {int(status)}")
+            self.status.setText("Ссылка на плюс работает.")
+            if show_dialog:
+                QMessageBox.information(
+                    self,
+                    "Проверка ссылки",
+                    f"Ссылка работает.\nHTTP {int(status)}\n\n{url}",
+                )
+        else:
+            if error == QNetworkReply.OperationCanceledError:
+                reason = "таймаут проверки"
+            else:
+                reason = reply.errorString() or "неизвестная ошибка"
+            status_text = f"HTTP {int(status)} · " if status is not None else ""
+            self._set_plus_link_status("error", f"✕ {status_text}{reason}")
+            self.status.setText("Ссылка на плюс не прошла проверку.")
+            if show_dialog:
+                QMessageBox.critical(
+                    self,
+                    "Ссылка на плюс не работает",
+                    f"{status_text}{reason}\n\n{url}",
+                )
+
+        reply.deleteLater()
 
     def open_plus_url(self):
         url = self.source_url.text().strip()
-        if url:
-            QDesktopServices.openUrl(QUrl(url))
+        if not url:
+            QMessageBox.warning(self, "Ссылка на плюс", "Ссылка не заполнена.")
+            return
+        if not QDesktopServices.openUrl(QUrl(url)):
+            QMessageBox.warning(self, "Ссылка на плюс", f"Не удалось открыть:\n{url}")
 
     def create_additions_folder(self):
         if not self.current_path:
@@ -1531,6 +1693,7 @@ class MainWindow(QMainWindow):
         self.plus_path_label.setText("Плюс не выбран")
         self.plus_drop.label.setText("Перетащи сюда плюс (MP3)")
         self.upload_plus_btn.setEnabled(False)
+        self._set_plus_link_status("idle", "— ссылка не проверена")
         self.status.setText("Готов к загрузке MP3")
 
 
