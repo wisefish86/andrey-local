@@ -1,16 +1,16 @@
 ﻿{
-    "Started":  "2026-10-23T21:00:02.6742363+03:00",
-    "Finished":  "2026-10-23T21:00:05.3422872+03:00",
+    "Started":  "2026-10-24T21:00:02.0651487+03:00",
+    "Finished":  "2026-10-24T21:00:04.7922612+03:00",
     "Destination":  "D:\\YandexDisk\\Архив\\Backup\\Программы",
-    "Copied":  0,
-    "Unchanged":  33,
-    "Deferred":  1,
+    "Copied":  2,
+    "Unchanged":  32,
+    "Deferred":  0,
     "Failed":  0,
     "Files":  [
                   {
                       "Name":  "Flow Launcher",
                       "File":  "Flow Launcher\\Favorites.conf",
-                      "Status":  "Unchanged",
+                      "Status":  "Copied",
                       "Error":  ""
                   },
                   {
@@ -27,9 +27,9 @@
                   },
                   {
                       "Name":  "CorelDRAW GMS",
-                      "File":  "*.gms",
-                      "Status":  "Deferred",
-                      "Error":  "Application is running; wait until it closes."
+                      "File":  "CorelDRAW\\CorelDRAW Graphics Suite 2026\\Draw\\GlobalMacros.gms",
+                      "Status":  "Copied",
+                      "Error":  ""
                   },
                   {
                       "Name":  "Adobe Photoshop",
