@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ftplib
 import json
 import os
 import re
@@ -9,6 +10,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+from urllib.parse import quote
 
 from PySide6.QtCore import Qt, QSignalBlocker, Signal
 from PySide6.QtGui import QAction, QDesktopServices
@@ -19,6 +21,7 @@ from PySide6.QtWidgets import (
     QDialog,
     QFileDialog,
     QFormLayout,
+    QInputDialog,
     QFrame,
     QGridLayout,
     QGroupBox,
@@ -155,6 +158,72 @@ class DropFrame(QFrame):
         event.acceptProposedAction()
 
 
+
+class CollapsibleSection(QWidget):
+    def __init__(self, title: str, expanded: bool = False, parent=None):
+        super().__init__(parent)
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(4)
+
+        self.header = QToolButton()
+        self.header.setCheckable(True)
+        self.header.setChecked(expanded)
+        self.header.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+        self.header.setArrowType(Qt.DownArrow if expanded else Qt.RightArrow)
+        self.header.setText(title)
+        self.header.setObjectName("sectionHeader")
+        self.header.toggled.connect(self._toggle)
+
+        self.body = QWidget()
+        self.body_layout = QVBoxLayout(self.body)
+        self.body_layout.setContentsMargins(8, 4, 8, 8)
+        self.body_layout.setSpacing(10)
+        self.body.setVisible(expanded)
+
+        layout.addWidget(self.header)
+        layout.addWidget(self.body)
+
+    def _toggle(self, expanded: bool):
+        self.header.setArrowType(Qt.DownArrow if expanded else Qt.RightArrow)
+        self.body.setVisible(expanded)
+
+    def add_widget(self, widget: QWidget):
+        self.body_layout.addWidget(widget)
+
+    def add_layout(self, layout):
+        self.body_layout.addLayout(layout)
+
+
+class PlusDropFrame(QFrame):
+    fileDropped = Signal(str)
+
+    def __init__(self):
+        super().__init__()
+        self.setAcceptDrops(True)
+        self.setObjectName("plusDropFrame")
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(10, 8, 10, 8)
+        self.label = QLabel("Перетащи сюда плюс (MP3)")
+        self.label.setAlignment(Qt.AlignCenter)
+        self.label.setObjectName("dropTitle")
+        hint = QLabel("Файл загрузится на FTP только после нажатия кнопки")
+        hint.setAlignment(Qt.AlignCenter)
+        hint.setObjectName("muted")
+        layout.addWidget(self.label)
+        layout.addWidget(hint)
+
+    def dragEnterEvent(self, event):
+        urls = event.mimeData().urls()
+        if len(urls) == 1 and urls[0].toLocalFile().lower().endswith(".mp3"):
+            event.acceptProposedAction()
+
+    def dropEvent(self, event):
+        path = event.mimeData().urls()[0].toLocalFile()
+        self.fileDropped.emit(path)
+        event.acceptProposedAction()
+
+
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -169,25 +238,36 @@ class MainWindow(QMainWindow):
         self.tit1_unknown: list[str] = []
         self.unmapped_structured_tags: list[str] = []
         self.invalid_fields: dict[str, list[str]] = {}
+        self.plus_path: Path | None = None
         self._build_ui()
         self._apply_style()
         self.setWindowTitle("Добавление минуса в репертуар")
         self.resize(1100, 760)
 
+    def _section_setting(self, section_id: str) -> dict[str, Any]:
+        for item in self.config.get("ui", {}).get("sections", []):
+            if item.get("id") == section_id:
+                return item
+        return {"id": section_id, "label": section_id, "expanded": False}
+
+    def _make_section(self, section_id: str) -> CollapsibleSection:
+        cfg = self._section_setting(section_id)
+        return CollapsibleSection(cfg.get("label", section_id), bool(cfg.get("expanded", False)))
+
     def _build_ui(self):
         central = QWidget()
         outer = QVBoxLayout(central)
-        outer.setContentsMargins(16, 16, 16, 16)
-        outer.setSpacing(12)
+        outer.setContentsMargins(14, 14, 14, 14)
+        outer.setSpacing(8)
 
         top = QHBoxLayout()
         self.drop = DropFrame()
-        self.drop.setMaximumHeight(78)
+        self.drop.setMaximumHeight(72)
         self.drop.fileDropped.connect(self.load_file)
         top.addWidget(self.drop, 1)
         choose = QPushButton("Выбрать MP3")
         choose.clicked.connect(self.choose_file)
-        choose.setMinimumWidth(150)
+        choose.setMinimumWidth(140)
         top.addWidget(choose)
         outer.addLayout(top)
 
@@ -200,12 +280,16 @@ class MainWindow(QMainWindow):
         scroll.setWidgetResizable(True)
         body = QWidget()
         body_layout = QVBoxLayout(body)
-        body_layout.setSpacing(12)
+        body_layout.setContentsMargins(0, 0, 0, 0)
+        body_layout.setSpacing(7)
 
-        meta = QGroupBox("Песня и название")
-        grid = QGridLayout(meta)
-        grid.setHorizontalSpacing(10)
-        grid.setVerticalSpacing(7)
+        # 1. Песня и файл
+        song_section = self._make_section("song_file")
+        song_widget = QWidget()
+        grid = QGridLayout(song_widget)
+        grid.setContentsMargins(0, 0, 0, 0)
+        grid.setHorizontalSpacing(9)
+        grid.setVerticalSpacing(6)
 
         self.artist = QLineEdit()
         self.clean_title = QLineEdit()
@@ -215,6 +299,25 @@ class MainWindow(QMainWindow):
             self.version.addItem(label, value)
         self.version.setInsertPolicy(QComboBox.NoInsert)
         self.display_title = QLineEdit()
+        self.tone = QComboBox()
+        tone_options = self.config["filename"].get(
+            "tone_options",
+            [["", "—"], ["N", "N — неизвестно"], ["-3", "-3"], ["-2", "-2"], ["-1", "-1"], ["0", "0"], ["+1", "+1"], ["+2", "+2"], ["+3", "+3"]],
+        )
+        for item in tone_options:
+            if isinstance(item, (list, tuple)) and len(item) == 2:
+                value, label = item
+            else:
+                value = str(item)
+                label = "N — неизвестно" if value == "N" else value
+            self.tone.addItem(label, value)
+
+        self.length_version = QComboBox()
+        for value, label in self.config["filename"].get("length_options", [["", "—"], ["F", "F — полная"], ["S", "S — сокращённая"]]):
+            self.length_version.addItem(label, value)
+
+        self.version_info = QLineEdit()
+        self.version_info.setPlaceholderText("Свободный текст или быстрые чипы ниже")
         self.filename = QLineEdit()
         self.folder_name = QLineEdit()
 
@@ -232,64 +335,67 @@ class MainWindow(QMainWindow):
         reset_title.clicked.connect(self.reset_title_template)
         grid.addWidget(reset_title, 2, 5)
 
-        grid.addWidget(QLabel("Новое имя MP3"), 3, 0)
-        grid.addWidget(self.filename, 3, 1, 1, 4)
-        reset_name = QPushButton("По шаблону")
-        reset_name.clicked.connect(self.reset_filename_template)
-        grid.addWidget(reset_name, 3, 5)
+        grid.addWidget(QLabel("Тональность"), 3, 0)
+        grid.addWidget(self.tone, 3, 1)
+        grid.addWidget(QLabel("F / S"), 3, 2)
+        grid.addWidget(self.length_version, 3, 3)
 
-        grid.addWidget(QLabel("Имя папки"), 4, 0)
-        grid.addWidget(self.folder_name, 4, 1, 1, 4)
-        reset_folder = QPushButton("По шаблону")
-        reset_folder.clicked.connect(self.reset_folder_template)
-        grid.addWidget(reset_folder, 4, 5)
-        body_layout.addWidget(meta)
-
-        data_box = QGroupBox("Данные минуса")
-        data_grid = QGridLayout(data_box)
-        data_grid.setHorizontalSpacing(10)
-        data_grid.setVerticalSpacing(7)
-
-        self.tone = QComboBox()
-        tone_options = self.config["filename"].get(
-            "tone_options",
-            [["", "—"], ["N", "N — неизвестно"], ["-3", "-3"], ["-2", "-2"], ["-1", "-1"], ["0", "0"], ["+1", "+1"], ["+2", "+2"], ["+3", "+3"]]
-        )
-        for item in tone_options:
-            if isinstance(item, (list, tuple)) and len(item) == 2:
-                value, label = item
-            else:
-                value = str(item)
-                label = "N — неизвестно" if value == "N" else value
-            self.tone.addItem(label, value)
-        self.length_version = QComboBox()
-        for value, label in self.config["filename"].get("length_options", [["", "—"], ["F", "F — полная"], ["S", "S — сокращённая"]]):
-            self.length_version.addItem(label, value)
-        self.year = QLineEdit()
-        self.year.setMaximumWidth(110)
-        self.source_url = QLineEdit()
-        self.source_url.setPlaceholderText("Прямой URL на плюс для сайта")
-        self.source_url.setToolTip("Ссылка на плюс (оригинал/вокальная версия), хранится в WOAS.")
-        self.version_info = QLineEdit()
-        self.version_info.setPlaceholderText("мз, ориг, buy, +click…")
-
-        data_grid.addWidget(QLabel("Тональность"), 0, 0)
-        data_grid.addWidget(self.tone, 0, 1)
-        data_grid.addWidget(QLabel("F / S"), 0, 2)
-        data_grid.addWidget(self.length_version, 0, 3)
-        data_grid.addWidget(QLabel("Год"), 0, 4)
-        data_grid.addWidget(self.year, 0, 5)
-        data_grid.addWidget(QLabel("Ссылка на плюс"), 1, 0)
-        data_grid.addWidget(self.source_url, 1, 1, 1, 5)
-        data_grid.addWidget(QLabel("Примечание"), 2, 0)
-        data_grid.addWidget(self.version_info, 2, 1, 1, 4)
+        grid.addWidget(QLabel("Примечание"), 4, 0)
+        grid.addWidget(self.version_info, 4, 1, 1, 4)
         help_btn = QToolButton()
         help_btn.setText("ⓘ")
-        help_btn.setToolTip("Обозначения: мз, buy, +click, +Б и другие")
+        help_btn.setToolTip("Справка по обозначениям")
         help_btn.clicked.connect(self.show_help)
-        data_grid.addWidget(help_btn, 2, 5)
-        body_layout.addWidget(data_box)
+        grid.addWidget(help_btn, 4, 5)
 
+        chips = QHBoxLayout()
+        chips.setSpacing(5)
+        for value, tooltip in self.config.get("note_chips", []):
+            chip = QPushButton(value)
+            chip.setProperty("chip", True)
+            chip.setToolTip(tooltip)
+            chip.clicked.connect(lambda _checked=False, v=value: self._append_note_chip(v))
+            chips.addWidget(chip)
+        chips.addStretch(1)
+        grid.addLayout(chips, 5, 1, 1, 5)
+
+        grid.addWidget(QLabel("Файл минуса"), 6, 0)
+        grid.addWidget(self.filename, 6, 1, 1, 4)
+        reset_name = QPushButton("По шаблону")
+        reset_name.clicked.connect(self.reset_filename_template)
+        grid.addWidget(reset_name, 6, 5)
+
+        grid.addWidget(QLabel("Папка песни"), 7, 0)
+        grid.addWidget(self.folder_name, 7, 1, 1, 4)
+        reset_folder = QPushButton("По шаблону")
+        reset_folder.clicked.connect(self.reset_folder_template)
+        grid.addWidget(reset_folder, 7, 5)
+
+        self.rename_folder = QCheckBox("Переименовать папку песни по шаблону")
+        self.move_folder = QCheckBox("Перенести папку песни в основной репертуар")
+        grid.addWidget(self.rename_folder, 8, 1, 1, 2)
+        grid.addWidget(self.move_folder, 8, 3, 1, 3)
+
+        self.target_label = QLabel("")
+        self.target_label.setObjectName("muted")
+        grid.addWidget(self.target_label, 9, 1, 1, 5)
+
+        song_section.add_widget(song_widget)
+        body_layout.addWidget(song_section)
+
+        # 2. Данные песни
+        metadata_section = self._make_section("metadata")
+        meta_widget = QWidget()
+        meta_layout = QFormLayout(meta_widget)
+        meta_layout.setContentsMargins(0, 0, 0, 0)
+        self.year = QLineEdit()
+        self.year.setMaximumWidth(120)
+        meta_layout.addRow("Год", self.year)
+        metadata_section.add_widget(meta_widget)
+        body_layout.addWidget(metadata_section)
+
+        # 3. Теги и подбор
+        tags_section = self._make_section("tags")
         sections = QHBoxLayout()
         perf = QGroupBox("Выступление")
         perf_form = QFormLayout(perf)
@@ -318,11 +424,49 @@ class MainWindow(QMainWindow):
 
         sections.addWidget(perf, 1)
         sections.addWidget(search, 1)
-        body_layout.addLayout(sections)
-        body_layout.addWidget(extra)
+        tags_section.add_layout(sections)
+        tags_section.add_widget(extra)
+        body_layout.addWidget(tags_section)
 
-        file_tools = QGroupBox("Файлы песни")
-        file_tools_layout = QHBoxLayout(file_tools)
+        # 4. Плюс песни
+        plus_section = self._make_section("plus")
+        plus_top = QHBoxLayout()
+        self.plus_drop = PlusDropFrame()
+        self.plus_drop.fileDropped.connect(self.set_plus_file)
+        self.plus_drop.setMaximumHeight(82)
+        plus_top.addWidget(self.plus_drop, 1)
+
+        plus_buttons = QVBoxLayout()
+        choose_plus = QPushButton("Выбрать плюс")
+        choose_plus.clicked.connect(self.choose_plus_file)
+        self.upload_plus_btn = QPushButton("⬆ Загрузить на FTP")
+        self.upload_plus_btn.clicked.connect(self.upload_plus)
+        plus_buttons.addWidget(choose_plus)
+        plus_buttons.addWidget(self.upload_plus_btn)
+        plus_top.addLayout(plus_buttons)
+        plus_section.add_layout(plus_top)
+
+        plus_form_widget = QWidget()
+        plus_form = QFormLayout(plus_form_widget)
+        plus_form.setContentsMargins(0, 0, 0, 0)
+        self.plus_path_label = QLabel("Плюс не выбран")
+        self.plus_path_label.setObjectName("muted")
+        self.plus_path_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        self.source_url = QLineEdit()
+        self.source_url.setPlaceholderText("После FTP-загрузки ссылка появится здесь автоматически")
+        open_plus = QPushButton("Открыть ссылку")
+        open_plus.clicked.connect(self.open_plus_url)
+        url_row = QHBoxLayout()
+        url_row.addWidget(self.source_url, 1)
+        url_row.addWidget(open_plus)
+        plus_form.addRow("Файл плюса", self.plus_path_label)
+        plus_form.addRow("Ссылка на плюс", url_row)
+        plus_section.add_widget(plus_form_widget)
+        body_layout.addWidget(plus_section)
+
+        # 5. Файлы песни
+        file_tools_section = self._make_section("file_tools")
+        file_tools_layout = QHBoxLayout()
         self.additions_btn = QPushButton("📁 Additi0ns")
         self.additions_btn.setToolTip("Создать/открыть подпапку Additi0ns для дополнительных версий минуса")
         self.additions_btn.clicked.connect(self.create_additions_folder)
@@ -332,25 +476,14 @@ class MainWindow(QMainWindow):
         self.files_copy_btn.clicked.connect(self.copy_to_files_folder)
         file_tools_layout.addWidget(self.files_copy_btn)
         file_tools_layout.addStretch(1)
-        self.additions_btn.setEnabled(False)
-        self.files_copy_btn.setEnabled(False)
-        body_layout.addWidget(file_tools)
-
-        actions = QGroupBox("Папка и перенос")
-        actions_layout = QVBoxLayout(actions)
-        self.rename_folder = QCheckBox("Переименовать папку песни по шаблону")
-        self.move_folder = QCheckBox("После сохранения перенести папку из «Добавляю в репертуар» в основной репертуар")
-        self.target_label = QLabel("")
-        self.target_label.setObjectName("muted")
-        actions_layout.addWidget(self.rename_folder)
-        actions_layout.addWidget(self.move_folder)
-        actions_layout.addWidget(self.target_label)
-        body_layout.addWidget(actions)
+        file_tools_section.add_layout(file_tools_layout)
+        body_layout.addWidget(file_tools_section)
 
         self.warning_label = QLabel("")
         self.warning_label.setWordWrap(True)
         self.warning_label.setObjectName("warning")
         body_layout.addWidget(self.warning_label)
+        body_layout.addStretch(1)
 
         scroll.setWidget(body)
         outer.addWidget(scroll, 1)
@@ -389,9 +522,14 @@ class MainWindow(QMainWindow):
         language_control = self.controls.get("language")
         if isinstance(language_control, MultiSelectButton):
             language_control.changed.connect(self._language_changed)
+
         self._reset_controls_to_defaults()
+        self._set_version("")
         self._set_tone(self.config["filename"].get("tone_default", ""))
         self._set_length(self.config["filename"].get("length_default", ""))
+        self.additions_btn.setEnabled(False)
+        self.files_copy_btn.setEnabled(False)
+        self.upload_plus_btn.setEnabled(False)
 
     def _make_field_control(self, field: dict[str, Any]):
         if field["control"] == "single_select":
@@ -424,8 +562,10 @@ class MainWindow(QMainWindow):
             QPushButton:hover, QToolButton:hover { background: #313945; }
             QPushButton#primary { background: #276749; border-color: #3c8a68; font-weight: 700; padding: 10px 18px; }
             QPushButton#primary:hover { background: #32805c; }
-            QFrame#dropFrame { border: 2px dashed #536170; border-radius: 10px; padding: 14px; background: #1b2026; }
-            QLabel#dropTitle { font-size: 17px; font-weight: 700; }
+            QFrame#dropFrame, QFrame#plusDropFrame { border: 2px dashed #536170; border-radius: 10px; padding: 8px; background: #1b2026; }
+            QToolButton#sectionHeader { background: #20252c; border: 1px solid #353b44; border-radius: 7px; padding: 8px 10px; font-weight: 700; text-align: left; }
+            QPushButton[chip="true"] { padding: 4px 8px; border-radius: 10px; min-height: 18px; }
+            QLabel#dropTitle { font-size: 16px; font-weight: 700; }
             QLabel#muted { color: #9ba6b2; }
             QLabel#warning { color: #f0b45d; }
             QScrollArea { border: none; }
@@ -508,12 +648,14 @@ class MainWindow(QMainWindow):
         self.reset_folder_template()
         self.rename_folder.setChecked(bool(self.config["folder"].get("rename_default", True)))
 
-        staging = Path(self.config["paths"]["staging_root"])
-        in_staging = self._is_under(path.parent, staging) and path.parent != staging
-        self.move_folder.setEnabled(in_staging)
-        self.move_folder.setChecked(in_staging and bool(self.config["folder"].get("move_from_staging_default", True)))
-        if not in_staging:
-            self.move_folder.setToolTip("Автоперенос доступен только для песни внутри папки «Добавляю в репертуар».")
+        library_root = Path(self.config["paths"]["library_root"])
+        current_folder = path.parent
+        already_in_library = current_folder.parent.resolve() == library_root.resolve()
+        self.move_folder.setEnabled(current_folder.resolve() != library_root.resolve())
+        self.move_folder.setChecked(not already_in_library and bool(self.config["folder"].get("move_from_staging_default", True)))
+        self.move_folder.setToolTip(
+            "Можно перенести текущую папку песни в основной репертуар независимо от её исходного расположения."
+        )
         self._update_target_preview()
         self.save_btn.setEnabled(True)
         self.open_folder_btn.setEnabled(True)
@@ -918,10 +1060,10 @@ class MainWindow(QMainWindow):
                 raise ValueError("В имени папки есть запрещённые для Windows символы.")
 
         if self.move_folder.isChecked():
-            staging = Path(self.config["paths"]["staging_root"])
-            if not self._is_under(current_folder, staging) or current_folder == staging:
-                raise ValueError("Перенос разрешён только для отдельной папки песни внутри «Добавляю в репертуар».")
-            folder_target = Path(self.config["paths"]["library_root"]) / folder_name
+            library_root = Path(self.config["paths"]["library_root"])
+            if current_folder.resolve() == library_root.resolve():
+                raise ValueError("Нельзя переносить корень основного репертуара как папку песни.")
+            folder_target = library_root / folder_name
         elif self.rename_folder.isChecked():
             folder_target = current_folder.with_name(folder_name)
 
@@ -1039,6 +1181,151 @@ class MainWindow(QMainWindow):
             QMessageBox.critical(self, "Ошибка", str(exc) + rollback_note)
             self.status.setText("Ошибка. Автоматическая обработка остановлена.")
 
+    def _append_note_chip(self, value: str):
+        current = [part.strip() for part in self.version_info.text().split(",") if part.strip()]
+        if value not in current:
+            current.append(value)
+            self.version_info.setText(", ".join(current))
+
+    def choose_plus_file(self):
+        path, _ = QFileDialog.getOpenFileName(self, "Выбери плюс песни", "", "MP3 (*.mp3)")
+        if path:
+            self.set_plus_file(path)
+
+    def set_plus_file(self, path_str: str):
+        path = Path(path_str)
+        if not path.is_file() or path.suffix.lower() != ".mp3":
+            QMessageBox.warning(self, "Не MP3", "Для плюса сейчас поддерживается MP3.")
+            return
+        self.plus_path = path
+        self.plus_path_label.setText(str(path))
+        self.plus_drop.label.setText(path.name)
+        self.upload_plus_btn.setEnabled(True)
+
+    def _ftp_password(self) -> str:
+        cfg = self.config.get("plus_upload", {})
+        secret_path = APP_ROOT / cfg.get("secret_file", "secrets.local.json")
+        key = cfg.get("password_key", "ftp_password")
+        if secret_path.is_file():
+            try:
+                value = clean(json.loads(secret_path.read_text(encoding="utf-8")).get(key))
+                if value:
+                    return value
+            except Exception:
+                pass
+
+        password, ok = QInputDialog.getText(
+            self,
+            "FTP-пароль",
+            "Пароль FTP для загрузки плюса:",
+            QLineEdit.Password,
+        )
+        if not ok or not password:
+            return ""
+
+        remember = QMessageBox.question(
+            self,
+            "Запомнить пароль?",
+            "Сохранить пароль только на этом компьютере в secrets.local.json?\n"
+            "Файл исключён из Git.",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.Yes,
+        )
+        if remember == QMessageBox.Yes:
+            secret_path.write_text(
+                json.dumps({key: password}, ensure_ascii=False, indent=2),
+                encoding="utf-8",
+            )
+        return password
+
+    @staticmethod
+    def _ftp_ensure_dir(ftp: ftplib.FTP, remote_dir: str):
+        ftp.cwd("/")
+        for part in [p for p in remote_dir.strip("/").split("/") if p]:
+            try:
+                ftp.cwd(part)
+            except ftplib.error_perm:
+                ftp.mkd(part)
+                ftp.cwd(part)
+
+    def upload_plus(self):
+        if not self.plus_path or not self.plus_path.is_file():
+            QMessageBox.warning(self, "Плюс песни", "Сначала перетащи или выбери MP3-плюс.")
+            return
+
+        cfg = self.config.get("plus_upload", {})
+        if not cfg.get("enabled"):
+            QMessageBox.warning(self, "FTP", "FTP-загрузка выключена в config.json.")
+            return
+
+        password = self._ftp_password()
+        if not password:
+            return
+
+        server = clean(cfg.get("server"))
+        username = clean(cfg.get("username"))
+        remote_dir = clean(cfg.get("remote_dir"))
+        public_base = clean(cfg.get("public_base_url")).rstrip("/")
+        port = int(cfg.get("port", 21))
+        if not all([server, username, remote_dir, public_base]):
+            QMessageBox.critical(self, "FTP", "Не заполнены FTP-настройки в config.json.")
+            return
+
+        remote_name = self.plus_path.name
+        self.upload_plus_btn.setEnabled(False)
+        self.status.setText("Загружаю плюс на FTP…")
+        QApplication.setOverrideCursor(Qt.WaitCursor)
+        try:
+            with ftplib.FTP() as ftp:
+                ftp.connect(server, port, timeout=30)
+                ftp.login(username, password)
+                self._ftp_ensure_dir(ftp, remote_dir)
+
+                try:
+                    existing = {Path(name).name for name in ftp.nlst()}
+                except Exception:
+                    existing = set()
+                if remote_name in existing:
+                    answer = QMessageBox.question(
+                        self,
+                        "Файл уже есть",
+                        f"{remote_name}\n\nФайл уже существует на FTP. Перезаписать?",
+                        QMessageBox.Yes | QMessageBox.No,
+                        QMessageBox.No,
+                    )
+                    if answer != QMessageBox.Yes:
+                        self.status.setText("FTP-загрузка отменена.")
+                        return
+
+                with self.plus_path.open("rb") as source:
+                    ftp.storbinary(f"STOR {remote_name}", source)
+                try:
+                    remote_size = ftp.size(remote_name)
+                except Exception:
+                    remote_size = None
+
+            if remote_size is not None and remote_size != self.plus_path.stat().st_size:
+                raise RuntimeError(
+                    f"Размер загруженного файла не совпал: {remote_size} != {self.plus_path.stat().st_size}"
+                )
+
+            url = public_base + "/" + quote(remote_name)
+            self.source_url.setText(url)
+            self.status.setText("Плюс загружен; ссылка записана в поле.")
+            if cfg.get("open_public_url_after_upload"):
+                QDesktopServices.openUrl(QUrl(url))
+        except Exception as exc:
+            QMessageBox.critical(self, "FTP-загрузка", str(exc))
+            self.status.setText("Ошибка FTP-загрузки.")
+        finally:
+            QApplication.restoreOverrideCursor()
+            self.upload_plus_btn.setEnabled(bool(self.plus_path and self.plus_path.is_file()))
+
+    def open_plus_url(self):
+        url = self.source_url.text().strip()
+        if url:
+            QDesktopServices.openUrl(QUrl(url))
+
     def create_additions_folder(self):
         if not self.current_path:
             return
@@ -1126,6 +1413,10 @@ class MainWindow(QMainWindow):
         self.open_folder_btn.setEnabled(False)
         self.additions_btn.setEnabled(False)
         self.files_copy_btn.setEnabled(False)
+        self.plus_path = None
+        self.plus_path_label.setText("Плюс не выбран")
+        self.plus_drop.label.setText("Перетащи сюда плюс (MP3)")
+        self.upload_plus_btn.setEnabled(False)
         self.status.setText("Готов к загрузке MP3")
 
 
