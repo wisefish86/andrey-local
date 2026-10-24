@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "paths": {
+    "staging_root": "D:\\YandexDisk\\Проекты\\Пение\\Минусы\\1. Основной репертуар\\- - Добавляю в репертуар",
+    "library_root": "D:\\YandexDisk\\Проекты\\Пение\\Минусы\\1. Основной репертуар"
+  },
+  "fixed_tags": {
+    "TALB": "минусы"
+  },
+  "filename": {
+    "separator": "_____",
+    "info_separator": "֎",
+    "template": "{clean_title}{tone_suffix} _____ {artist}{info_suffix}.mp3"
+  },
+  "folder": {
+    "template": "{clean_title} _____ {artist}",
+    "rename_default": true,
+    "move_from_staging_default": true
+  },
+  "fields": [
+    {"id":"block_role","label":"Роль в блоке","section":"performance","control":"single_select","storage":{"kind":"text","frame":"TPE2"},"placeholder_value":"б-#","options":[["б-#","Не заполнено"],["б-1-Старт","Старт"],["б-2-Мягкий разгон","Мягкий разгон"],["б-3-Разгон","Разгон"],["б-4-Развитие","Развитие"],["б-5-Усиление","Усиление"],["б-6-Пик","Пик"],["б-7-Финал","Финал"],["б-8-Танцы","Танцы"]]},
+    {"id":"status","label":"Статус","section":"performance","control":"single_select","storage":{"kind":"txxx","frame":"TXXX:OCCASION"},"placeholder_value":"г-#","options":[["г-#","Не заполнено"],["г-1-База","База"],["г-2-Рабочие","Рабочие"],["г-3-Тестирую","Тестирую"],["г-4-Повторить","Повторить"],["г-5-Выучить","Выучить"],["г-6-Запас","Запас"],["г-7-Версии","Версии"]]},
+    {"id":"difficulty","label":"Сложность","section":"performance","control":"single_select","storage":{"kind":"text","frame":"TMOO"},"placeholder_value":"сл-#","options":[["сл-#","Не заполнено"],["сл-1-Легко","Легко"],["сл-2-Средне","Средне"],["сл-3-Сложно","Сложно"],["сл-4-Пик","Пик"]]},
+    {"id":"lyrics_knowledge","label":"Знание текста","section":"performance","control":"single_select","storage":{"kind":"tit1_group","frame":"TIT1","prefix":"з-"},"placeholder_value":"з-#","options":[["з-#","Не заполнено"],["з-1-Наизусть","Наизусть"],["з-2-Подгляд","Подглядываю"],["з-3-Читаю","Читаю"]]},
+    {"id":"energy","label":"Характер / энергия","section":"performance","control":"single_select","storage":{"kind":"text","frame":"TCON"},"placeholder_value":"к-#","options":[["к-#","Не заполнено"],["к-Релакс","Релакс"],["к-Лаунж","Лаунж"],["к-Медляк","Медляк"],["к-Сред","Средняя"],["к-Динамич","Динамичная"],["к-Мощная","Мощная"],["к-Танцы&фон","Танцы / фон"],["к-Танцы-сред","Танцы / средняя"],["к-Танцы-драйв","Танцы / драйв"]]},
+    {"id":"audience","label":"Аудитория / формат","section":"search","control":"single_select","storage":{"kind":"tit1_group","frame":"TIT1","prefix":"а-"},"placeholder_value":"а-#","options":[["а-#","Не заполнено"],["а-Унив","Универсальная"],["а-Мол","Молодёжная"],["а-Взросл","Взрослая"],["а-Народ","Народная / застольная"],["а-Кавказ","Кавказ"],["а-РокЛегк","Рок лёгкий"],["а-РокТяж","Рок тяжёлый"],["а-Шансон","Шансон"],["а-Рэп","Рэп"],["а-Ситуац","Ситуационная"]]},
+    {"id":"recognition","label":"Узнаваемость","section":"search","control":"single_select","storage":{"kind":"tit1_group","frame":"TIT1","prefix":"уз-"},"placeholder_value":"уз-#","options":[["уз-#","Не заполнено"],["уз-1-Хит","Хит"],["уз-2-Знакомая","Знакомая"],["уз-3-Редкая","Редкая"]]},
+    {"id":"mood","label":"Настроение","section":"search","control":"single_select","storage":{"kind":"tit1_group","frame":"TIT1","prefix":"н-"},"placeholder_value":"н-#","options":[["н-#","Не заполнено"],["н-Нейтр","Нейтральное"],["н-Позит","Позитив"],["н-Романтика","Романтика"],["н-Груст","Грустное"],["н-Драма","Драма"]]},
+    {"id":"language","label":"Язык","section":"search","control":"single_select","storage":{"kind":"tit1_group","frame":"TIT1","prefix":"Я-","prefix_casefold":true},"placeholder_value":"Я-#","options":[["Я-#","Не заполнено"],["Я-рус","Русский"],["Я-англ","Английский"],["Я-ин","Иностранный другой"]]},
+    {"id":"era","label":"Эпоха","section":"search","control":"single_select","storage":{"kind":"tit1_group","frame":"TIT1","prefix":"э-"},"placeholder_value":"э-#","options":[["э-#","Не заполнено"],["э-50е","50-е"],["э-60е","60-е"],["э-70е","70-е"],["э-80е","80-е"],["э-90е","90-е"],["э-00е","00-е"],["э-10е","10-е"],["э-20е","20-е"]]},
+    {"id":"situations","label":"Ситуации","section":"search","control":"multi_select","storage":{"kind":"tit1_group","frame":"TIT1","prefix":"с-"},"placeholder_value":"с-#","options":[["с-#","Не разобрано"],["с-Любовь","Любовь"],["с-ДляЖен","Для женщины"],["с-ДляМуж","Для мужчины"],["с-Пара","Паре"],["с-Мама","Маме"],["с-Друзья","Друзьям"],["с-Семья","Семье"],["с-ДР","День рождения"],["с-Свадьба","Свадьба"],["с-НГ","Новый год"]]},
+    {"id":"restaurants","label":"Ресторан / площадка","section":"extra","control":"multi_select","storage":{"kind":"tit1_group","frame":"TIT1","prefix":"р-"},"options":[["р-Шпатен","Шпатен"],["р-ЦНК","ЦНК"]]},
+    {"id":"vocal","label":"Вокальные особенности","section":"extra","control":"multi_select","storage":{"kind":"tit1_group","frame":"TIT1","prefix":"ф-"},"options":[["ф-1","Фальцет"]]}
+  ]
+}
