@@ -428,12 +428,9 @@ class FTPUploader:
         if self.ftp is None:
             return
         try:
-            self.ftp.quit()
+            self.ftp.close()
         except Exception:
-            try:
-                self.ftp.close()
-            except Exception:
-                pass
+            pass
         self.ftp = None
 
     def connect(self) -> ftplib.FTP:
@@ -494,6 +491,7 @@ class FTPUploader:
             ),
         )
 
+        self.stage = "переключение FTP в бинарный режим"
         ftp.voidcmd("TYPE I")
         self.stage = "открытие FTP data-соединения"
 
