@@ -244,6 +244,9 @@ class MainWindow(QMainWindow):
         self._link_check_reply: QNetworkReply | None = None
         self._build_ui()
         self._apply_style()
+        app = QApplication.instance()
+        if app is not None:
+            app.applicationStateChanged.connect(self._application_state_changed)
         self.setWindowTitle("Добавление минуса в репертуар")
         self.resize(1100, 760)
 
@@ -431,7 +434,48 @@ class MainWindow(QMainWindow):
         tags_section.add_widget(extra)
         body_layout.addWidget(tags_section)
 
-        # 4. Плюс песни
+        # 4. Анализ аудио
+        analysis_section = self._make_section("audio_analysis")
+        analysis_widget = QWidget()
+        analysis_layout = QGridLayout(analysis_widget)
+        analysis_layout.setContentsMargins(0, 0, 0, 0)
+        analysis_layout.setHorizontalSpacing(10)
+        analysis_layout.setVerticalSpacing(8)
+
+        self.foobar_btn = QPushButton("♫ Открыть минус в foobar2000")
+        self.foobar_btn.setToolTip("Открыть текущий MP3 в foobar2000 для анализа BPM и ReplayGain")
+        self.foobar_btn.clicked.connect(self.open_in_foobar)
+        self.foobar_btn.setEnabled(False)
+
+        self.refresh_analysis_btn = QPushButton("↻ Проверить BPM / ReplayGain")
+        self.refresh_analysis_btn.setToolTip("Перечитать только BPM и ReplayGain из текущего MP3")
+        self.refresh_analysis_btn.clicked.connect(lambda: self.refresh_audio_analysis(True))
+        self.refresh_analysis_btn.setEnabled(False)
+
+        self.bpm_status_label = QLabel("— BPM не проверен")
+        self.replaygain_status_label = QLabel("— ReplayGain не проверен")
+        self.bpm_status_label.setObjectName("muted")
+        self.replaygain_status_label.setObjectName("muted")
+
+        analysis_hint = QLabel(
+            "В foobar2000 выполни анализ BPM и ReplayGain через контекстное меню, "
+            "затем вернись в программу — статусы обновятся автоматически."
+        )
+        analysis_hint.setWordWrap(True)
+        analysis_hint.setObjectName("muted")
+
+        analysis_layout.addWidget(self.foobar_btn, 0, 0)
+        analysis_layout.addWidget(self.refresh_analysis_btn, 0, 1)
+        analysis_layout.addWidget(QLabel("BPM"), 1, 0)
+        analysis_layout.addWidget(self.bpm_status_label, 1, 1)
+        analysis_layout.addWidget(QLabel("ReplayGain"), 2, 0)
+        analysis_layout.addWidget(self.replaygain_status_label, 2, 1)
+        analysis_layout.addWidget(analysis_hint, 3, 0, 1, 2)
+
+        analysis_section.add_widget(analysis_widget)
+        body_layout.addWidget(analysis_section)
+
+        # 5. Плюс песни
         plus_section = self._make_section("plus")
         plus_top = QHBoxLayout()
         self.plus_drop = PlusDropFrame()
@@ -483,7 +527,7 @@ class MainWindow(QMainWindow):
         plus_section.add_widget(plus_form_widget)
         body_layout.addWidget(plus_section)
 
-        # 5. Файлы песни
+        # 6. Файлы песни
         file_tools_section = self._make_section("file_tools")
         file_tools_layout = QHBoxLayout()
         self.additions_btn = QPushButton("📁 Additi0ns")
@@ -681,6 +725,9 @@ class MainWindow(QMainWindow):
         self.open_folder_btn.setEnabled(True)
         self.additions_btn.setEnabled(True)
         self.files_copy_btn.setEnabled(True)
+        self.foobar_btn.setEnabled(True)
+        self.refresh_analysis_btn.setEnabled(True)
+        self.refresh_audio_analysis(False)
         self.upload_plus_btn.setEnabled(bool(self.plus_path and self.plus_path.is_file()))
         self.status.setText("MP3 загружен. Проверь поля и сохрани.")
         if self.source_url.text().strip():
@@ -1204,6 +1251,114 @@ class MainWindow(QMainWindow):
             QMessageBox.critical(self, "Ошибка", str(exc) + rollback_note)
             self.status.setText("Ошибка. Автоматическая обработка остановлена.")
 
+    def _application_state_changed(self, state):
+        if state == Qt.ApplicationState.ApplicationActive and self.current_path:
+            QTimer.singleShot(200, lambda: self.refresh_audio_analysis(False))
+
+    @staticmethod
+    def _set_analysis_status(label: QLabel, state: str, text: str):
+        colors = {
+            "idle": "#9ba6b2",
+            "ok": "#63d69a",
+            "warning": "#f2c94c",
+            "error": "#ef6b6b",
+        }
+        label.setText(text)
+        label.setStyleSheet(f"color: {colors.get(state, '#9ba6b2')};")
+
+    def open_in_foobar(self):
+        if not self.current_path or not self.current_path.is_file():
+            QMessageBox.warning(self, "foobar2000", "Сначала перетащи MP3-минус.")
+            return
+
+        exe = Path(
+            self.config.get("audio_analysis", {}).get(
+                "foobar_path",
+                r"C:\Program Files\foobar2000\foobar2000.exe",
+            )
+        )
+        if not exe.is_file():
+            QMessageBox.critical(
+                self,
+                "foobar2000 не найден",
+                "Не найден foobar2000 по адресу:\n"
+                f"{exe}\n\n"
+                "Путь можно изменить в config.json → audio_analysis.foobar_path.",
+            )
+            return
+
+        try:
+            subprocess.Popen([str(exe), str(self.current_path)])
+            self.status.setText("Текущий минус открыт в foobar2000.")
+        except Exception as exc:
+            QMessageBox.critical(self, "foobar2000", f"Не удалось открыть файл:\n{exc}")
+
+    def refresh_audio_analysis(self, show_message: bool = False):
+        if not self.current_path or not self.current_path.is_file():
+            self._set_analysis_status(self.bpm_status_label, "idle", "— BPM не проверен")
+            self._set_analysis_status(
+                self.replaygain_status_label,
+                "idle",
+                "— ReplayGain не проверен",
+            )
+            return
+
+        cfg = self.config.get("audio_analysis", {})
+        bpm_frame = clean(cfg.get("bpm_frame")) or "TBPM"
+        gain_frame = clean(cfg.get("replaygain_gain_frame")) or "TXXX:replaygain_track_gain"
+        peak_frame = clean(cfg.get("replaygain_peak_frame")) or "TXXX:replaygain_track_peak"
+
+        try:
+            tags = load_tags(self.current_path)
+            bpm = read_field(tags, {"kind": "text", "frame": bpm_frame})
+            gain = read_field(tags, {"kind": "txxx", "frame": gain_frame})
+            peak = read_field(tags, {"kind": "txxx", "frame": peak_frame})
+
+            if bpm:
+                self._set_analysis_status(self.bpm_status_label, "ok", f"✓ {bpm} BPM")
+            else:
+                self._set_analysis_status(self.bpm_status_label, "warning", "— BPM не рассчитан")
+
+            if gain and peak:
+                self._set_analysis_status(
+                    self.replaygain_status_label,
+                    "ok",
+                    f"✓ gain {gain} · peak {peak}",
+                )
+            elif gain or peak:
+                parts = []
+                if gain:
+                    parts.append(f"gain {gain}")
+                if peak:
+                    parts.append(f"peak {peak}")
+                self._set_analysis_status(
+                    self.replaygain_status_label,
+                    "warning",
+                    "⚠ ReplayGain неполный · " + " · ".join(parts),
+                )
+            else:
+                self._set_analysis_status(
+                    self.replaygain_status_label,
+                    "warning",
+                    "— ReplayGain не рассчитан",
+                )
+
+            if show_message:
+                self.status.setText("BPM и ReplayGain перечитаны из MP3.")
+        except Exception as exc:
+            self._set_analysis_status(self.bpm_status_label, "error", "✕ ошибка чтения")
+            self._set_analysis_status(
+                self.replaygain_status_label,
+                "error",
+                "✕ ошибка чтения",
+            )
+            if show_message:
+                QMessageBox.critical(
+                    self,
+                    "Анализ аудио",
+                    f"Не удалось прочитать BPM / ReplayGain:\n{exc}",
+                )
+
     def _append_note_chip(self, value: str):
         current = [part.strip() for part in self.version_info.text().split(",") if part.strip()]
         if value not in current:
@@ -1689,6 +1844,14 @@ class MainWindow(QMainWindow):
         self.open_folder_btn.setEnabled(False)
         self.additions_btn.setEnabled(False)
         self.files_copy_btn.setEnabled(False)
+        self.foobar_btn.setEnabled(False)
+        self.refresh_analysis_btn.setEnabled(False)
+        self._set_analysis_status(self.bpm_status_label, "idle", "— BPM не проверен")
+        self._set_analysis_status(
+            self.replaygain_status_label,
+            "idle",
+            "— ReplayGain не проверен",
+        )
         self.plus_path = None
         self.plus_path_label.setText("Плюс не выбран")
         self.plus_drop.label.setText("Перетащи сюда плюс (MP3)")
