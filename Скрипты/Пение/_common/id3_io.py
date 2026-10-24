@@ -105,6 +105,28 @@ def write_wxxx(tags: ID3, description: str, value: str) -> None:
         tags.add(id3.WXXX(encoding=3, desc=description, url=value))
 
 
+def read_lyrics(tags: ID3, language: str = "eng", description: str = "") -> str:
+    language = clean(language) or "eng"
+    description = clean(description)
+    fallback = None
+    for frame in tags.getall("USLT"):
+        if fallback is None:
+            fallback = frame
+        if clean(getattr(frame, "lang", "")).casefold() == language.casefold() and clean(getattr(frame, "desc", "")).casefold() == description.casefold():
+            return str(getattr(frame, "text", "") or "")
+    return str(getattr(fallback, "text", "") or "") if fallback is not None else ""
+
+
+def write_lyrics(tags: ID3, value: str, language: str = "eng", description: str = "") -> None:
+    language = clean(language) or "eng"
+    description = clean(description)
+    for frame in list(tags.getall("USLT")):
+        if clean(getattr(frame, "lang", "")).casefold() == language.casefold() and clean(getattr(frame, "desc", "")).casefold() == description.casefold():
+            tags.delall(frame.HashKey)
+    if value:
+        tags.add(id3.USLT(encoding=3, lang=language, desc=description, text=str(value)))
+
+
 def preferred_popm(tags: ID3):
     frames = tags.getall("POPM")
     for frame in frames:
@@ -148,6 +170,8 @@ def read_field(tags: ID3, spec: dict[str, Any]):
         return read_wxxx(tags, clean(spec.get("description")))
     if kind == "rating":
         return read_rating(tags)
+    if kind == "lyrics":
+        return read_lyrics(tags, clean(spec.get("language")) or "eng", clean(spec.get("description")))
     raise ValueError(f"Unsupported field kind: {kind}")
 
 
@@ -169,5 +193,12 @@ def write_field(tags: ID3, spec: dict[str, Any], desired) -> None:
         write_wxxx(tags, clean(spec.get("description")), desired)
     elif kind == "rating":
         write_rating(tags, desired)
+    elif kind == "lyrics":
+        write_lyrics(
+            tags,
+            desired,
+            clean(spec.get("language")) or "eng",
+            clean(spec.get("description")),
+        )
     else:
         raise ValueError(f"Unsupported field kind: {kind}")
