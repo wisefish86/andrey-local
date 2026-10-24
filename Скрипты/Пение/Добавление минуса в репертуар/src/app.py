@@ -295,8 +295,8 @@ class MainWindow(QMainWindow):
         self.additions_btn.setToolTip("Создать/открыть подпапку Additi0ns для дополнительных версий минуса")
         self.additions_btn.clicked.connect(self.create_additions_folder)
         file_tools_layout.addWidget(self.additions_btn)
-        self.files_copy_btn = QPushButton("📄 Копия в Files")
-        self.files_copy_btn.setToolTip("Создать подпапку Files и скопировать туда текущий MP3 без части после ֎")
+        self.files_copy_btn = QPushButton("✂ Копия в Files")
+        self.files_copy_btn.setToolTip("Создать подпапку Files и скопировать туда текущий MP3, убрав из имени символ ֎")
         self.files_copy_btn.clicked.connect(self.copy_to_files_folder)
         file_tools_layout.addWidget(self.files_copy_btn)
         file_tools_layout.addStretch(1)
@@ -850,10 +850,12 @@ class MainWindow(QMainWindow):
         target_dir = self.current_path.parent / folder_name
         try:
             target_dir.mkdir(exist_ok=True)
-            source_name = self.filename.text().strip() or self.current_path.name
+            source_name = self.current_path.name
             stem = Path(source_name).stem
-            if self.config.get("file_tools", {}).get("trimmed_copy_strip_info", True):
-                stem = stem.partition(self.config["filename"].get("info_separator", "֎"))[0].rstrip()
+            marker = self.config["filename"].get("info_separator", "֎")
+            if self.config.get("file_tools", {}).get("files_copy_remove_marker_only", True):
+                stem = re.sub(r"\\s*" + re.escape(marker) + r"\\s*", " ", stem).strip()
+                stem = re.sub(r"\\s{2,}", " ", stem)
             target = target_dir / f"{stem}.mp3"
             if target.exists():
                 raise FileExistsError(f"Файл уже существует:\n{target}")
