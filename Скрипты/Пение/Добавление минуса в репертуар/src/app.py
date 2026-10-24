@@ -1365,27 +1365,27 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "foobar2000", "Сначала перетащи MP3-минус.")
             return
 
-        exe = Path(
-            self.config.get("audio_analysis", {}).get(
-                "foobar_path",
-                r"C:\Program Files\foobar2000\foobar2000.exe",
-            )
-        )
-        if not exe.is_file():
+        analysis_cfg = self.config.get("audio_analysis", {})
+        program_id = clean(analysis_cfg.get("program_id")) or "foobar2000"
+        program_cfg = self.config.get("programs", {}).get(program_id, {})
+        label = clean(program_cfg.get("label")) or program_id
+        exe = Path(clean(program_cfg.get("path")))
+
+        if not clean(program_cfg.get("path")) or not exe.is_file():
             QMessageBox.critical(
                 self,
-                "foobar2000 не найден",
-                "Не найден foobar2000 по адресу:\n"
-                f"{exe}\n\n"
-                "Путь можно изменить в config.json → audio_analysis.foobar_path.",
+                f"{label} не найден",
+                "Не найден внешний анализатор по адресу:\n"
+                f"{exe if clean(program_cfg.get('path')) else 'путь не задан'}\n\n"
+                f"Измени config.json → programs.{program_id}.path.",
             )
             return
 
         try:
             subprocess.Popen([str(exe), str(self.current_path)])
-            self.status.setText("Текущий минус открыт в foobar2000.")
+            self.status.setText(f"Текущий минус открыт в {label}.")
         except Exception as exc:
-            QMessageBox.critical(self, "foobar2000", f"Не удалось открыть файл:\n{exc}")
+            QMessageBox.critical(self, label, f"Не удалось открыть файл:\n{exc}")
 
     def refresh_audio_analysis(self, show_message: bool = False):
         if not self.current_path or not self.current_path.is_file():
@@ -1534,6 +1534,45 @@ class MainWindow(QMainWindow):
                 ftp.mkd(part)
                 ftp.cwd(part)
 
+    def _slugify_remote_name(self, path: Path) -> str:
+        cfg = self.config.get("plus_upload", {}).get("slug", {})
+        if not cfg.get("enabled", True):
+            return path.name
+
+        stem = path.stem
+        separator = clean(cfg.get("separator")) or "-"
+        translit = cfg.get("transliteration_map", {})
+
+        if cfg.get("transliterate_cyrillic", True):
+            converted = []
+            for char in stem:
+                lower = char.lower()
+                if lower in translit:
+                    converted.append(str(translit[lower]))
+                else:
+                    converted.append(char)
+            stem = "".join(converted)
+
+        stem = unicodedata.normalize("NFKD", stem)
+        stem = stem.encode("ascii", "ignore").decode("ascii")
+
+        if cfg.get("lowercase", True):
+            stem = stem.lower()
+
+        stem = re.sub(r"[^a-zA-Z0-9]+", separator, stem)
+        stem = re.sub(re.escape(separator) + r"{2,}", separator, stem)
+        stem = stem.strip(separator)
+
+        max_len = int(cfg.get("max_stem_length", 120))
+        if max_len > 0:
+            stem = stem[:max_len].rstrip(separator)
+
+        if not stem:
+            stem = "audio"
+
+        extension = path.suffix.lower() or ".mp3"
+        return stem + extension
+
     @staticmethod
     def _ftp_remote_exists(ftp: ftplib.FTP, remote_name: str):
         """Return True/False when the server can answer on the control channel, else None."""
@@ -1609,7 +1648,7 @@ class MainWindow(QMainWindow):
             QMessageBox.critical(self, "FTP", "Не заполнены FTP-настройки в config.json.")
             return
 
-        remote_name = self.plus_path.name
+        remote_name = self._slugify_remote_name(self.plus_path)
         temp_name = f".__uploading__{remote_name}"
         ftp = ftplib.FTP()
         stage = "подключение к FTP"
