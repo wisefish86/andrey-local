@@ -222,9 +222,9 @@ CSV-импортёр и GUI используют одну и ту же реал�
 - используется passive FTP.
 
 Также исправлен целевой каталог. Для аккаунта `andreway` плюс загружается в:
-`/www/andreway.ru/singer-audio/plus`
+`/www/singer.andreway.ru/audio/plus`
 
 Публичный URL:
-`https://andreway.ru/singer-audio/plus/<имя файла>`
+`https://singer.andreway.ru/audio/plus/<имя файла>`
 
-Каталог отделён от `/www/singer.andreway.ru/`, чтобы деплой сайта не удалял загруженные аудиофайлы.
+Каталог находится внутри `/www/singer.andreway.ru/`, но workflow сайта явно исключает `**/audio/plus/**` из FTP-деплоя.
