@@ -1,5 +1,5 @@
 {
-  "version": 6,
+  "version": 7,
   "paths": {
     "staging_root": "D:\\YandexDisk\\Проекты\\Пение\\Минусы\\1. Основной репертуар\\- - Добавляю в репертуар",
     "library_root": "D:\\YandexDisk\\Проекты\\Пение\\Минусы\\1. Основной репертуар"
@@ -750,8 +750,8 @@
     "server": "andreway.ru",
     "port": 21,
     "username": "andreway",
-    "remote_dir": "/www/andreway.ru/singer-audio/plus",
-    "public_base_url": "https://andreway.ru/singer-audio/plus",
+    "remote_dir": "/www/singer.andreway.ru/audio/plus",
+    "public_base_url": "https://singer.andreway.ru/audio/plus",
     "secret_file": "secrets.local.json",
     "password_key": "ftp_password",
     "open_public_url_after_upload": false,
