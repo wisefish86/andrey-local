@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import ftplib
 import json
 import os
@@ -11,7 +12,7 @@ import unicodedata
 from datetime import datetime
 from pathlib import Path
 from typing import Any
-from urllib.parse import quote
+from urllib.parse import quote, unquote, urlsplit
 
 from PySide6.QtCore import Qt, QSignalBlocker, Signal, QTimer
 from PySide6.QtGui import QAction, QDesktopServices
@@ -47,7 +48,16 @@ PENIE_ROOT = Path(__file__).resolve().parents[2]
 if str(PENIE_ROOT) not in sys.path:
     sys.path.insert(0, str(PENIE_ROOT))
 
-from _common.id3_io import clean, load_tags, read_field, read_text, read_url, write_field
+from _common.id3_io import (
+    clean,
+    disallowed_tag_keys,
+    load_tags,
+    prune_tags,
+    read_field,
+    read_text,
+    read_url,
+    write_field,
+)
 
 APP_ROOT = Path(__file__).resolve().parents[1]
 CONFIG_PATH = APP_ROOT / "config.json"
@@ -380,6 +390,13 @@ class MainWindow(QMainWindow):
         grid.addWidget(self.tone, 3, 1)
         grid.addWidget(QLabel("F / S"), 3, 2)
         grid.addWidget(self.length_version, 3, 3)
+        trim_cfg = self.config.get("title", {}).get("flags", {}).get("trim", {})
+        self.trim_needed = QCheckBox(
+            f"{clean(trim_cfg.get('symbol')) or '✂️'} {clean(trim_cfg.get('label')) or 'Укоротить'}"
+        )
+        self.trim_needed.setChecked(bool(trim_cfg.get("default", False)))
+        self.trim_needed.setToolTip("Добавить ножницы перед Title, чтобы отметить минус на укорочение")
+        grid.addWidget(self.trim_needed, 3, 4, 1, 2)
 
         grid.addWidget(QLabel("Примечание"), 4, 0)
         grid.addWidget(self.version_info, 4, 1, 1, 4)
@@ -431,6 +448,12 @@ class MainWindow(QMainWindow):
         perf_form = QFormLayout(perf)
         search = QGroupBox("Поиск и сайт")
         search_form = QFormLayout(search)
+
+        self.album_fixed = QLineEdit(self.config.get("fixed_tags", {}).get("TALB", "минусы"))
+        self.album_fixed.setReadOnly(True)
+        self.album_fixed.setProperty("fixed", True)
+        self.album_fixed.setToolTip("Фиксированный тег ALBUM; меняется только в config.json")
+        search_form.addRow("Альбом", self.album_fixed)
 
         self.year = QLineEdit()
         self.year.setMaximumWidth(120)
@@ -539,8 +562,13 @@ class MainWindow(QMainWindow):
         choose_plus.clicked.connect(self.choose_plus_file)
         self.upload_plus_btn = QPushButton("⬆ Загрузить на FTP")
         self.upload_plus_btn.clicked.connect(self.upload_plus)
+        self.delete_plus_btn = QPushButton("🗑 Удалить с FTP")
+        self.delete_plus_btn.setToolTip("Удалить файл, указанный в текущем WOAS, с FTP-сервера")
+        self.delete_plus_btn.clicked.connect(self.delete_plus_from_ftp)
+        self.delete_plus_btn.setEnabled(False)
         plus_buttons.addWidget(choose_plus)
         plus_buttons.addWidget(self.upload_plus_btn)
+        plus_buttons.addWidget(self.delete_plus_btn)
         plus_top.addLayout(plus_buttons)
         plus_section.add_layout(plus_top)
 
@@ -627,6 +655,7 @@ class MainWindow(QMainWindow):
         self.version.currentTextChanged.connect(self._version_changed)
         self.tone.currentIndexChanged.connect(self._auto_names_changed)
         self.length_version.currentIndexChanged.connect(self._auto_names_changed)
+        self.trim_needed.toggled.connect(self._trim_changed)
         self.display_title.textEdited.connect(lambda _t: setattr(self, "title_manual", True))
         self.filename.textEdited.connect(lambda _t: setattr(self, "filename_manual", True))
         self.folder_name.textEdited.connect(lambda _t: setattr(self, "folder_manual", True))
@@ -673,6 +702,7 @@ class MainWindow(QMainWindow):
             QGroupBox { border: 1px solid #353b44; border-radius: 8px; margin-top: 10px; padding: 12px; font-weight: 600; }
             QGroupBox::title { subcontrol-origin: margin; left: 10px; padding: 0 5px; }
             QLineEdit, QComboBox, QToolButton, QPlainTextEdit { background: #20252c; border: 1px solid #3d4652; border-radius: 6px; padding: 7px; min-height: 20px; }
+            QLineEdit[fixed="true"] { color: #8c96a3; background: #191d22; border-color: #303741; }
             QToolButton { text-align: center; }
             QLabel[attention="true"] { color: #f2c94c; }
             QComboBox[invalid="true"], QToolButton[invalid="true"] { border: 2px solid #d85353; background: #342226; }
@@ -718,6 +748,11 @@ class MainWindow(QMainWindow):
         existing_artist = self._first(read_text(tags, "TPE1"))
         existing_name = self._first(read_text(tags, "MVNM"))
         existing_title = self._first(read_text(tags, "TIT2"))
+        trim_symbol = clean(
+            self.config.get("title", {}).get("flags", {}).get("trim", {}).get("symbol")
+        ) or "✂️"
+        with QSignalBlocker(self.trim_needed):
+            self.trim_needed.setChecked(existing_title.lstrip().startswith(trim_symbol))
         inferred = self._parse_filename(path)
 
         parse_cfg = self.config.get("filename", {}).get("source_parse", {})
@@ -732,6 +767,7 @@ class MainWindow(QMainWindow):
         self.year.setText(self._first(read_text(tags, "TDRC")))
         self.source_url.setText(read_url(tags, "WOAS"))
         self._set_plus_link_status("idle", "— ссылка не проверена")
+        self._update_plus_delete_enabled()
 
         lyrics_spec = dict(self.config.get("lyrics", {}).get(
             "storage",
@@ -929,16 +965,10 @@ class MainWindow(QMainWindow):
         return value.startswith(prefix)
 
     def _show_unknown_warning(self):
-        if self.unmapped_structured_tags:
-            self.warning_label.setStyleSheet("color: #ef6b6b; font-weight: 600;")
-            self.warning_label.setText(
-                "⚠ Теги не входят в текущую схему и требуют исправления: "
-                + "; ".join(self.unmapped_structured_tags)
-            )
-        elif self.tit1_unknown:
+        if self.tit1_unknown:
             self.warning_label.setStyleSheet("color: #f0b45d;")
             self.warning_label.setText(
-                "Неуправляемые значения TIT1 будут сохранены: "
+                "Лишние значения TIT1 будут удалены при сохранении: "
                 + "; ".join(self.tit1_unknown)
             )
         else:
@@ -1222,8 +1252,19 @@ class MainWindow(QMainWindow):
 
     def generated_title(self) -> str:
         name = self.clean_title.text().strip()
-        symbol = self._title_symbol()
-        return f"{symbol} {name}{self._tone_suffix()}{self._length_suffix()}".strip()
+        language_symbol = self._title_symbol()
+        parts = []
+        trim_cfg = self.config.get("title", {}).get("flags", {}).get("trim", {})
+        if self.trim_needed.isChecked():
+            parts.append(clean(trim_cfg.get("symbol")) or "✂️")
+        if language_symbol:
+            parts.append(language_symbol)
+        prefix = " ".join(parts)
+        return f"{prefix} {name}{self._tone_suffix()}{self._length_suffix()}".strip()
+
+    def _trim_changed(self, _checked: bool):
+        self.title_manual = False
+        self.display_title.setText(self.generated_title())
 
     def reset_title_template(self):
         self.title_manual = False
@@ -1297,7 +1338,7 @@ class MainWindow(QMainWindow):
             return False
 
     def _build_desired_tit1(self) -> list[str]:
-        values = list(self.tit1_unknown)
+        values = []
         for field in self.config["fields"]:
             if field["storage"]["kind"] != "tit1_group":
                 continue
@@ -1307,12 +1348,6 @@ class MainWindow(QMainWindow):
     def _validate(self) -> tuple[Path, Path | None, Path | None]:
         if not self.current_path or not self.current_path.is_file():
             raise ValueError("Исходный MP3 не найден.")
-        if self.unmapped_structured_tags:
-            raise ValueError(
-                "В TIT1 есть теги, которых нет в текущей схеме:\n"
-                + "; ".join(self.unmapped_structured_tags)
-                + "\n\nИсправь их перед сохранением."
-            )
         if self.invalid_fields:
             details = []
             for field_id, values in self.invalid_fields.items():
@@ -2149,6 +2184,10 @@ class MainWindow(QMainWindow):
             edit.clear()
         self.lyrics_edit.clear()
         self._set_section_status("lyrics", "none")
+        with QSignalBlocker(self.trim_needed):
+            self.trim_needed.setChecked(
+                bool(self.config.get("title", {}).get("flags", {}).get("trim", {}).get("default", False))
+            )
         self.title_manual = False
         self.filename_manual = False
         self.folder_manual = False
@@ -2182,6 +2221,7 @@ class MainWindow(QMainWindow):
         self.plus_path_label.setText("Плюс не выбран")
         self.plus_drop.label.setText("Перетащи сюда плюс (MP3)")
         self.upload_plus_btn.setEnabled(False)
+        self.delete_plus_btn.setEnabled(False)
         self._set_plus_link_status("idle", "— ссылка не проверена")
         self.status.setText("Готов к загрузке MP3")
 
