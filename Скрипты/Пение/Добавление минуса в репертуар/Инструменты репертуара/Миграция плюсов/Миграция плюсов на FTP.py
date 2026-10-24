@@ -8,6 +8,7 @@ import getpass
 import json
 import os
 import sys
+import time
 from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
@@ -581,9 +582,14 @@ def apply_items(
             config.get("plus_upload", {}).get("http_check_timeout_seconds", 10),
         )
     )
-    do_http = bool(
-        config.get("migration_plus_links", {}).get("http_check", True)
+    mig_cfg = config.get("migration_plus_links", {})
+    do_http = bool(mig_cfg.get("http_check", True))
+    skip_existing_working = bool(
+        mig_cfg.get("skip_existing_working_woas", True)
     )
+    ftp_retry_attempts = max(1, int(mig_cfg.get("ftp_retry_attempts", 3)))
+    ftp_retry_delay = max(0.0, float(mig_cfg.get("ftp_retry_delay_seconds", 2)))
+    existing_http_cache: dict[str, tuple[bool, str]] = {}
 
     try:
         total = len(ready)
@@ -594,16 +600,79 @@ def apply_items(
             print(f"[{index}/{total}] {plus.name}")
 
             try:
-                action, remote_size = uploader.upload(
-                    plus,
-                    remote_name,
-                    overwrite=overwrite_remote,
-                )
+                old_woas_by_file = {
+                    str(row.get("file", "")): clean(row.get("woas"))
+                    for row in item.get("old_woas", [])
+                }
+                skipped_results: list[dict[str, str]] = []
+                pending_minuses: list[str] = []
+
+                for minus_text in item["minuses"]:
+                    old_url = old_woas_by_file.get(str(minus_text), "")
+                    if skip_existing_working and old_url:
+                        if old_url not in existing_http_cache:
+                            existing_http_cache[old_url] = http_check(old_url, timeout)
+                        old_ok, old_detail = existing_http_cache[old_url]
+                        if old_ok:
+                            skipped_results.append(
+                                {
+                                    "file": str(minus_text),
+                                    "status": "skipped_working_woas",
+                                    "old_woas": old_url,
+                                    "new_woas": old_url,
+                                    "http_check": old_detail,
+                                }
+                            )
+                            continue
+                    pending_minuses.append(str(minus_text))
+
+                if not pending_minuses:
+                    item["minus_results"] = skipped_results
+                    item["status"] = "skipped_existing"
+                    item["note"] = (
+                        "Все минусовки уже содержат рабочую WOAS-ссылку; "
+                        "FTP и теги не изменялись."
+                    )
+                    print(
+                        f"  ↷ пропущено: рабочая WOAS уже есть "
+                        f"у {len(skipped_results)} минусовок."
+                    )
+                    continue
+
+                action = ""
+                remote_size: int | None = None
+                for attempt in range(1, ftp_retry_attempts + 1):
+                    try:
+                        action, remote_size = uploader.upload(
+                            plus,
+                            remote_name,
+                            overwrite=overwrite_remote,
+                        )
+                        break
+                    except (
+                        TimeoutError,
+                        ConnectionError,
+                        EOFError,
+                        OSError,
+                        ftplib.error_temp,
+                    ) as exc:
+                        uploader.close()
+                        if attempt >= ftp_retry_attempts:
+                            raise
+                        print(
+                            f"  ! FTP {type(exc).__name__}: {exc}; "
+                            f"повтор {attempt + 1}/{ftp_retry_attempts} "
+                            "после переподключения."
+                        )
+                        if ftp_retry_delay:
+                            time.sleep(ftp_retry_delay)
+
                 item["ftp_action"] = action
                 item["remote_size"] = remote_size
 
                 if do_http:
                     ok, detail = http_check(url, timeout)
+                    existing_http_cache[url] = (ok, detail)
                     item["http_check"] = detail
                     if not ok:
                         item["status"] = "http_error"
@@ -611,15 +680,19 @@ def apply_items(
                             "FTP-файл загружен/найден, но публичный URL "
                             f"не прошёл проверку: {detail}"
                         )
+                        item["minus_results"] = skipped_results
                         print(f"  ! URL не работает: {detail}")
                         continue
 
-                minus_results: list[dict[str, str]] = []
+                minus_results: list[dict[str, str]] = list(skipped_results)
                 had_error = False
-                for minus_text in item["minuses"]:
+                updated_count = 0
+                for minus_text in pending_minuses:
                     minus = Path(minus_text)
                     try:
                         state, old = write_woas(minus, url)
+                        if state in {"updated", "already_matching"}:
+                            updated_count += 1
                         minus_results.append(
                             {
                                 "file": str(minus),
@@ -634,7 +707,7 @@ def apply_items(
                             {
                                 "file": str(minus),
                                 "status": "error",
-                                "old_woas": "",
+                                "old_woas": old_woas_by_file.get(str(minus), ""),
                                 "new_woas": url,
                                 "error": f"{type(exc).__name__}: {exc}",
                             }
@@ -646,7 +719,15 @@ def apply_items(
                     print("  ! Не всем минусовкам удалось записать WOAS.")
                 else:
                     item["status"] = "done"
-                    print(f"  ✓ {len(minus_results)} минусовок → {url}")
+                    skipped_count = len(skipped_results)
+                    suffix = (
+                        f"; уже готовых пропущено: {skipped_count}"
+                        if skipped_count
+                        else ""
+                    )
+                    print(
+                        f"  ✓ обновлено минусовок: {updated_count}{suffix} → {url}"
+                    )
 
             except Exception as exc:
                 item["status"] = "apply_error"
