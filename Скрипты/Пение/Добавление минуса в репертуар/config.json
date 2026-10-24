@@ -1,5 +1,5 @@
 {
-  "version": 13,
+  "version": 14,
   "paths": {
     "staging_root": "D:\\YandexDisk\\Проекты\\Пение\\Минусы\\1. Основной репертуар\\- - Добавляю в репертуар",
     "library_root": "D:\\YandexDisk\\Проекты\\Пение\\Минусы\\1. Основной репертуар"
@@ -110,6 +110,13 @@
     "symbols": {
       "russian": "⚪️",
       "foreign": "🔴"
+    },
+    "flags": {
+      "trim": {
+        "label": "Укоротить",
+        "symbol": "✂️",
+        "default": false
+      }
     }
   },
   "help": {
@@ -817,7 +824,8 @@
         "ь": "",
         "ъ": ""
       }
-    }
+    },
+    "allow_delete": true
   },
   "audio_analysis": {
     "bpm_frame": "TBPM",
@@ -843,6 +851,29 @@
       "description": ""
     },
     "min_height": 260,
+    "preserve_sylt": true
+  },
+  "id3_cleanup": {
+    "enabled": true,
+    "keep_frame_ids": [
+      "TPE1",
+      "TIT2",
+      "MVNM",
+      "TALB",
+      "TDRC",
+      "TCON",
+      "TPE2",
+      "TMOO",
+      "TIT1",
+      "WOAS",
+      "TBPM",
+      "USLT"
+    ],
+    "keep_txxx_descriptions": [
+      "OCCASION",
+      "replaygain_track_gain",
+      "replaygain_track_peak"
+    ],
     "preserve_sylt": true
   }
 }
