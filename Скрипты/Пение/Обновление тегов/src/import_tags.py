@@ -425,7 +425,9 @@ def rollback(path: Path, planned):
     tags = load_tags(path)
     for _column, spec, old, _desired in planned:
         if spec["kind"] == "rating" and old == "":
-            # Do not invent/delete POPM when the old state was absent.
+            frame = preferred_popm(tags)
+            if frame is not None:
+                tags.delall(frame.HashKey)
             continue
         write_field(tags, spec, old)
     tags.save(path, v2_version=4)
