@@ -1,5 +1,5 @@
 {
-  "version": 9,
+  "version": 10,
   "paths": {
     "staging_root": "D:\\YandexDisk\\Проекты\\Пение\\Минусы\\1. Основной репертуар\\- - Добавляю в репертуар",
     "library_root": "D:\\YandexDisk\\Проекты\\Пение\\Минусы\\1. Основной репертуар"
@@ -622,7 +622,7 @@
     {
       "id": "restaurants",
       "label": "Ресторан / площадка",
-      "section": "extra",
+      "section": "performance",
       "control": "multi_select",
       "storage": {
         "kind": "tit1_group",
@@ -646,7 +646,7 @@
     {
       "id": "vocal",
       "label": "Вокальные особенности",
-      "section": "extra",
+      "section": "performance",
       "control": "multi_select",
       "storage": {
         "kind": "tit1_group",
@@ -676,11 +676,6 @@
         "id": "song_file",
         "label": "Песня и файл",
         "expanded": true
-      },
-      {
-        "id": "metadata",
-        "label": "Данные песни",
-        "expanded": false
       },
       {
         "id": "tags",
@@ -762,7 +757,8 @@
     "open_public_url_after_upload": false,
     "timeout_seconds": 60,
     "passive": true,
-    "http_check_timeout_seconds": 10
+    "http_check_timeout_seconds": 10,
+    "auto_upload_on_select": true
   },
   "audio_analysis": {
     "foobar_path": "C:\\Program Files\\foobar2000\\foobar2000.exe",
