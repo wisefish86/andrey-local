@@ -575,7 +575,7 @@ class FTPUploader:
         local_path: Path,
         remote_name: str,
         local_size: int,
-    ) -> int:
+    ) -> tuple[ftplib.FTP, int]:
         block_size = max(
             8 * 1024,
             int(self.mig_cfg.get("ftp_upload_block_size_kb", 64)) * 1024,
@@ -656,7 +656,7 @@ class FTPUploader:
         )
         ftp.voidresp()
         self.ftp = ftp
-        return sent
+        return ftp, sent
 
     def upload(
         self,
@@ -719,7 +719,7 @@ class FTPUploader:
             except ftplib.error_perm:
                 pass
 
-            self._upload_stream(
+            ftp, _ = self._upload_stream(
                 ftp,
                 local_path,
                 temp_name,
