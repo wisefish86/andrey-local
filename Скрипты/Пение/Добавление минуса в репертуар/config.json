@@ -1,5 +1,5 @@
 {
-  "version": 33,
+  "version": 34,
   "paths": {
     "staging_root": "D:\\YandexDisk\\Проекты\\Пение\\Минусы\\1. Основной репертуар\\- - Добавляю в репертуар",
     "library_root": "D:\\YandexDisk\\Проекты\\Пение\\Минусы\\1. Основной репертуар"
@@ -957,7 +957,12 @@
       "pasv",
       "epsv"
     ],
-    "abort_batch_on_ftp_retry_exhausted": true
+    "abort_batch_on_ftp_retry_exhausted": true,
+    "winscp": {
+      "upload_dir": "data/migration_plus_links/winscp_upload",
+      "manifest_file": "data/migration_plus_links/winscp_manifest.json",
+      "reports_dir": "data/migration_plus_links/winscp_reports"
+    }
   },
   "site_export": {
     "marker": "֎",
