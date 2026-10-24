@@ -1,5 +1,5 @@
 {
-  "version": 4,
+  "version": 5,
   "paths": {
     "staging_root": "D:\\YandexDisk\\Проекты\\Пение\\Минусы\\1. Основной репертуар\\- - Добавляю в репертуар",
     "library_root": "D:\\YandexDisk\\Проекты\\Пение\\Минусы\\1. Основной репертуар"
@@ -669,5 +669,91 @@
     "files_folder": "Files",
     "open_after_create": true,
     "files_copy_remove_marker_only": true
+  },
+  "ui": {
+    "sections": [
+      {
+        "id": "song_file",
+        "label": "Песня и файл",
+        "expanded": true
+      },
+      {
+        "id": "tags",
+        "label": "Теги и подбор",
+        "expanded": false
+      },
+      {
+        "id": "metadata",
+        "label": "Данные песни",
+        "expanded": false
+      },
+      {
+        "id": "plus",
+        "label": "Плюс песни",
+        "expanded": false
+      },
+      {
+        "id": "file_tools",
+        "label": "Файлы песни",
+        "expanded": false
+      }
+    ]
+  },
+  "note_chips": [
+    [
+      "мз",
+      "Мастер-запись"
+    ],
+    [
+      "ориг",
+      "Оригинал"
+    ],
+    [
+      "инст",
+      "Инструментал"
+    ],
+    [
+      "оф.инст",
+      "Официальный инструментал"
+    ],
+    [
+      "buy",
+      "Куплено"
+    ],
+    [
+      "buy-J",
+      "Куплено в «Жадина»"
+    ],
+    [
+      "+click",
+      "Добавлено вступление"
+    ],
+    [
+      "+такт",
+      "Добавлены звуки такта"
+    ],
+    [
+      "+Б",
+      "С бэк-вокалом"
+    ],
+    [
+      "-Б",
+      "Без бэк-вокала"
+    ],
+    [
+      "мБ",
+      "Мой бэк"
+    ]
+  ],
+  "plus_upload": {
+    "enabled": true,
+    "server": "andreway.ru",
+    "port": 21,
+    "username": "andreway",
+    "remote_dir": "/www/magazinot.ru/files/andrey-spoet/audio/plus",
+    "public_base_url": "https://magazinot.ru/files/andrey-spoet/audio/plus",
+    "secret_file": "secrets.local.json",
+    "password_key": "ftp_password",
+    "open_public_url_after_upload": false
   }
 }
