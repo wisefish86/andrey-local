@@ -252,7 +252,9 @@ def apply_links(config: dict[str, Any]) -> int:
     results: list[dict[str, Any]] = []
     unavailable: list[dict[str, str]] = []
     updated = 0
-    skipped_current_working = 0
+    replaced_noncanonical = 0
+    filled_empty = 0
+    already_canonical = 0
     errors = 0
 
     for index, item in enumerate(items, 1):
@@ -300,28 +302,28 @@ def apply_links(config: dict[str, Any]) -> int:
                 tags = MIG.load_tags(minus)
                 current_url = MIG.read_url(tags, "WOAS")
 
-                if current_url:
-                    current_ok, current_detail = http_cached(
-                        current_url,
-                        timeout,
-                        http_cache,
+                if current_url == url:
+                    already_canonical += 1
+                    minus_results.append(
+                        {
+                            "file": str(minus),
+                            "status": "already_canonical",
+                            "old_woas": current_url,
+                            "new_woas": url,
+                            "check": detail,
+                        }
                     )
-                    if current_ok:
-                        skipped_current_working += 1
-                        minus_results.append(
-                            {
-                                "file": str(minus),
-                                "status": "skipped_working_woas",
-                                "old_woas": current_url,
-                                "new_woas": current_url,
-                                "check": current_detail,
-                            }
-                        )
-                        continue
+                    continue
 
                 state, old = MIG.write_woas(minus, url)
-                if state in {"updated", "already_matching"}:
+                if state == "updated":
                     updated += 1
+                    if current_url:
+                        replaced_noncanonical += 1
+                    else:
+                        filled_empty += 1
+                elif state == "already_matching":
+                    already_canonical += 1
                 minus_results.append(
                     {
                         "file": str(minus),
@@ -350,12 +352,18 @@ def apply_links(config: dict[str, Any]) -> int:
                 "minus_results": minus_results,
             }
         )
-        updated_here = sum(
+        written_here = sum(
+            1 for row in minus_results if row.get("status") == "updated"
+        )
+        canonical_here = sum(
             1
             for row in minus_results
-            if row.get("status") in {"updated", "already_matching"}
+            if row.get("status") in {"already_canonical", "already_matching"}
         )
-        print(f"  ✓ URL работает; WOAS обновлено: {updated_here}")
+        print(
+            f"  ✓ URL работает; WOAS записано/заменено: {written_here}"
+            f" · уже канонический: {canonical_here}"
+        )
 
     reports_dir.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -365,7 +373,9 @@ def apply_links(config: dict[str, Any]) -> int:
         "summary": {
             "manifest_items": len(items),
             "woas_updated": updated,
-            "working_woas_preserved": skipped_current_working,
+            "replaced_noncanonical_woas": replaced_noncanonical,
+            "filled_empty_woas": filled_empty,
+            "already_canonical_woas": already_canonical,
             "urls_unavailable": len(unavailable),
             "errors": errors,
         },
@@ -397,8 +407,10 @@ def apply_links(config: dict[str, Any]) -> int:
 
     print()
     print("Готово.")
-    print(f"WOAS обновлено: {updated}")
-    print(f"Рабочих WOAS сохранено без изменений: {skipped_current_working}")
+    print(f"WOAS записано/заменено: {updated}")
+    print(f"  из них заменено старых/других ссылок: {replaced_noncanonical}")
+    print(f"  из них заполнено пустых WOAS: {filled_empty}")
+    print(f"Уже стоял канонический WOAS: {already_canonical}")
     print(f"URL ещё недоступно: {len(unavailable)}")
     print(f"Ошибок записи: {errors}")
     print(f"Отчёт: {report_path}")
