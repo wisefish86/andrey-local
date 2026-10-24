@@ -1,5 +1,5 @@
 {
-  "version": 16,
+  "version": 17,
   "paths": {
     "staging_root": "D:\\YandexDisk\\Проекты\\Пение\\Минусы\\1. Основной репертуар\\- - Добавляю в репертуар",
     "library_root": "D:\\YandexDisk\\Проекты\\Пение\\Минусы\\1. Основной репертуар"
@@ -895,5 +895,20 @@
       "replaygain_track_peak"
     ],
     "preserve_sylt": true
+  },
+  "migration_plus_links": {
+    "minus_marker": "֎",
+    "exclude_dirs": [
+      "Files",
+      "Additi0ns",
+      "Additions",
+      "Editions",
+      "- - Добавляю в репертуар"
+    ],
+    "report_dir": "data/migration_plus_links",
+    "default_filter": "all",
+    "overwrite_remote_if_size_diff": false,
+    "http_check": true,
+    "http_check_timeout_seconds": 10
   }
 }
