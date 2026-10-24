@@ -827,6 +827,7 @@ class MainWindow(QMainWindow):
         self.display_title.textEdited.connect(lambda _t: setattr(self, "title_manual", True))
         self.filename.textEdited.connect(lambda _t: setattr(self, "filename_manual", True))
         self.folder_name.textEdited.connect(lambda _t: setattr(self, "folder_manual", True))
+        self.folder_name.textEdited.connect(lambda _t: self._update_target_preview())
         self.year.editingFinished.connect(self._suggest_era)
         self.move_folder.toggled.connect(self._update_target_preview)
         self.rename_folder.toggled.connect(self._update_target_preview)
