@@ -3,6 +3,10 @@ chcp 65001 >nul
 setlocal
 cd /d "%~dp0"
 
+echo Подготовка плюсов для WinSCP...
+echo Сначала сканируется локальный репертуар, затем файлы копируются с прогрессом.
+echo.
+
 py -3 "Миграция через WinSCP.py" --prepare --open-folder
 set "RC=%ERRORLEVEL%"
 
