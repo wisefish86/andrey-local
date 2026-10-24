@@ -697,6 +697,19 @@ def main() -> int:
         )
         return 0
 
+    blocking_statuses = {"no_plus", "ambiguous_plus", "slug_collision", "tag_read_error"}
+    blocking = [item for item in items if item.get("status") in blocking_statuses]
+    if blocking:
+        print()
+        print("=" * 72)
+        print("ПРИМЕНЕНИЕ ЗАБЛОКИРОВАНО")
+        print(f"Осталось проблемных папок: {len(blocking)}")
+        print(f"Исправь их по файлу: {problem_path}")
+        print("После исправлений снова запусти ПРОВЕРКА.")
+        print("Массовая миграция начнётся только когда проблемных папок будет 0.")
+        print("=" * 72)
+        return 3
+
     ready_folders = sum(1 for x in items if x["status"] == "ready")
     ready_minuses = sum(
         int(x.get("minus_count", 0))
