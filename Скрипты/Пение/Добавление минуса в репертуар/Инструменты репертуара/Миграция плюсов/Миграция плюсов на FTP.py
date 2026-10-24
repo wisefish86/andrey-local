@@ -425,6 +425,17 @@ class FTPUploader:
         self.ftp: ftplib.FTP | None = None
         self.stage = "инициализация"
 
+        raw_modes = self.mig_cfg.get(
+            "ftp_passive_data_modes",
+            ["pasv", "epsv"],
+        )
+        configured_modes = [
+            clean(mode).casefold()
+            for mode in raw_modes
+            if clean(mode).casefold() in {"epsv", "pasv"}
+        ] or ["pasv", "epsv"]
+        self.preferred_data_mode = configured_modes[0]
+
     def close(self) -> None:
         if self.ftp is None:
             return
@@ -484,6 +495,12 @@ class FTPUploader:
             if clean(mode).casefold() in {"epsv", "pasv"}
         ] or ["pasv", "epsv"]
 
+        if self.preferred_data_mode in modes:
+            modes = [
+                self.preferred_data_mode,
+                *[mode for mode in modes if mode != self.preferred_data_mode],
+            ]
+
         errors: list[str] = []
         current_ftp = ftp
 
@@ -542,6 +559,7 @@ class FTPUploader:
                         int(self.cfg.get("timeout_seconds", 60))
                     )
 
+                self.preferred_data_mode = mode
                 print(f"    ✓ data-соединение {label} открыто.", flush=True)
                 return current_ftp, conn
 
@@ -549,7 +567,9 @@ class FTPUploader:
                 errors.append(f"{label}: {type(exc).__name__}: {exc}")
 
                 if mode_index < len(modes):
-                    next_label = modes[mode_index].upper()
+                    next_mode = modes[mode_index]
+                    next_label = next_mode.upper()
+                    self.preferred_data_mode = next_mode
                     print(
                         f"    ! {label} не открылось: "
                         f"{type(exc).__name__}: {exc}. "
@@ -557,6 +577,22 @@ class FTPUploader:
                         flush=True,
                     )
                     self.close()
+                    mode_switch_delay = max(
+                        0.0,
+                        float(
+                            self.mig_cfg.get(
+                                "ftp_mode_switch_delay_seconds",
+                                2,
+                            )
+                        ),
+                    )
+                    if mode_switch_delay:
+                        print(
+                            f"    … пауза {mode_switch_delay:g} с "
+                            "перед новым control-подключением.",
+                            flush=True,
+                        )
+                        time.sleep(mode_switch_delay)
                     self.stage = f"переподключение перед {next_label}"
                     current_ftp = self.connect()
                     continue
@@ -833,8 +869,15 @@ def apply_items(
     skip_existing_working = bool(
         mig_cfg.get("skip_existing_working_woas", True)
     )
-    ftp_retry_attempts = max(1, int(mig_cfg.get("ftp_retry_attempts", 3)))
-    ftp_retry_delay = max(0.0, float(mig_cfg.get("ftp_retry_delay_seconds", 2)))
+    ftp_retry_attempts = max(1, int(mig_cfg.get("ftp_retry_attempts", 6)))
+    ftp_retry_delay_base = max(
+        0.0,
+        float(mig_cfg.get("ftp_retry_delay_seconds", 3)),
+    )
+    ftp_retry_delay_max = max(
+        ftp_retry_delay_base,
+        float(mig_cfg.get("ftp_retry_max_delay_seconds", 20)),
+    )
     abort_batch_on_ftp_failure = bool(
         mig_cfg.get("abort_batch_on_ftp_retry_exhausted", True)
     )
@@ -914,14 +957,18 @@ def apply_items(
                                 ftp_retry_attempts,
                                 exc,
                             ) from exc
+                        retry_delay = min(
+                            ftp_retry_delay_max,
+                            ftp_retry_delay_base * (2 ** (attempt - 1)),
+                        )
                         print(
                             f"  ! FTP [{failed_stage}] "
                             f"{type(exc).__name__}: {exc}; "
                             f"повтор {attempt + 1}/{ftp_retry_attempts} "
-                            "после переподключения."
+                            f"после паузы {retry_delay:g} с и переподключения."
                         )
-                        if ftp_retry_delay:
-                            time.sleep(ftp_retry_delay)
+                        if retry_delay:
+                            time.sleep(retry_delay)
 
                 item["ftp_action"] = action
                 item["remote_size"] = remote_size
