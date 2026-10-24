@@ -1040,7 +1040,7 @@ def apply_items(
 
                 for minus_text in item["minuses"]:
                     old_url = old_woas_by_file.get(str(minus_text), "")
-                    if skip_existing_working and old_url:
+                    if skip_existing_working and old_url == url:
                         if old_url not in existing_http_cache:
                             existing_http_cache[old_url] = http_check(old_url, timeout)
                         old_ok, old_detail = existing_http_cache[old_url]
@@ -1048,9 +1048,9 @@ def apply_items(
                             skipped_results.append(
                                 {
                                     "file": str(minus_text),
-                                    "status": "skipped_working_woas",
+                                    "status": "already_canonical",
                                     "old_woas": old_url,
-                                    "new_woas": old_url,
+                                    "new_woas": url,
                                     "http_check": old_detail,
                                 }
                             )
@@ -1061,11 +1061,11 @@ def apply_items(
                     item["minus_results"] = skipped_results
                     item["status"] = "skipped_existing"
                     item["note"] = (
-                        "Все минусовки уже содержат рабочую WOAS-ссылку; "
-                        "FTP и теги не изменялись."
+                        "Все минусовки уже содержат рабочую каноническую "
+                        "WOAS-ссылку; FTP и теги не изменялись."
                     )
                     print(
-                        f"  ↷ пропущено: рабочая WOAS уже есть "
+                        f"  ↷ пропущено: каноническая WOAS уже есть "
                         f"у {len(skipped_results)} минусовок."
                     )
                     continue
