@@ -1,5 +1,5 @@
 {
-  "version": 7,
+  "version": 8,
   "paths": {
     "staging_root": "D:\\YandexDisk\\Проекты\\Пение\\Минусы\\1. Основной репертуар\\- - Добавляю в репертуар",
     "library_root": "D:\\YandexDisk\\Проекты\\Пение\\Минусы\\1. Основной репертуар"
@@ -756,6 +756,7 @@
     "password_key": "ftp_password",
     "open_public_url_after_upload": false,
     "timeout_seconds": 60,
-    "passive": true
+    "passive": true,
+    "http_check_timeout_seconds": 10
   }
 }
