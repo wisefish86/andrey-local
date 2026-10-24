@@ -1,0 +1,13 @@
+# TagScanner export script — полная выгрузка смысловых тегов для нормализации
+
+$file_name TrackList.csv
+$file_notes CSV для аудита, пакетной правки и обратного импорта тегов минусов
+$file_encoding utf-8
+$file_writebom 1
+
+$document_open
+"Индекс";"Исполнитель";"Название";"НазваниеЧистое";"Альбом";"АльбомАртист";"Год";"Жанр";"Настроение";"Теги";"Ситуация";"Комментарий";"Композитор";"АвторСлов";"Издатель";"Рейтинг";"WWW";"WWWSOURCE";"ПолныйПуть"
+$select %_index%,0
+"%_index%";"%artist%";"%title%";"%movementname%";"%album%";"%albumartist%";"%year%";"%genre%";"%mood%";"%contentgroup%";"%occasion%";"%comment%";"%composer%";"%lyricist%";"%publisher%";"%rating%";"%www%";"%wwwsource%";"%fullfilenameext%"
+$endselect
+$document_close
