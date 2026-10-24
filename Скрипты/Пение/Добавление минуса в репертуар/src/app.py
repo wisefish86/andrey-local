@@ -165,6 +165,7 @@ class MainWindow(QMainWindow):
 
         top = QHBoxLayout()
         self.drop = DropFrame()
+        self.drop.setMaximumHeight(78)
         self.drop.fileDropped.connect(self.load_file)
         top.addWidget(self.drop, 1)
         choose = QPushButton("Выбрать MP3")
@@ -387,8 +388,6 @@ class MainWindow(QMainWindow):
             self.artist.setText(inferred["artist"])
         if not self.clean_title.text().strip():
             self.clean_title.setText(inferred["clean_title"])
-        if not self.display_title.text().strip():
-            self.display_title.setText(self.clean_title.text().strip())
         self._set_tone(inferred["tone"] or self.config["filename"].get("tone_default", "N"))
         self.version_info.setText(inferred["version_info"])
 
@@ -661,7 +660,7 @@ class MainWindow(QMainWindow):
             ("Title", {"kind": "text", "frame": "TIT2"}, self.display_title.text().strip()),
             ("Название", {"kind": "text", "frame": "MVNM"}, self.clean_title.text().strip()),
             ("Год", {"kind": "text", "frame": "TDRC"}, self.year.text().strip()),
-            ("Источник", {"kind": "url", "frame": "WOAS"}, self.source_url.text().strip()),
+            ("Ссылка на плюс", {"kind": "url", "frame": "WOAS"}, self.source_url.text().strip()),
             ("Альбом", {"kind": "text", "frame": "TALB"}, self.config["fixed_tags"].get("TALB", "минусы")),
         ]
         for label, spec, desired in simple:
