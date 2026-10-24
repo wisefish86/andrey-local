@@ -40,9 +40,7 @@ if (Test-Path -LiteralPath $scriptDir) {
   $items += @(Get-ChildItem -LiteralPath $scriptDir -File -Recurse |
     Where-Object {
       $_.Extension -in @('.bat', '.pyw', '.ahk') -and
-      $_.FullName -notmatch '[\\/](Results|__pycache__|Archive|Архив|backup|бэкапы|бэкап|# Починить)[\\/]' -and
-      $_.FullName -notmatch '[\\/]Добавление минуса в репертуар[\\/]Инструменты репертуара[\\/]Миграция плюсов[\\/].*\.bat$' -and
-      $_.FullName -notmatch '[\\/]Добавление минуса в репертуар[\\/]Инструменты репертуара[\\/]Миграция плюсов - (ПРОВЕРКА|ПРИМЕНИТЬ)\.bat$'
+      $_.FullName -notmatch '[\\/](Results|__pycache__|Archive|Архив|backup|бэкапы|бэкап|# Починить)[\\/]'
     })
 }
 $items += @(Get-ChildItem -LiteralPath $root -File |
