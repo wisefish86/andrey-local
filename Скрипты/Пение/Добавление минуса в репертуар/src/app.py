@@ -33,6 +33,7 @@ from PySide6.QtWidgets import (
     QMainWindow,
     QMessageBox,
     QPushButton,
+    QPlainTextEdit,
     QScrollArea,
     QSizePolicy,
     QTextBrowser,
@@ -164,6 +165,10 @@ class DropFrame(QFrame):
 class CollapsibleSection(QWidget):
     def __init__(self, title: str, expanded: bool = False, parent=None):
         super().__init__(parent)
+        self.base_title = title
+        self.status = "none"
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Maximum)
+
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(4)
@@ -173,11 +178,12 @@ class CollapsibleSection(QWidget):
         self.header.setChecked(expanded)
         self.header.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
         self.header.setArrowType(Qt.DownArrow if expanded else Qt.RightArrow)
-        self.header.setText(title)
         self.header.setObjectName("sectionHeader")
+        self.header.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.header.toggled.connect(self._toggle)
 
         self.body = QWidget()
+        self.body.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Maximum)
         self.body_layout = QVBoxLayout(self.body)
         self.body_layout.setContentsMargins(8, 4, 8, 8)
         self.body_layout.setSpacing(10)
@@ -185,10 +191,25 @@ class CollapsibleSection(QWidget):
 
         layout.addWidget(self.header)
         layout.addWidget(self.body)
+        self.set_status("none")
 
     def _toggle(self, expanded: bool):
         self.header.setArrowType(Qt.DownArrow if expanded else Qt.RightArrow)
         self.body.setVisible(expanded)
+
+    def set_status(self, status: str):
+        self.status = status
+        icons = {
+            "none": "",
+            "ok": "✓ ",
+            "error": "✕ ",
+            "warning": "⚠ ",
+            "progress": "… ",
+        }
+        self.header.setText(icons.get(status, "") + self.base_title)
+        self.header.setProperty("sectionStatus", status)
+        self.header.style().unpolish(self.header)
+        self.header.style().polish(self.header)
 
     def add_widget(self, widget: QWidget):
         self.body_layout.addWidget(widget)
@@ -237,6 +258,7 @@ class MainWindow(QMainWindow):
         self._last_version_value = ""
         self.controls: dict[str, QWidget] = {}
         self.field_labels: dict[str, QLabel] = {}
+        self.sections: dict[str, CollapsibleSection] = {}
         self.field_defs: dict[str, dict[str, Any]] = {f["id"]: f for f in self.config["fields"]}
         self.tit1_unknown: list[str] = []
         self.unmapped_structured_tags: list[str] = []
@@ -261,7 +283,17 @@ class MainWindow(QMainWindow):
 
     def _make_section(self, section_id: str) -> CollapsibleSection:
         cfg = self._section_setting(section_id)
-        return CollapsibleSection(cfg.get("label", section_id), bool(cfg.get("expanded", False)))
+        section = CollapsibleSection(
+            cfg.get("label", section_id),
+            bool(cfg.get("expanded", False)),
+        )
+        self.sections[section_id] = section
+        return section
+
+    def _set_section_status(self, section_id: str, status: str):
+        section = self.sections.get(section_id)
+        if section is not None:
+            section.set_status(status)
 
     def _build_ui(self):
         central = QWidget()
@@ -420,7 +452,40 @@ class MainWindow(QMainWindow):
         tags_section.add_layout(sections)
         body_layout.addWidget(tags_section)
 
-        # 3. Анализ аудио
+        # 3. Текст песни
+        lyrics_section = self._make_section("lyrics")
+        lyrics_widget = QWidget()
+        lyrics_layout = QVBoxLayout(lyrics_widget)
+        lyrics_layout.setContentsMargins(0, 0, 0, 0)
+        lyrics_layout.setSpacing(7)
+
+        lyrics_top = QHBoxLayout()
+        paste_lyrics_btn = QPushButton("Вставить из буфера")
+        paste_lyrics_btn.clicked.connect(self.paste_lyrics)
+        clear_lyrics_btn = QPushButton("Очистить")
+        clear_lyrics_btn.clicked.connect(self.clear_lyrics)
+        self.lyrics_count_label = QLabel("0 строк · 0 символов")
+        self.lyrics_count_label.setObjectName("muted")
+        lyrics_top.addWidget(paste_lyrics_btn)
+        lyrics_top.addWidget(clear_lyrics_btn)
+        lyrics_top.addStretch(1)
+        lyrics_top.addWidget(self.lyrics_count_label)
+
+        self.lyrics_edit = QPlainTextEdit()
+        self.lyrics_edit.setPlaceholderText("Вставь сюда текст песни…")
+        self.lyrics_edit.setMinimumHeight(int(self.config.get("lyrics", {}).get("min_height", 260)))
+        self.lyrics_edit.textChanged.connect(self._lyrics_changed)
+
+        lyrics_hint = QLabel("Сохраняется в USLT. Синхронизированный SYLT программа не изменяет.")
+        lyrics_hint.setObjectName("muted")
+
+        lyrics_layout.addLayout(lyrics_top)
+        lyrics_layout.addWidget(self.lyrics_edit)
+        lyrics_layout.addWidget(lyrics_hint)
+        lyrics_section.add_widget(lyrics_widget)
+        body_layout.addWidget(lyrics_section)
+
+        # 4. Анализ аудио
         analysis_section = self._make_section("audio_analysis")
         analysis_widget = QWidget()
         analysis_layout = QGridLayout(analysis_widget)
@@ -461,7 +526,7 @@ class MainWindow(QMainWindow):
         analysis_section.add_widget(analysis_widget)
         body_layout.addWidget(analysis_section)
 
-        # 4. Плюс песни
+        # 5. Плюс песни
         plus_section = self._make_section("plus")
         plus_top = QHBoxLayout()
         self.plus_drop = PlusDropFrame()
@@ -513,7 +578,7 @@ class MainWindow(QMainWindow):
         plus_section.add_widget(plus_form_widget)
         body_layout.addWidget(plus_section)
 
-        # 5. Файлы песни
+        # 6. Файлы песни
         file_tools_section = self._make_section("file_tools")
         file_tools_layout = QHBoxLayout()
         self.additions_btn = QPushButton("📁 Additi0ns")
@@ -571,6 +636,10 @@ class MainWindow(QMainWindow):
         language_control = self.controls.get("language")
         if isinstance(language_control, MultiSelectButton):
             language_control.changed.connect(self._language_changed)
+        elif isinstance(language_control, QComboBox):
+            language_control.currentIndexChanged.connect(
+                lambda _index: self._language_changed()
+            )
 
         self._reset_controls_to_defaults()
         self._set_version("")
@@ -603,7 +672,7 @@ class MainWindow(QMainWindow):
             QMainWindow, QWidget { background: #15181d; color: #e9edf2; font-size: 13px; }
             QGroupBox { border: 1px solid #353b44; border-radius: 8px; margin-top: 10px; padding: 12px; font-weight: 600; }
             QGroupBox::title { subcontrol-origin: margin; left: 10px; padding: 0 5px; }
-            QLineEdit, QComboBox, QToolButton { background: #20252c; border: 1px solid #3d4652; border-radius: 6px; padding: 7px; min-height: 20px; }
+            QLineEdit, QComboBox, QToolButton, QPlainTextEdit { background: #20252c; border: 1px solid #3d4652; border-radius: 6px; padding: 7px; min-height: 20px; }
             QToolButton { text-align: center; }
             QLabel[attention="true"] { color: #f2c94c; }
             QComboBox[invalid="true"], QToolButton[invalid="true"] { border: 2px solid #d85353; background: #342226; }
@@ -612,7 +681,11 @@ class MainWindow(QMainWindow):
             QPushButton#primary { background: #276749; border-color: #3c8a68; font-weight: 700; padding: 10px 18px; }
             QPushButton#primary:hover { background: #32805c; }
             QFrame#dropFrame, QFrame#plusDropFrame { border: 2px dashed #536170; border-radius: 10px; padding: 8px; background: #1b2026; }
-            QToolButton#sectionHeader { background: #20252c; border: 1px solid #353b44; border-radius: 7px; padding: 8px 10px; font-weight: 700; text-align: left; }
+            QToolButton#sectionHeader { background: #20252c; border: 1px solid #353b44; border-radius: 7px; padding: 10px 12px; font-weight: 700; text-align: left; }
+            QToolButton#sectionHeader[sectionStatus="ok"] { color: #63d69a; }
+            QToolButton#sectionHeader[sectionStatus="error"] { color: #ef6b6b; }
+            QToolButton#sectionHeader[sectionStatus="warning"] { color: #f2c94c; }
+            QToolButton#sectionHeader[sectionStatus="progress"] { color: #f2c94c; }
             QPushButton[chip="true"] { padding: 4px 8px; border-radius: 10px; min-height: 18px; }
             QLabel#dropTitle { font-size: 16px; font-weight: 700; }
             QLabel#muted { color: #9ba6b2; }
