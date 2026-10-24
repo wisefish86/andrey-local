@@ -16,6 +16,7 @@ from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
     QComboBox,
+    QDialog,
     QFileDialog,
     QFormLayout,
     QFrame,
@@ -29,6 +30,7 @@ from PySide6.QtWidgets import (
     QPushButton,
     QScrollArea,
     QSizePolicy,
+    QTextBrowser,
     QToolButton,
     QVBoxLayout,
     QWidget,
@@ -146,13 +148,14 @@ class MainWindow(QMainWindow):
         self.current_path: Path | None = None
         self.filename_manual = False
         self.folder_manual = False
+        self.title_manual = False
         self.controls: dict[str, QWidget] = {}
         self.field_defs: dict[str, dict[str, Any]] = {f["id"]: f for f in self.config["fields"]}
         self.tit1_unknown: list[str] = []
         self._build_ui()
         self._apply_style()
         self.setWindowTitle("Добавление минуса в репертуар")
-        self.resize(1080, 860)
+        self.resize(1100, 760)
 
     def _build_ui(self):
         central = QWidget()
@@ -181,46 +184,66 @@ class MainWindow(QMainWindow):
         body_layout = QVBoxLayout(body)
         body_layout.setSpacing(12)
 
-        meta = QGroupBox("Песня и файл")
+        meta = QGroupBox("Основное")
         grid = QGridLayout(meta)
+        grid.setHorizontalSpacing(10)
+        grid.setVerticalSpacing(7)
+
         self.artist = QLineEdit()
         self.clean_title = QLineEdit()
         self.display_title = QLineEdit()
         self.year = QLineEdit()
-        self.year.setMaximumWidth(100)
+        self.year.setMaximumWidth(110)
         self.source_url = QLineEdit()
-        self.tone = QLineEdit()
-        self.tone.setPlaceholderText("например -3")
+        self.source_url.setPlaceholderText("Прямой URL на плюс для сайта")
+        self.source_url.setToolTip("Ссылка на плюс (оригинал/вокальная версия), хранится в WOAS.")
+        self.tone = QComboBox()
+        for tone in self.config["filename"].get("tone_options", ["N", "-3", "-2", "-1", "0", "+1", "+2", "+3"]):
+            label = "N — неизвестно" if tone == "N" else tone
+            self.tone.addItem(label, tone)
         self.tone.setMaximumWidth(150)
         self.version_info = QLineEdit()
-        self.version_info.setPlaceholderText("например ориг, мз, buy, +click")
+        self.version_info.setPlaceholderText("мз, ориг, buy, +click…")
         self.filename = QLineEdit()
         self.folder_name = QLineEdit()
 
         grid.addWidget(QLabel("Исполнитель"), 0, 0)
-        grid.addWidget(self.artist, 0, 1, 1, 3)
-        grid.addWidget(QLabel("Чистое название"), 1, 0)
-        grid.addWidget(self.clean_title, 1, 1, 1, 3)
-        grid.addWidget(QLabel("Title в MP3"), 2, 0)
-        grid.addWidget(self.display_title, 2, 1, 1, 3)
-        grid.addWidget(QLabel("Год"), 3, 0)
-        grid.addWidget(self.year, 3, 1)
-        grid.addWidget(QLabel("Тональность"), 3, 2)
-        grid.addWidget(self.tone, 3, 3)
-        grid.addWidget(QLabel("Источник минуса"), 4, 0)
-        grid.addWidget(self.source_url, 4, 1, 1, 3)
-        grid.addWidget(QLabel("Сведения после ֎"), 5, 0)
-        grid.addWidget(self.version_info, 5, 1, 1, 3)
-        grid.addWidget(QLabel("Новое имя MP3"), 6, 0)
-        grid.addWidget(self.filename, 6, 1, 1, 2)
+        grid.addWidget(self.artist, 0, 1, 1, 2)
+        grid.addWidget(QLabel("Год"), 0, 3)
+        grid.addWidget(self.year, 0, 4, 1, 2)
+
+        grid.addWidget(QLabel("Название"), 1, 0)
+        grid.addWidget(self.clean_title, 1, 1, 1, 2)
+        grid.addWidget(QLabel("Тональность"), 1, 3)
+        grid.addWidget(self.tone, 1, 4, 1, 2)
+
+        grid.addWidget(QLabel("Название (Title)"), 2, 0)
+        grid.addWidget(self.display_title, 2, 1)
+        reset_title = QPushButton("По шаблону")
+        reset_title.clicked.connect(self.reset_title_template)
+        grid.addWidget(reset_title, 2, 2)
+        grid.addWidget(QLabel("Ссылка на плюс"), 2, 3)
+        grid.addWidget(self.source_url, 2, 4, 1, 2)
+
+        grid.addWidget(QLabel("Примечание"), 3, 0)
+        grid.addWidget(self.version_info, 3, 1)
+        help_btn = QToolButton()
+        help_btn.setText("ⓘ")
+        help_btn.setToolTip("Обозначения: мз, buy, +click, +Б и другие")
+        help_btn.clicked.connect(self.show_help)
+        grid.addWidget(help_btn, 3, 2)
+
+        grid.addWidget(QLabel("Новое имя MP3"), 4, 0)
+        grid.addWidget(self.filename, 4, 1, 1, 4)
         reset_name = QPushButton("По шаблону")
         reset_name.clicked.connect(self.reset_filename_template)
-        grid.addWidget(reset_name, 6, 3)
-        grid.addWidget(QLabel("Имя папки"), 7, 0)
-        grid.addWidget(self.folder_name, 7, 1, 1, 2)
+        grid.addWidget(reset_name, 4, 5)
+
+        grid.addWidget(QLabel("Имя папки"), 5, 0)
+        grid.addWidget(self.folder_name, 5, 1, 1, 4)
         reset_folder = QPushButton("По шаблону")
         reset_folder.clicked.connect(self.reset_folder_template)
-        grid.addWidget(reset_folder, 7, 3)
+        grid.addWidget(reset_folder, 5, 5)
         body_layout.addWidget(meta)
 
         sections = QHBoxLayout()
@@ -229,13 +252,23 @@ class MainWindow(QMainWindow):
         search = QGroupBox("Поиск и сайт")
         search_form = QFormLayout(search)
         extra = QGroupBox("Дополнительно")
-        extra_form = QFormLayout(extra)
+        extra_grid = QGridLayout(extra)
+        extra_index = 0
 
         for field in self.config["fields"]:
             control = self._make_field_control(field)
             self.controls[field["id"]] = control
-            target = {"performance": perf_form, "search": search_form, "extra": extra_form}[field["section"]]
-            target.addRow(field["label"], control)
+            section = field["section"]
+            if section == "performance":
+                perf_form.addRow(field["label"], control)
+            elif section == "search":
+                search_form.addRow(field["label"], control)
+            elif section == "extra":
+                row = extra_index // 2
+                col = (extra_index % 2) * 2
+                extra_grid.addWidget(QLabel(field["label"]), row, col)
+                extra_grid.addWidget(control, row, col + 1)
+                extra_index += 1
 
         sections.addWidget(perf, 1)
         sections.addWidget(search, 1)
@@ -281,13 +314,20 @@ class MainWindow(QMainWindow):
 
         self.setCentralWidget(central)
 
-        for widget in (self.artist, self.clean_title, self.tone, self.version_info):
+        for widget in (self.artist, self.clean_title, self.version_info):
             widget.textChanged.connect(self._auto_names_changed)
+        self.tone.currentIndexChanged.connect(self._auto_names_changed)
+        self.display_title.textEdited.connect(lambda _t: setattr(self, "title_manual", True))
         self.filename.textEdited.connect(lambda _t: setattr(self, "filename_manual", True))
         self.folder_name.textEdited.connect(lambda _t: setattr(self, "folder_manual", True))
         self.year.editingFinished.connect(self._suggest_era)
         self.move_folder.toggled.connect(self._update_target_preview)
         self.rename_folder.toggled.connect(self._update_target_preview)
+        language_control = self.controls.get("language")
+        if isinstance(language_control, MultiSelectButton):
+            language_control.changed.connect(self._language_changed)
+        self._reset_controls_to_defaults()
+        self._set_tone(self.config["filename"].get("tone_default", "N"))
 
     def _make_field_control(self, field: dict[str, Any]):
         if field["control"] == "single_select":
@@ -338,7 +378,7 @@ class MainWindow(QMainWindow):
         self.drop.label.setText(path.name)
         self.artist.setText(self._first(read_text(tags, "TPE1")))
         self.clean_title.setText(self._first(read_text(tags, "MVNM")))
-        self.display_title.setText(self._first(read_text(tags, "TIT2")))
+        existing_title = self._first(read_text(tags, "TIT2"))
         self.year.setText(self._first(read_text(tags, "TDRC")))
         self.source_url.setText(read_url(tags, "WOAS"))
 
@@ -349,7 +389,7 @@ class MainWindow(QMainWindow):
             self.clean_title.setText(inferred["clean_title"])
         if not self.display_title.text().strip():
             self.display_title.setText(self.clean_title.text().strip())
-        self.tone.setText(inferred["tone"])
+        self._set_tone(inferred["tone"] or self.config["filename"].get("tone_default", "N"))
         self.version_info.setText(inferred["version_info"])
 
         tit1_values = read_text(tags, "TIT1")
@@ -374,6 +414,14 @@ class MainWindow(QMainWindow):
         ]
         self._show_unknown_warning()
 
+        self.title_manual = False
+        generated_title = self.generated_title()
+        if existing_title:
+            self.display_title.setText(existing_title)
+            self.title_manual = existing_title != generated_title
+        else:
+            self.display_title.setText(generated_title)
+
         self.filename_manual = False
         self.folder_manual = False
         self.reset_filename_template()
@@ -391,16 +439,23 @@ class MainWindow(QMainWindow):
         self.open_folder_btn.setEnabled(True)
         self.status.setText("MP3 загружен. Проверь поля и сохрани.")
 
+    def _default_values(self, field) -> list[str]:
+        default = field.get("default", field.get("placeholder_value", ""))
+        if isinstance(default, list):
+            return list(default)
+        return [default] if default else []
+
     def _set_control_values(self, field, control, values: list[str]):
+        values = values or self._default_values(field)
         if isinstance(control, QComboBox):
-            value = values[0] if values else field.get("placeholder_value", "")
+            value = values[0] if values else ""
             idx = control.findData(value)
             if idx < 0 and value:
                 control.addItem("⚠ " + value, value)
                 idx = control.count() - 1
             control.setCurrentIndex(max(idx, 0))
         else:
-            control.set_values(values or ([field["placeholder_value"]] if field.get("placeholder_value") else []))
+            control.set_values(values)
 
     def _get_control_values(self, field, control) -> list[str]:
         if isinstance(control, QComboBox):
@@ -439,16 +494,54 @@ class MainWindow(QMainWindow):
             title_part = title_part[:m.start()].strip()
         return {"clean_title": title_part, "artist": artist, "tone": tone, "version_info": version_info}
 
+    def _set_tone(self, value: str):
+        value = clean(value).strip("[]") or self.config["filename"].get("tone_default", "N")
+        idx = self.tone.findData(value)
+        if idx < 0:
+            self.tone.addItem("⚠ " + value, value)
+            idx = self.tone.count() - 1
+        self.tone.setCurrentIndex(idx)
+
     def _tone_suffix(self) -> str:
-        tone = self.tone.text().strip()
-        if not tone:
-            return ""
-        tone = tone.strip("[]").strip()
-        return f" [{tone}]" if tone else ""
+        tone = clean(self.tone.currentData()) or self.config["filename"].get("tone_default", "N")
+        return f" [{tone}]"
 
     def _info_suffix(self) -> str:
         info = self.version_info.text().strip()
         return f" ֎ {info}" if info else ""
+
+    def _language_values(self) -> list[str]:
+        field = self.field_defs.get("language")
+        control = self.controls.get("language")
+        return self._get_control_values(field, control) if field and control else []
+
+    def _title_symbol(self) -> str:
+        values = set(self._language_values())
+        has_ru = "Я-рус" in values
+        has_foreign = bool(values.intersection({"Я-англ", "Я-ин"}))
+        symbols = self.config.get("title", {}).get("symbols", {})
+        white = symbols.get("russian", "⚪️")
+        red = symbols.get("foreign", "🔴")
+        if has_ru and has_foreign:
+            return white + red
+        if has_ru:
+            return white
+        if has_foreign:
+            return red
+        return ""
+
+    def generated_title(self) -> str:
+        name = self.clean_title.text().strip()
+        symbol = self._title_symbol()
+        return f"{symbol} {name}".strip()
+
+    def reset_title_template(self):
+        self.title_manual = False
+        self.display_title.setText(self.generated_title())
+
+    def _language_changed(self):
+        if not self.title_manual:
+            self.display_title.setText(self.generated_title())
 
     def generated_filename(self) -> str:
         title = self.clean_title.text().strip()
@@ -467,6 +560,8 @@ class MainWindow(QMainWindow):
         self.folder_name.setText(self.generated_folder_name())
 
     def _auto_names_changed(self):
+        if not self.title_manual:
+            self.display_title.setText(self.generated_title())
         if not self.filename_manual:
             self.filename.setText(self.generated_filename())
         if not self.folder_manual:
@@ -524,7 +619,7 @@ class MainWindow(QMainWindow):
         if not self.artist.text().strip():
             raise ValueError("Не заполнен исполнитель.")
         if not self.clean_title.text().strip():
-            raise ValueError("Не заполнено чистое название.")
+            raise ValueError("Не заполнено название.")
         year = self.year.text().strip()
         if year and (not year.isdigit() or not 1900 <= int(year) <= 2100):
             raise ValueError("Год должен быть пустым или числом 1900–2100.")
@@ -564,7 +659,7 @@ class MainWindow(QMainWindow):
         simple = [
             ("Исполнитель", {"kind": "text", "frame": "TPE1"}, self.artist.text().strip()),
             ("Title", {"kind": "text", "frame": "TIT2"}, self.display_title.text().strip()),
-            ("Чистое название", {"kind": "text", "frame": "MVNM"}, self.clean_title.text().strip()),
+            ("Название", {"kind": "text", "frame": "MVNM"}, self.clean_title.text().strip()),
             ("Год", {"kind": "text", "frame": "TDRC"}, self.year.text().strip()),
             ("Источник", {"kind": "url", "frame": "WOAS"}, self.source_url.text().strip()),
             ("Альбом", {"kind": "text", "frame": "TALB"}, self.config["fixed_tags"].get("TALB", "минусы")),
@@ -669,6 +764,29 @@ class MainWindow(QMainWindow):
             QMessageBox.critical(self, "Ошибка", str(exc) + rollback_note)
             self.status.setText("Ошибка. Автоматическая обработка остановлена.")
 
+    def show_help(self):
+        help_name = self.config.get("help", {}).get("file", "СПРАВКА.md")
+        help_path = APP_ROOT / help_name
+        if not help_path.is_file():
+            QMessageBox.warning(self, "Справка", f"Файл справки не найден:\n{help_path}")
+            return
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Обозначения в примечании")
+        dialog.resize(720, 560)
+        layout = QVBoxLayout(dialog)
+        browser = QTextBrowser()
+        browser.setOpenExternalLinks(True)
+        browser.setMarkdown(help_path.read_text(encoding="utf-8"))
+        layout.addWidget(browser)
+        close_btn = QPushButton("Закрыть")
+        close_btn.clicked.connect(dialog.accept)
+        layout.addWidget(close_btn)
+        dialog.exec()
+
+    def _reset_controls_to_defaults(self):
+        for field in self.config["fields"]:
+            self._set_control_values(field, self.controls[field["id"]], [])
+
     def open_current_folder(self):
         if self.current_path:
             QDesktopServices.openUrl(QUrl.fromLocalFile(str(self.current_path.parent)))
@@ -677,10 +795,13 @@ class MainWindow(QMainWindow):
         self.current_path = None
         self.drop.label.setText("Перетащи сюда MP3-минусовку")
         self.path_label.setText("Файл не выбран")
-        for edit in (self.artist, self.clean_title, self.display_title, self.year, self.source_url, self.tone, self.version_info, self.filename, self.folder_name):
+        for edit in (self.artist, self.clean_title, self.display_title, self.year, self.source_url, self.version_info, self.filename, self.folder_name):
             edit.clear()
-        for field in self.config["fields"]:
-            self._set_control_values(field, self.controls[field["id"]], [])
+        self.title_manual = False
+        self.filename_manual = False
+        self.folder_manual = False
+        self._set_tone(self.config["filename"].get("tone_default", "N"))
+        self._reset_controls_to_defaults()
         self.rename_folder.setChecked(False)
         self.move_folder.setChecked(False)
         self.move_folder.setEnabled(False)
