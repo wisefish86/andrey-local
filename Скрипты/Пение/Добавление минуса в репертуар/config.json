@@ -1,5 +1,5 @@
 {
-  "version": 29,
+  "version": 30,
   "paths": {
     "staging_root": "D:\\YandexDisk\\Проекты\\Пение\\Минусы\\1. Основной репертуар\\- - Добавляю в репертуар",
     "library_root": "D:\\YandexDisk\\Проекты\\Пение\\Минусы\\1. Основной репертуар"
@@ -946,8 +946,8 @@
     "ftp_data_connect_timeout_seconds": 12,
     "ftp_data_timeout_seconds": 60,
     "ftp_passive_data_modes": [
-      "epsv",
-      "pasv"
+      "pasv",
+      "epsv"
     ],
     "abort_batch_on_ftp_retry_exhausted": true
   },
