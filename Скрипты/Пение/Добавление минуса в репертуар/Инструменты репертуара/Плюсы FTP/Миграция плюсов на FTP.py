@@ -16,8 +16,14 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import quote
 from urllib.request import Request, urlopen
 
-TOOLS_ROOT = Path(__file__).resolve().parent
-APP_ROOT = TOOLS_ROOT.parent
+def find_app_root(start: Path) -> Path:
+    for candidate in [start, *start.parents]:
+        if (candidate / "config.json").is_file() and (candidate / "src").is_dir():
+            return candidate
+    raise RuntimeError("Не найден корень программы с config.json")
+
+
+APP_ROOT = find_app_root(Path(__file__).resolve().parent)
 PENIE_ROOT = APP_ROOT.parent
 if str(PENIE_ROOT) not in sys.path:
     sys.path.insert(0, str(PENIE_ROOT))
@@ -289,6 +295,55 @@ def write_report(
             )
 
     return json_path, csv_path
+
+
+def write_problem_report(
+    items: list[dict[str, Any]],
+    config: dict[str, Any],
+) -> Path:
+    report_rel = Path(
+        config.get("migration_plus_links", {}).get(
+            "report_dir",
+            "data/migration_plus_links",
+        )
+    )
+    report_dir = APP_ROOT / report_rel
+    report_dir.mkdir(parents=True, exist_ok=True)
+    path = report_dir / "ПРОБЛЕМНЫЕ ПАПКИ.txt"
+
+    problem_statuses = {"no_plus", "ambiguous_plus", "slug_collision", "tag_read_error"}
+    problems = [item for item in items if item.get("status") in problem_statuses]
+
+    lines = [
+        "ПРОБЛЕМНЫЕ ПАПКИ — миграция плюсов",
+        f"Сформировано: {datetime.now().isoformat(timespec='seconds')}",
+        "",
+        f"Всего проблемных папок: {len(problems)}",
+        f"Без плюса: {sum(1 for x in problems if x.get('status') == 'no_plus')}",
+        f"Несколько кандидатов: {sum(1 for x in problems if x.get('status') == 'ambiguous_plus')}",
+        "",
+    ]
+
+    for item in problems:
+        status = item.get("status", "")
+        title = {
+            "no_plus": "НЕТ ПЛЮСА",
+            "ambiguous_plus": "НЕСКОЛЬКО ПЛЮСОВ",
+            "slug_collision": "КОЛЛИЗИЯ ИМЕНИ",
+            "tag_read_error": "ОШИБКА ЧТЕНИЯ ТЕГОВ",
+        }.get(status, status)
+        lines.append(f"[{title}] {item.get('folder', '')}")
+        for minus in item.get("minuses", []):
+            lines.append(f"  МИНУС: {Path(minus).name}")
+        for plus in item.get("plus_candidates", []):
+            lines.append(f"  ПЛЮС?: {Path(plus).name}")
+        note = clean(item.get("note"))
+        if note:
+            lines.append(f"  ПРИЧИНА: {note}")
+        lines.append("")
+
+    path.write_text("\n".join(lines), encoding="utf-8")
+    return path
 
 
 def load_ftp_password(config: dict[str, Any]) -> str:
@@ -588,8 +643,10 @@ def main() -> int:
         mode="dry-run",
         filter_mode=filter_mode,
     )
+    problem_path = write_problem_report(items, config)
     print(f"\nDry-run JSON: {dry_json}")
     print(f"Dry-run CSV:  {dry_csv}")
+    print(f"Проблемные папки: {problem_path}")
 
     if not args.apply:
         print(
