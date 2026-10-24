@@ -49,6 +49,9 @@
 - во время загрузки показываются переданные МБ, процент и средняя скорость;
 - подключение к конкретному passive data-порту имеет короткий тайм-аут 5 секунд;
 - короткий 5-секундный тайм-аут применяется только к TCP-подключению data-сокета; FTP control-команды (PASV/EPSV/STOR и ответы сервера) используют обычный control timeout 60 секунд;
+- после 100% передачи финальный ответ сервера ждётся отдельно до 15 секунд; если сервер его не прислал, скрипт переподключается и до 6 раз проверяет точный SIZE временного файла с паузой 2 секунды;
+- если после такого тайм-аута размер временного файла уже точь-в-точь совпал с локальным, повторная загрузка не выполняется — мигратор продолжает с уже переданного файла;
+- при несовпадении временного файла лог показывает точные размеры в байтах и разницу, а не только округлённые МБ;
 - режим data-соединения адаптивный: следующий файл сначала пробует тот PASV/EPSV, который успешно открылся последним;
 - серверный PASV/EPSV-порт теперь печатается в лог;
 - если конкретный passive data-порт не открылся, control FTP-сессия не рвётся: на том же соединении до 3 раз запрашивается новый порт; только после исчерпания data-портов и внешнего retry выполняется новый FTP-login;
@@ -59,7 +62,7 @@
 - зависшее FTP-соединение закрывается сразу сокетом без дополнительного ожидания команды QUIT;
 - если один файл исчерпал все FTP-попытки, APPLY аварийно останавливает весь пакет, следующие файлы не запускаются; уже успешно обработанные изменения сохраняются, а apply-отчёт всё равно формируется.
 
-Параметры находятся в `config.json → migration_plus_links`: `skip_existing_working_woas`, `ftp_retry_attempts`, `ftp_retry_delay_seconds`, `ftp_retry_max_delay_seconds`, `ftp_recovery_cycles`, `ftp_recovery_cooldown_seconds`, `ftp_upload_block_size_kb`, `ftp_progress_interval_seconds`, `ftp_data_connect_timeout_seconds`, `ftp_data_port_attempts_per_mode`, `ftp_data_port_retry_delay_seconds`, `ftp_data_timeout_seconds`, `ftp_passive_data_modes`, `abort_batch_on_ftp_retry_exhausted`.
+Параметры находятся в `config.json → migration_plus_links`: `skip_existing_working_woas`, `ftp_retry_attempts`, `ftp_retry_delay_seconds`, `ftp_retry_max_delay_seconds`, `ftp_recovery_cycles`, `ftp_recovery_cooldown_seconds`, `ftp_upload_block_size_kb`, `ftp_progress_interval_seconds`, `ftp_data_connect_timeout_seconds`, `ftp_data_port_attempts_per_mode`, `ftp_data_port_retry_delay_seconds`, `ftp_data_timeout_seconds`, `ftp_final_reply_timeout_seconds`, `ftp_final_reply_recovery_checks`, `ftp_final_reply_recovery_delay_seconds`, `ftp_passive_data_modes`, `abort_batch_on_ftp_retry_exhausted`.
 
 ## GUI-комбайн
 
