@@ -208,7 +208,7 @@ class PlusDropFrame(QFrame):
         self.label = QLabel("Перетащи сюда плюс (MP3)")
         self.label.setAlignment(Qt.AlignCenter)
         self.label.setObjectName("dropTitle")
-        hint = QLabel("Файл загрузится на FTP только после нажатия кнопки")
+        hint = QLabel("Перетащи MP3 — загрузка на FTP начнётся автоматически")
         hint.setAlignment(Qt.AlignCenter)
         hint.setObjectName("muted")
         layout.addWidget(self.label)
@@ -240,6 +240,7 @@ class MainWindow(QMainWindow):
         self.unmapped_structured_tags: list[str] = []
         self.invalid_fields: dict[str, list[str]] = {}
         self.plus_path: Path | None = None
+        self._plus_upload_in_progress = False
         self.network_manager = QNetworkAccessManager(self)
         self._link_check_reply: QNetworkReply | None = None
         self._build_ui()
@@ -389,27 +390,17 @@ class MainWindow(QMainWindow):
         song_section.add_widget(song_widget)
         body_layout.addWidget(song_section)
 
-        # 2. Данные песни
-        metadata_section = self._make_section("metadata")
-        meta_widget = QWidget()
-        meta_layout = QFormLayout(meta_widget)
-        meta_layout.setContentsMargins(0, 0, 0, 0)
-        self.year = QLineEdit()
-        self.year.setMaximumWidth(120)
-        meta_layout.addRow("Год", self.year)
-        metadata_section.add_widget(meta_widget)
-        body_layout.addWidget(metadata_section)
-
-        # 3. Теги и подбор
+        # 2. Теги и подбор
         tags_section = self._make_section("tags")
         sections = QHBoxLayout()
         perf = QGroupBox("Выступление")
         perf_form = QFormLayout(perf)
         search = QGroupBox("Поиск и сайт")
         search_form = QFormLayout(search)
-        extra = QGroupBox("Дополнительно")
-        extra_grid = QGridLayout(extra)
-        extra_index = 0
+
+        self.year = QLineEdit()
+        self.year.setMaximumWidth(120)
+        search_form.addRow("Год", self.year)
 
         for field in self.config["fields"]:
             control = self._make_field_control(field)
@@ -421,20 +412,13 @@ class MainWindow(QMainWindow):
                 perf_form.addRow(field_label, control)
             elif section == "search":
                 search_form.addRow(field_label, control)
-            elif section == "extra":
-                row = extra_index // 2
-                col = (extra_index % 2) * 2
-                extra_grid.addWidget(field_label, row, col)
-                extra_grid.addWidget(control, row, col + 1)
-                extra_index += 1
 
         sections.addWidget(perf, 1)
         sections.addWidget(search, 1)
         tags_section.add_layout(sections)
-        tags_section.add_widget(extra)
         body_layout.addWidget(tags_section)
 
-        # 4. Анализ аудио
+        # 3. Анализ аудио
         analysis_section = self._make_section("audio_analysis")
         analysis_widget = QWidget()
         analysis_layout = QGridLayout(analysis_widget)
@@ -475,7 +459,7 @@ class MainWindow(QMainWindow):
         analysis_section.add_widget(analysis_widget)
         body_layout.addWidget(analysis_section)
 
-        # 5. Плюс песни
+        # 4. Плюс песни
         plus_section = self._make_section("plus")
         plus_top = QHBoxLayout()
         self.plus_drop = PlusDropFrame()
@@ -527,7 +511,7 @@ class MainWindow(QMainWindow):
         plus_section.add_widget(plus_form_widget)
         body_layout.addWidget(plus_section)
 
-        # 6. Файлы песни
+        # 5. Файлы песни
         file_tools_section = self._make_section("file_tools")
         file_tools_layout = QHBoxLayout()
         self.additions_btn = QPushButton("📁 Additi0ns")
@@ -1377,8 +1361,22 @@ class MainWindow(QMainWindow):
             return
         self.plus_path = path
         self.plus_path_label.setText(str(path))
-        self.plus_drop.label.setText(path.name)
-        self.upload_plus_btn.setEnabled(bool(self.current_path and self.current_path.is_file()))
+        self.plus_drop.label.setText(f"{path.name} · готовлю загрузку…")
+        can_upload = bool(self.current_path and self.current_path.is_file())
+        self.upload_plus_btn.setEnabled(can_upload)
+
+        if self.config.get("plus_upload", {}).get("auto_upload_on_select", True):
+            if can_upload:
+                self.status.setText("Плюс выбран. Запускаю FTP-загрузку…")
+                QTimer.singleShot(0, self.upload_plus)
+            else:
+                self.plus_drop.label.setText(f"{path.name} · сначала выбери минус")
+                QMessageBox.warning(
+                    self,
+                    "Минус не выбран",
+                    "Плюс выбран, но основной MP3-минус ещё не загружен. "
+                    "Сначала перетащи минус, затем повтори плюс.",
+                )
 
     def _ftp_password(self) -> str:
         cfg = self.config.get("plus_upload", {})
@@ -1467,6 +1465,8 @@ class MainWindow(QMainWindow):
             raise
 
     def upload_plus(self):
+        if self._plus_upload_in_progress:
+            return
         if not self.current_path or not self.current_path.is_file():
             QMessageBox.warning(
                 self,
@@ -1504,7 +1504,9 @@ class MainWindow(QMainWindow):
         ftp = ftplib.FTP()
         stage = "подключение к FTP"
 
+        self._plus_upload_in_progress = True
         self.upload_plus_btn.setEnabled(False)
+        self.plus_drop.label.setText(f"⏳ {remote_name} · загрузка…")
         self.status.setText("Подключаюсь к FTP…")
         QApplication.setOverrideCursor(Qt.WaitCursor)
 
@@ -1598,6 +1600,7 @@ class MainWindow(QMainWindow):
             stage = "запись ссылки в WOAS"
             self._save_plus_url_to_current_mp3(url)
 
+            self.plus_drop.label.setText(f"✓ {remote_name} · загружен")
             self.status.setText("Плюс загружен; ссылка сразу сохранена в WOAS. Проверяю URL…")
             self.check_plus_url(True)
 
@@ -1611,6 +1614,7 @@ class MainWindow(QMainWindow):
                     "\n\nFTP-соединение оборвалось по таймауту. "
                     "Повторно использованное соединение после таймаута теперь не применяется."
                 )
+            self.plus_drop.label.setText(f"✕ {remote_name} · ошибка")
             QMessageBox.critical(self, "FTP-загрузка", message)
             self.status.setText(f"Ошибка FTP: {stage}.")
             try:
@@ -1619,6 +1623,7 @@ class MainWindow(QMainWindow):
             except Exception:
                 pass
         finally:
+            self._plus_upload_in_progress = False
             try:
                 ftp.close()
             except Exception:
@@ -1853,6 +1858,7 @@ class MainWindow(QMainWindow):
             "— ReplayGain не проверен",
         )
         self.plus_path = None
+        self._plus_upload_in_progress = False
         self.plus_path_label.setText("Плюс не выбран")
         self.plus_drop.label.setText("Перетащи сюда плюс (MP3)")
         self.upload_plus_btn.setEnabled(False)
