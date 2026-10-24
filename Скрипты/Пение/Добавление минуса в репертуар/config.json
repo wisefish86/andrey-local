@@ -1,5 +1,5 @@
 {
-  "version": 18,
+  "version": 19,
   "paths": {
     "staging_root": "D:\\YandexDisk\\Проекты\\Пение\\Минусы\\1. Основной репертуар\\- - Добавляю в репертуар",
     "library_root": "D:\\YandexDisk\\Проекты\\Пение\\Минусы\\1. Основной репертуар"
@@ -491,7 +491,7 @@
     {
       "id": "language",
       "label": "Язык",
-      "section": "search",
+      "section": "song_file",
       "control": "single_select",
       "storage": {
         "kind": "tit1_group",
@@ -931,8 +931,19 @@
     "schema_version": 1
   },
   "tools": {
-    "site_rescan": "Инструменты репертуара/Пересканировать репертуар для Singer Andrey.bat",
-    "migrate_plus_check": "Инструменты репертуара/Миграция плюсов - ПРОВЕРКА.bat",
-    "migrate_plus_apply": "Инструменты репертуара/Миграция плюсов - ПРИМЕНИТЬ.bat"
+    "site_rescan": "Инструменты репертуара/Сайт Singer Andrey/Пересканировать репертуар для Singer Andrey.bat",
+    "migrate_plus_check": "Инструменты репертуара/Плюсы FTP/Миграция плюсов - ПРОВЕРКА.bat",
+    "migrate_plus_apply": "Инструменты репертуара/Плюсы FTP/Миграция плюсов - ПРИМЕНИТЬ.bat",
+    "import_tags": "Инструменты репертуара/Обновление тегов/Импорт тегов из CSV.bat",
+    "fix_lyrics": "Инструменты репертуара/Исправление лирики/[скрипт] Исправить ошибки со встроенной лирикой.bat",
+    "distribute_minuses": "Инструменты репертуара/Распределение минусов/[скрипт] Распределить минусы по папкам для Syncthing.bat",
+    "prepare_phonotheque": "Инструменты репертуара/Подготовка фонотеки/[скрипт] Подготовка треков для фонотеки.bat",
+    "normalize_media": "Инструменты репертуара/Нормализация аудио видео/Нормализация аудио видео.bat",
+    "program_help": "СПРАВКА.md",
+    "tools_help": "Инструменты репертуара/README.md",
+    "migration_problems": "data/migration_plus_links/ПРОБЛЕМНЫЕ ПАПКИ.txt"
+  },
+  "search": {
+    "year_google_query": "{artist} {name} дата выхода песни год релиза"
   }
 }
