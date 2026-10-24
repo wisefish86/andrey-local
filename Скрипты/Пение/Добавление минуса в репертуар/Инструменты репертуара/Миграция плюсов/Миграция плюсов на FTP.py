@@ -501,27 +501,39 @@ class FTPUploader:
                 *[mode for mode in modes if mode != self.preferred_data_mode],
             ]
 
+        port_attempts = max(
+            1,
+            int(self.mig_cfg.get("ftp_data_port_attempts_per_mode", 3)),
+        )
+        port_retry_delay = max(
+            0.0,
+            float(self.mig_cfg.get("ftp_data_port_retry_delay_seconds", 0.5)),
+        )
+
         errors: list[str] = []
         current_ftp = ftp
 
-        for mode_index, mode in enumerate(modes, 1):
-            label = mode.upper()
-            self.stage = f"открытие FTP data-соединения {label}"
-            print(
-                f"    → data-соединение {label} "
-                f"(тайм-аут {connect_timeout} с)...",
-                flush=True,
-            )
+        if current_ftp.sock is None:
+            raise ConnectionError("FTP control-соединение отсутствует.")
 
-            try:
+        # TYPE I — control-команда. Если она тайм-аутится, весь control-канал
+        # уже ненадёжен и внешний retry должен пересоздать FTP-сессию.
+        self.stage = "переключение FTP в бинарный режим"
+        current_ftp.sock.settimeout(connect_timeout)
+        current_ftp.voidcmd("TYPE I")
+
+        for mode in modes:
+            label = mode.upper()
+
+            for port_attempt in range(1, port_attempts + 1):
                 if current_ftp.sock is None:
                     raise ConnectionError("FTP control-соединение отсутствует.")
 
-                current_ftp.sock.settimeout(connect_timeout)
                 peer = current_ftp.sock.getpeername()
+                self.stage = f"запрос FTP data-порта {label}"
 
-                current_ftp.voidcmd("TYPE I")
-
+                # Важно: отдельно получаем passive endpoint. Если sendcmd здесь
+                # тайм-аутится, это уже проблема control-соединения.
                 if mode == "epsv":
                     response = current_ftp.sendcmd("EPSV")
                     host, port = ftplib.parse229(response, peer)
@@ -537,14 +549,53 @@ class FTPUploader:
                     else:
                         host = peer[0]
 
-                conn = socket.create_connection(
-                    (host, port),
-                    timeout=connect_timeout,
-                    source_address=current_ftp.source_address,
+                self.stage = (
+                    f"подключение к FTP data-порту {label} {port} "
+                    f"({port_attempt}/{port_attempts})"
                 )
+                print(
+                    f"    → {label} data-порт {port} "
+                    f"({port_attempt}/{port_attempts}, "
+                    f"тайм-аут {connect_timeout} с)...",
+                    flush=True,
+                )
+
+                try:
+                    conn = socket.create_connection(
+                        (host, port),
+                        timeout=connect_timeout,
+                        source_address=current_ftp.source_address,
+                    )
+                except (TimeoutError, ConnectionError, OSError) as exc:
+                    # Здесь control-соединение НЕ трогаем: сервер уже ответил
+                    # на PASV/EPSV, а завис только отдельный data socket.
+                    errors.append(
+                        f"{label}:{port}: {type(exc).__name__}: {exc}"
+                    )
+                    if port_attempt < port_attempts:
+                        print(
+                            f"    ! data-порт {port} не открылся: "
+                            f"{type(exc).__name__}: {exc}; "
+                            f"запрашиваю у сервера новый {label}-порт "
+                            "без переподключения FTP.",
+                            flush=True,
+                        )
+                        if port_retry_delay:
+                            time.sleep(port_retry_delay)
+                        continue
+
+                    print(
+                        f"    ! {label}: {port_attempts} data-порта подряд "
+                        "не открылись; пробую другой passive-режим "
+                        "на том же FTP-сеансе.",
+                        flush=True,
+                    )
+                    break
+
                 conn.settimeout(transfer_timeout)
 
                 try:
+                    self.stage = f"запуск STOR через {label} data-порт {port}"
                     response = current_ftp.sendcmd(command)
                     if response[:1] == "2":
                         response = current_ftp.getresp()
@@ -560,50 +611,16 @@ class FTPUploader:
                     )
 
                 self.preferred_data_mode = mode
-                print(f"    ✓ data-соединение {label} открыто.", flush=True)
+                print(
+                    f"    ✓ {label} data-порт {port} открыт.",
+                    flush=True,
+                )
                 return current_ftp, conn
 
-            except (TimeoutError, ConnectionError, OSError, ftplib.Error) as exc:
-                errors.append(f"{label}: {type(exc).__name__}: {exc}")
-
-                if mode_index < len(modes):
-                    next_mode = modes[mode_index]
-                    next_label = next_mode.upper()
-                    self.preferred_data_mode = next_mode
-                    print(
-                        f"    ! {label} не открылось: "
-                        f"{type(exc).__name__}: {exc}. "
-                        f"Переподключаю FTP перед {next_label}.",
-                        flush=True,
-                    )
-                    self.close()
-                    mode_switch_delay = max(
-                        0.0,
-                        float(
-                            self.mig_cfg.get(
-                                "ftp_mode_switch_delay_seconds",
-                                2,
-                            )
-                        ),
-                    )
-                    if mode_switch_delay:
-                        print(
-                            f"    … пауза {mode_switch_delay:g} с "
-                            "перед новым control-подключением.",
-                            flush=True,
-                        )
-                        time.sleep(mode_switch_delay)
-                    self.stage = f"переподключение перед {next_label}"
-                    current_ftp = self.connect()
-                    continue
-
-                self.close()
-                raise ConnectionError(
-                    "Не удалось открыть FTP data-соединение: "
-                    + " | ".join(errors)
-                ) from exc
-
-        raise ConnectionError("Не задан рабочий режим FTP data-соединения.")
+        raise ConnectionError(
+            "Сервер выдал несколько недоступных FTP data-портов: "
+            + " | ".join(errors)
+        )
 
     def _upload_stream(
         self,
@@ -630,8 +647,8 @@ class FTPUploader:
             ),
         )
         data_connect_timeout = max(
-            3,
-            int(self.mig_cfg.get("ftp_data_connect_timeout_seconds", 12)),
+            2,
+            int(self.mig_cfg.get("ftp_data_connect_timeout_seconds", 5)),
         )
 
         sent = 0
