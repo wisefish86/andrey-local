@@ -185,67 +185,80 @@ class MainWindow(QMainWindow):
         body_layout = QVBoxLayout(body)
         body_layout.setSpacing(12)
 
-        meta = QGroupBox("Основное")
+        meta = QGroupBox("Песня и название")
         grid = QGridLayout(meta)
         grid.setHorizontalSpacing(10)
         grid.setVerticalSpacing(7)
 
         self.artist = QLineEdit()
         self.clean_title = QLineEdit()
+        self.version = QComboBox()
+        self.version.setEditable(True)
+        for value, label in self.config["filename"].get("version_options", []):
+            self.version.addItem(label, value)
+        self.version.setInsertPolicy(QComboBox.NoInsert)
         self.display_title = QLineEdit()
-        self.year = QLineEdit()
-        self.year.setMaximumWidth(110)
-        self.source_url = QLineEdit()
-        self.source_url.setPlaceholderText("Прямой URL на плюс для сайта")
-        self.source_url.setToolTip("Ссылка на плюс (оригинал/вокальная версия), хранится в WOAS.")
-        self.tone = QComboBox()
-        for tone in self.config["filename"].get("tone_options", ["N", "-3", "-2", "-1", "0", "+1", "+2", "+3"]):
-            label = "N — неизвестно" if tone == "N" else tone
-            self.tone.addItem(label, tone)
-        self.tone.setMaximumWidth(150)
-        self.version_info = QLineEdit()
-        self.version_info.setPlaceholderText("мз, ориг, buy, +click…")
         self.filename = QLineEdit()
         self.folder_name = QLineEdit()
 
         grid.addWidget(QLabel("Исполнитель"), 0, 0)
         grid.addWidget(self.artist, 0, 1, 1, 2)
-        grid.addWidget(QLabel("Год"), 0, 3)
-        grid.addWidget(self.year, 0, 4, 1, 2)
+        grid.addWidget(QLabel("Версия"), 0, 3)
+        grid.addWidget(self.version, 0, 4, 1, 2)
 
         grid.addWidget(QLabel("Название"), 1, 0)
-        grid.addWidget(self.clean_title, 1, 1, 1, 2)
-        grid.addWidget(QLabel("Тональность"), 1, 3)
-        grid.addWidget(self.tone, 1, 4, 1, 2)
+        grid.addWidget(self.clean_title, 1, 1, 1, 5)
 
         grid.addWidget(QLabel("Название (Title)"), 2, 0)
-        grid.addWidget(self.display_title, 2, 1)
+        grid.addWidget(self.display_title, 2, 1, 1, 4)
         reset_title = QPushButton("По шаблону")
         reset_title.clicked.connect(self.reset_title_template)
-        grid.addWidget(reset_title, 2, 2)
-        grid.addWidget(QLabel("Ссылка на плюс"), 2, 3)
-        grid.addWidget(self.source_url, 2, 4, 1, 2)
+        grid.addWidget(reset_title, 2, 5)
 
-        grid.addWidget(QLabel("Примечание"), 3, 0)
-        grid.addWidget(self.version_info, 3, 1)
+        grid.addWidget(QLabel("Новое имя MP3"), 3, 0)
+        grid.addWidget(self.filename, 3, 1, 1, 4)
+        reset_name = QPushButton("По шаблону")
+        reset_name.clicked.connect(self.reset_filename_template)
+        grid.addWidget(reset_name, 3, 5)
+
+        grid.addWidget(QLabel("Имя папки"), 4, 0)
+        grid.addWidget(self.folder_name, 4, 1, 1, 4)
+        reset_folder = QPushButton("По шаблону")
+        reset_folder.clicked.connect(self.reset_folder_template)
+        grid.addWidget(reset_folder, 4, 5)
+        body_layout.addWidget(meta)
+
+        data_box = QGroupBox("Данные минуса")
+        data_grid = QGridLayout(data_box)
+        data_grid.setHorizontalSpacing(10)
+        data_grid.setVerticalSpacing(7)
+
+        self.tone = QComboBox()
+        for tone in self.config["filename"].get("tone_options", ["N", "-3", "-2", "-1", "0", "+1", "+2", "+3"]):
+            label = "N — неизвестно" if tone == "N" else tone
+            self.tone.addItem(label, tone)
+        self.year = QLineEdit()
+        self.year.setMaximumWidth(110)
+        self.source_url = QLineEdit()
+        self.source_url.setPlaceholderText("Прямой URL на плюс для сайта")
+        self.source_url.setToolTip("Ссылка на плюс (оригинал/вокальная версия), хранится в WOAS.")
+        self.version_info = QLineEdit()
+        self.version_info.setPlaceholderText("мз, ориг, buy, +click…")
+
+        data_grid.addWidget(QLabel("Тональность"), 0, 0)
+        data_grid.addWidget(self.tone, 0, 1)
+        data_grid.addWidget(QLabel("Год"), 0, 2)
+        data_grid.addWidget(self.year, 0, 3)
+        data_grid.addWidget(QLabel("Ссылка на плюс"), 1, 0)
+        data_grid.addWidget(self.source_url, 1, 1, 1, 3)
+        data_grid.addWidget(QLabel("Примечание"), 2, 0)
+        data_grid.addWidget(self.version_info, 2, 1, 1, 2)
         help_btn = QToolButton()
         help_btn.setText("ⓘ")
         help_btn.setToolTip("Обозначения: мз, buy, +click, +Б и другие")
         help_btn.clicked.connect(self.show_help)
-        grid.addWidget(help_btn, 3, 2)
-
-        grid.addWidget(QLabel("Новое имя MP3"), 4, 0)
-        grid.addWidget(self.filename, 4, 1, 1, 4)
-        reset_name = QPushButton("По шаблону")
-        reset_name.clicked.connect(self.reset_filename_template)
-        grid.addWidget(reset_name, 4, 5)
-
-        grid.addWidget(QLabel("Имя папки"), 5, 0)
-        grid.addWidget(self.folder_name, 5, 1, 1, 4)
-        reset_folder = QPushButton("По шаблону")
-        reset_folder.clicked.connect(self.reset_folder_template)
-        grid.addWidget(reset_folder, 5, 5)
-        body_layout.addWidget(meta)
+        data_grid.addWidget(help_btn, 2, 3)
+        body_layout.addWidget(data_box)
 
         sections = QHBoxLayout()
         perf = QGroupBox("Выступление")
@@ -275,6 +288,21 @@ class MainWindow(QMainWindow):
         sections.addWidget(search, 1)
         body_layout.addLayout(sections)
         body_layout.addWidget(extra)
+
+        file_tools = QGroupBox("Файлы песни")
+        file_tools_layout = QHBoxLayout(file_tools)
+        self.additions_btn = QPushButton("📁 Additi0ns")
+        self.additions_btn.setToolTip("Создать/открыть подпапку Additi0ns для дополнительных версий минуса")
+        self.additions_btn.clicked.connect(self.create_additions_folder)
+        file_tools_layout.addWidget(self.additions_btn)
+        self.files_copy_btn = QPushButton("📄 Копия в Files")
+        self.files_copy_btn.setToolTip("Создать подпапку Files и скопировать туда текущий MP3 без части после ֎")
+        self.files_copy_btn.clicked.connect(self.copy_to_files_folder)
+        file_tools_layout.addWidget(self.files_copy_btn)
+        file_tools_layout.addStretch(1)
+        self.additions_btn.setEnabled(False)
+        self.files_copy_btn.setEnabled(False)
+        body_layout.addWidget(file_tools)
 
         actions = QGroupBox("Папка и перенос")
         actions_layout = QVBoxLayout(actions)
@@ -317,6 +345,7 @@ class MainWindow(QMainWindow):
 
         for widget in (self.artist, self.clean_title, self.version_info):
             widget.textChanged.connect(self._auto_names_changed)
+        self.version.currentTextChanged.connect(self._auto_names_changed)
         self.tone.currentIndexChanged.connect(self._auto_names_changed)
         self.display_title.textEdited.connect(lambda _t: setattr(self, "title_manual", True))
         self.filename.textEdited.connect(lambda _t: setattr(self, "filename_manual", True))
@@ -388,6 +417,7 @@ class MainWindow(QMainWindow):
             self.artist.setText(inferred["artist"])
         if not self.clean_title.text().strip():
             self.clean_title.setText(inferred["clean_title"])
+        self._set_version(inferred["version"])
         self._set_tone(inferred["tone"] or self.config["filename"].get("tone_default", "N"))
         self.version_info.setText(inferred["version_info"])
 
@@ -436,6 +466,8 @@ class MainWindow(QMainWindow):
         self._update_target_preview()
         self.save_btn.setEnabled(True)
         self.open_folder_btn.setEnabled(True)
+        self.additions_btn.setEnabled(True)
+        self.files_copy_btn.setEnabled(True)
         self.status.setText("MP3 загружен. Проверь поля и сохрани.")
 
     def _default_values(self, field) -> list[str]:
@@ -491,7 +523,42 @@ class MainWindow(QMainWindow):
         if m:
             tone = m.group(1).strip()
             title_part = title_part[:m.start()].strip()
-        return {"clean_title": title_part, "artist": artist, "tone": tone, "version_info": version_info}
+
+        version = ""
+        vm = re.search(r"\s*\(([^()]+)\)\s*$", title_part)
+        if vm:
+            candidate = vm.group(1).strip()
+            known = {str(v).casefold() for v, _label in self.config["filename"].get("version_options", []) if v}
+            if candidate.casefold() in known:
+                version = candidate
+                title_part = title_part[:vm.start()].strip()
+
+        return {"clean_title": title_part, "artist": artist, "version": version, "tone": tone, "version_info": version_info}
+
+    def _set_version(self, value: str):
+        value = clean(value)
+        for i in range(self.version.count()):
+            if clean(self.version.itemData(i)).casefold() == value.casefold():
+                self.version.setCurrentIndex(i)
+                return
+        if value:
+            self.version.setEditText(value)
+        else:
+            idx = self.version.findData("")
+            self.version.setCurrentIndex(max(idx, 0))
+
+    def _version_value(self) -> str:
+        data = self.version.currentData()
+        if data is not None and clean(self.version.currentText()) == clean(self.version.itemText(self.version.currentIndex())):
+            return clean(data)
+        text = clean(self.version.currentText())
+        if not text or text.casefold() == "обычная":
+            return ""
+        return text
+
+    def _version_suffix(self) -> str:
+        version = self._version_value()
+        return f" ({version})" if version else ""
 
     def _set_tone(self, value: str):
         value = clean(value).strip("[]") or self.config["filename"].get("tone_default", "N")
@@ -532,7 +599,7 @@ class MainWindow(QMainWindow):
     def generated_title(self) -> str:
         name = self.clean_title.text().strip()
         symbol = self._title_symbol()
-        return f"{symbol} {name}".strip()
+        return f"{symbol} {name}{self._version_suffix()}".strip()
 
     def reset_title_template(self):
         self.title_manual = False
@@ -545,7 +612,7 @@ class MainWindow(QMainWindow):
     def generated_filename(self) -> str:
         title = self.clean_title.text().strip()
         artist = self.artist.text().strip()
-        return f"{title}{self._tone_suffix()} _____ {artist}{self._info_suffix()}.mp3"
+        return f"{title}{self._version_suffix()}{self._tone_suffix()} _____ {artist}{self._info_suffix()}.mp3"
 
     def generated_folder_name(self) -> str:
         return f"{self.clean_title.text().strip()} _____ {self.artist.text().strip()}"
@@ -763,6 +830,39 @@ class MainWindow(QMainWindow):
             QMessageBox.critical(self, "Ошибка", str(exc) + rollback_note)
             self.status.setText("Ошибка. Автоматическая обработка остановлена.")
 
+    def create_additions_folder(self):
+        if not self.current_path:
+            return
+        name = self.config.get("file_tools", {}).get("additions_folder", "Additi0ns")
+        target = self.current_path.parent / name
+        try:
+            target.mkdir(exist_ok=True)
+            self.status.setText(f"Папка {name} готова.")
+            if self.config.get("file_tools", {}).get("open_after_create", True):
+                QDesktopServices.openUrl(QUrl.fromLocalFile(str(target)))
+        except Exception as exc:
+            QMessageBox.critical(self, "Ошибка", f"Не удалось создать {name}:\n{exc}")
+
+    def copy_to_files_folder(self):
+        if not self.current_path:
+            return
+        folder_name = self.config.get("file_tools", {}).get("files_folder", "Files")
+        target_dir = self.current_path.parent / folder_name
+        try:
+            target_dir.mkdir(exist_ok=True)
+            source_name = self.filename.text().strip() or self.current_path.name
+            stem = Path(source_name).stem
+            if self.config.get("file_tools", {}).get("trimmed_copy_strip_info", True):
+                stem = stem.partition(self.config["filename"].get("info_separator", "֎"))[0].rstrip()
+            target = target_dir / f"{stem}.mp3"
+            if target.exists():
+                raise FileExistsError(f"Файл уже существует:\n{target}")
+            shutil.copy2(self.current_path, target)
+            self.status.setText(f"Копия создана в {folder_name}.")
+            QDesktopServices.openUrl(QUrl.fromLocalFile(str(target_dir)))
+        except Exception as exc:
+            QMessageBox.critical(self, "Ошибка", f"Не удалось создать копию в {folder_name}:\n{exc}")
+
     def show_help(self):
         help_name = self.config.get("help", {}).get("file", "СПРАВКА.md")
         help_path = APP_ROOT / help_name
@@ -799,6 +899,7 @@ class MainWindow(QMainWindow):
         self.title_manual = False
         self.filename_manual = False
         self.folder_manual = False
+        self._set_version("")
         self._set_tone(self.config["filename"].get("tone_default", "N"))
         self._reset_controls_to_defaults()
         self.rename_folder.setChecked(False)
@@ -808,6 +909,8 @@ class MainWindow(QMainWindow):
         self.target_label.clear()
         self.save_btn.setEnabled(False)
         self.open_folder_btn.setEnabled(False)
+        self.additions_btn.setEnabled(False)
+        self.files_copy_btn.setEnabled(False)
         self.status.setText("Готов к загрузке MP3")
 
 
