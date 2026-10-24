@@ -35,19 +35,40 @@ Invoke-Git fetch origin main
 $changes = @(& $git status --porcelain --untracked-files=all)
 if ($LASTEXITCODE -ne 0) { throw 'Cannot inspect local changes' }
 
-if (-not $changes.Count) {
-    # Update ignore rules first, then recheck: new files may become visible.
-    $aheadBehind = (& $git rev-list --left-right --count HEAD...origin/main).Trim() -split '\s+'
-    if ($LASTEXITCODE -ne 0 -or $aheadBehind.Count -ne 2) { throw 'Cannot inspect branch divergence' }
-    if ([int]$aheadBehind[0] -gt 0) {
-        Write-Host 'Local commits exist; rebasing on origin/main without pushing.' -ForegroundColor Yellow
-        Invoke-Git rebase origin/main
-    } else {
-        Invoke-Git merge --ff-only origin/main
-    }
-    $changes = @(& $git status --porcelain --untracked-files=all)
-    if ($LASTEXITCODE -ne 0) { throw 'Cannot inspect local changes after pull' }
+# Always integrate origin/main before deciding what is genuinely local.
+# If the working tree is dirty, temporarily stash it, update main, then restore it.
+# This prevents remote moves/deletions from being mistaken for local changes to publish.
+$hadTempStash = $false
+if ($changes.Count) {
+    Write-Host 'Local working-tree changes detected; preserving them while updating origin/main.' -ForegroundColor Cyan
+    $stashName = "__andrey_sync_temp__$([DateTime]::Now.ToString('yyyyMMdd_HHmmss'))"
+    & $git stash push -u -m $stashName
+    if ($LASTEXITCODE -ne 0) { throw 'Cannot temporarily stash local changes' }
+    $hadTempStash = $true
 }
+
+$aheadBehind = (& $git rev-list --left-right --count HEAD...origin/main).Trim() -split '\s+'
+if ($LASTEXITCODE -ne 0 -or $aheadBehind.Count -ne 2) { throw 'Cannot inspect branch divergence' }
+
+if ([int]$aheadBehind[0] -gt 0) {
+    Write-Host 'Local commits exist; rebasing on origin/main without pushing.' -ForegroundColor Yellow
+    Invoke-Git rebase origin/main
+} else {
+    Invoke-Git merge --ff-only origin/main
+}
+
+if ($hadTempStash) {
+    Write-Host 'Restoring preserved local working-tree changes...' -ForegroundColor Cyan
+    & $git stash pop
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host 'Temporary stash was NOT dropped because restore reported a conflict.' -ForegroundColor Red
+        Write-Host 'Resolve the conflict before publishing anything.' -ForegroundColor Red
+        throw 'Cannot restore local changes cleanly after updating origin/main'
+    }
+}
+
+$changes = @(& $git status --porcelain --untracked-files=all)
+if ($LASTEXITCODE -ne 0) { throw 'Cannot inspect local changes after updating origin/main' }
 
 if ($changes.Count) {
     Write-Host 'Local changes to review before publishing:' -ForegroundColor Yellow
@@ -55,11 +76,35 @@ if ($changes.Count) {
     Write-Host 'WARNING: this repository is PUBLIC.' -ForegroundColor Yellow
     $answer = Read-Host 'Confirm public upload (1 / U / YES / DA)'
     if ($answer.Trim().ToLowerInvariant() -notin @('1', 'u', 'г', 'yes', 'y', 'да', 'д')) {
-        Write-Host 'Nothing published; remote changes not applied.'
+        Write-Host 'Nothing published. Remote changes are already applied locally.'
         return
     }
     $paths = @(& $git ls-files --others --exclude-standard)
-    $risky = @($paths | Where-Object { $_ -match '(?i)(^|/)(\.env.*|id_rsa|id_ed25519|.*\.(key|pem|pfx|p12|kdbx)|.*\.bak)$' })
+    $risky = @($paths | Where-Object { $_ -match '(?i)(^|/)(\.env.*|id_rsa|id_ed25519|.*\.(key|pem|pfx|p12|kdbx)|.*\.bak)
+# Restore Windows Explorer metadata after Git updates. Git does not track Hidden/System attributes.
+try {
+    $count = 0
+    Get-ChildItem -LiteralPath $repoRoot -Filter 'desktop.ini' -File -Force -Recurse -ErrorAction Stop |
+        ForEach-Object {
+            $wanted = $_.Attributes -bor [System.IO.FileAttributes]::Hidden -bor [System.IO.FileAttributes]::System
+            if ($_.Attributes -ne $wanted) { $_.Attributes = $wanted }
+            $count++
+        }
+    Write-Host ("desktop.ini attributes restored: " + $count) -ForegroundColor Cyan
+} catch {
+    Write-Warning ("desktop.ini attribute restoration failed: " + $_.Exception.Message)
+}
+
+# Refresh local shortcut catalog after repository sync. Shortcuts stay beside BAT launchers.
+$catalog = Join-Path $repoRoot 'Скрипты\Личные\Система ярлыков в andrey-local\Обновить-ярлыки.ps1'
+if (Test-Path -LiteralPath $catalog -PathType Leaf) {
+    Write-Host 'Updating Windows shortcuts...' -ForegroundColor Cyan
+    & $catalog
+} else {
+    Write-Warning "Shortcut generator not found: $catalog"
+}
+Write-Host 'Synchronization complete.' -ForegroundColor Green
+ })
     if ($risky.Count) {
         $risky | ForEach-Object { Write-Host "Private-looking file: $_" -ForegroundColor Red }
         throw 'Remove sensitive files before publishing.'
@@ -74,8 +119,6 @@ if ($changes.Count) {
     }
     Invoke-Git pull --rebase origin main
     Invoke-Git push origin main
-} else {
-    Invoke-Git merge --ff-only origin/main
 }
 # Restore Windows Explorer metadata after Git updates. Git does not track Hidden/System attributes.
 try {
