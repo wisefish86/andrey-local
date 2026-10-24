@@ -181,7 +181,7 @@ class CollapsibleSection(QWidget):
         super().__init__(parent)
         self.base_title = title
         self.status = "none"
-        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Maximum)
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -197,7 +197,7 @@ class CollapsibleSection(QWidget):
         self.header.toggled.connect(self._toggle)
 
         self.body = QWidget()
-        self.body.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Maximum)
+        self.body.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         self.body_layout = QVBoxLayout(self.body)
         self.body_layout.setContentsMargins(8, 4, 8, 8)
         self.body_layout.setSpacing(10)
@@ -266,6 +266,7 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.config = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
         self.current_path: Path | None = None
+        self._has_sylt = False
         self.filename_manual = False
         self.folder_manual = False
         self.title_manual = False
@@ -521,17 +522,36 @@ class MainWindow(QMainWindow):
         lyrics_top.addStretch(1)
         lyrics_top.addWidget(self.lyrics_count_label)
 
+        lyrics_cfg = self.config.get("lyrics", {})
         self.lyrics_edit = QPlainTextEdit()
-        self.lyrics_edit.setPlaceholderText("Вставь сюда текст песни…")
-        self.lyrics_edit.setMinimumHeight(int(self.config.get("lyrics", {}).get("min_height", 260)))
+        self.lyrics_edit.setPlaceholderText("Вставь сюда обычный текст песни…")
+        self.lyrics_edit.setMinimumHeight(int(lyrics_cfg.get("min_height", 280)))
+        self.lyrics_edit.setMaximumHeight(int(lyrics_cfg.get("max_height", 420)))
+        self.lyrics_edit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         self.lyrics_edit.textChanged.connect(self._lyrics_changed)
 
-        lyrics_hint = QLabel("Сохраняется в USLT. Синхронизированный SYLT программа не изменяет.")
+        lyrics_hint = QLabel("Обычная лирика USLT — редактируется и сохраняется.")
         lyrics_hint.setObjectName("muted")
+
+        self.sylt_status_label = QLabel("Синхронная лирика: не загружена")
+        self.sylt_status_label.setObjectName("muted")
+        self.sylt_edit = QPlainTextEdit()
+        self.sylt_edit.setReadOnly(True)
+        self.sylt_edit.setPlaceholderText("Синхронная лирика отсутствует.")
+        self.sylt_edit.setMinimumHeight(int(lyrics_cfg.get("synced_min_height", 220)))
+        self.sylt_edit.setMaximumHeight(int(lyrics_cfg.get("synced_max_height", 340)))
+        self.sylt_edit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+
+        sylt_hint = QLabel("SYLT показывается отдельно только для просмотра; программа его не изменяет.")
+        sylt_hint.setObjectName("muted")
 
         lyrics_layout.addLayout(lyrics_top)
         lyrics_layout.addWidget(self.lyrics_edit)
         lyrics_layout.addWidget(lyrics_hint)
+        if bool(lyrics_cfg.get("show_synced", True)):
+            lyrics_layout.addWidget(self.sylt_status_label)
+            lyrics_layout.addWidget(self.sylt_edit)
+            lyrics_layout.addWidget(sylt_hint)
         lyrics_section.add_widget(lyrics_widget)
         body_layout.addWidget(lyrics_section)
 
@@ -928,6 +948,7 @@ class MainWindow(QMainWindow):
         ))
         with QSignalBlocker(self.lyrics_edit):
             self.lyrics_edit.setPlainText(read_field(tags, lyrics_spec))
+        self._load_sylt_view(tags)
         self._update_lyrics_meta()
 
         self._set_version(inferred["version"] or self._extract_version(existing_title))
@@ -970,16 +991,57 @@ class MainWindow(QMainWindow):
         self.folder_manual = False
         self.reset_filename_template()
         self.reset_folder_template()
-        self.rename_folder.setChecked(bool(self.config["folder"].get("rename_default", True)))
 
         library_root = Path(self.config["paths"]["library_root"])
+        staging_raw = clean(self.config.get("paths", {}).get("staging_root"))
+        staging_root = Path(staging_raw) if staging_raw else None
         current_folder = path.parent
-        already_in_library = current_folder.parent.resolve() == library_root.resolve()
-        self.move_folder.setEnabled(current_folder.resolve() != library_root.resolve())
-        self.move_folder.setChecked(not already_in_library and bool(self.config["folder"].get("move_to_library_default", True)))
-        self.move_folder.setToolTip(
-            "Можно перенести текущую папку песни в основной репертуар независимо от её исходного расположения."
+        is_library_root = self._same_path(current_folder, library_root)
+        is_staging_root = bool(staging_root and self._same_path(current_folder, staging_root))
+        already_final_folder = (
+            not is_staging_root
+            and not is_library_root
+            and self._same_path(current_folder.parent, library_root)
         )
+
+        if is_library_root:
+            self.rename_folder.setChecked(False)
+            self.rename_folder.setEnabled(False)
+            self.rename_folder.setToolTip("Корень основного репертуара нельзя переименовывать.")
+            self.move_folder.setChecked(False)
+            self.move_folder.setEnabled(False)
+            self.move_folder.setToolTip("Корень основного репертуара нельзя переносить.")
+        elif is_staging_root:
+            self.rename_folder.setChecked(False)
+            self.rename_folder.setEnabled(False)
+            self.rename_folder.setToolTip(
+                "MP3 лежит прямо в служебной папке. Она никогда не переименовывается."
+            )
+            self.move_folder.setEnabled(True)
+            self.move_folder.setChecked(
+                bool(self.config["folder"].get("move_to_library_default", True))
+            )
+            self.move_folder.setToolTip(
+                "При переносе будет создана отдельная папка песни; "
+                "служебная папка останется на месте."
+            )
+        else:
+            self.rename_folder.setEnabled(True)
+            self.rename_folder.setToolTip(
+                "Если снять галочку, текущее имя папки будет сохранено."
+            )
+            self.rename_folder.setChecked(
+                bool(self.config["folder"].get("rename_default", True))
+            )
+            self.move_folder.setEnabled(not already_final_folder)
+            self.move_folder.setChecked(
+                not already_final_folder
+                and bool(self.config["folder"].get("move_to_library_default", True))
+            )
+            self.move_folder.setToolTip(
+                "Если снять галочку, папка останется на текущем месте."
+            )
+
         self._update_target_preview()
         self.save_btn.setEnabled(True)
         self.open_folder_btn.setEnabled(True)
@@ -1486,18 +1548,93 @@ class MainWindow(QMainWindow):
         if not QDesktopServices.openUrl(QUrl(url)):
             QMessageBox.warning(self, "Поиск года", "Не удалось открыть браузер.")
 
+    @staticmethod
+    def _same_path(left: Path, right: Path) -> bool:
+        try:
+            return left.resolve() == right.resolve()
+        except Exception:
+            return os.path.normcase(os.path.abspath(str(left))) == os.path.normcase(
+                os.path.abspath(str(right))
+            )
+
+    def _folder_action_plan(self) -> dict[str, Any]:
+        if not self.current_path:
+            return {"mode": "none", "target": None, "source": None}
+
+        current_folder = self.current_path.parent
+        library_root = Path(self.config["paths"]["library_root"])
+        staging_raw = clean(self.config.get("paths", {}).get("staging_root"))
+        staging_root = Path(staging_raw) if staging_raw else None
+        rename_requested = self.rename_folder.isChecked()
+        move_requested = self.move_folder.isChecked()
+        requested_name = self.folder_name.text().strip()
+
+        if self._same_path(current_folder, library_root):
+            if rename_requested or move_requested:
+                raise ValueError("Корень основного репертуара нельзя переименовывать или переносить.")
+            return {"mode": "none", "target": None, "source": current_folder}
+
+        if staging_root and self._same_path(current_folder, staging_root):
+            if rename_requested:
+                raise ValueError(
+                    "Служебную папку «- - Добавляю в репертуар» нельзя переименовывать."
+                )
+            if not move_requested:
+                return {"mode": "none", "target": None, "source": current_folder}
+            if not requested_name:
+                raise ValueError("Имя папки песни пустое.")
+            target = library_root / requested_name
+            return {
+                "mode": "move_file_from_staging",
+                "target": target,
+                "source": current_folder,
+            }
+
+        if move_requested:
+            final_name = requested_name if rename_requested else current_folder.name
+            if not final_name:
+                raise ValueError("Имя папки песни пустое.")
+            return {
+                "mode": "move_and_rename_folder" if rename_requested else "move_folder",
+                "target": library_root / final_name,
+                "source": current_folder,
+            }
+
+        if rename_requested:
+            if not requested_name:
+                raise ValueError("Имя папки песни пустое.")
+            return {
+                "mode": "rename_folder",
+                "target": current_folder.with_name(requested_name),
+                "source": current_folder,
+            }
+
+        return {"mode": "none", "target": None, "source": current_folder}
+
     def _update_target_preview(self):
         if not self.current_path:
             self.target_label.setText("")
             return
-        folder = self.folder_name.text().strip() or self.current_path.parent.name
-        if self.move_folder.isChecked():
-            target = Path(self.config["paths"]["library_root"]) / folder
-            self.target_label.setText(f"Итоговая папка: {target}")
-        elif self.rename_folder.isChecked():
-            self.target_label.setText(f"Итоговая папка: {self.current_path.parent.parent / folder}")
-        else:
-            self.target_label.setText(f"Папка останется: {self.current_path.parent}")
+        try:
+            action = self._folder_action_plan()
+        except Exception as exc:
+            self.target_label.setText(f"⚠ {exc}")
+            return
+
+        mode = action["mode"]
+        target = action["target"]
+        if mode == "none":
+            self.target_label.setText(f"Папка: без изменений · {self.current_path.parent}")
+        elif mode == "rename_folder":
+            self.target_label.setText(f"Папка: только переименование → {target}")
+        elif mode == "move_folder":
+            self.target_label.setText(f"Папка: только перенос, имя сохранится → {target}")
+        elif mode == "move_and_rename_folder":
+            self.target_label.setText(f"Папка: перенос + переименование → {target}")
+        elif mode == "move_file_from_staging":
+            self.target_label.setText(
+                f"Staging останется на месте; текущий MP3 → новая папка {target}"
+            )
 
     def _is_under(self, child: Path, parent: Path) -> bool:
         try:
@@ -1514,7 +1651,7 @@ class MainWindow(QMainWindow):
             values.extend(self._get_control_values(field, self.controls[field["id"]]))
         return list(dict.fromkeys(v for v in values if v))
 
-    def _validate(self) -> tuple[Path, Path | None, Path | None]:
+    def _validate(self) -> tuple[Path, dict[str, Any], Path]:
         if not self.current_path or not self.current_path.is_file():
             raise ValueError("Исходный MP3 не найден.")
         if self.invalid_fields:
@@ -1545,25 +1682,25 @@ class MainWindow(QMainWindow):
             raise FileExistsError(f"Файл уже существует: {dest_file}")
 
         current_folder = self.current_path.parent
-        folder_target = None
-        folder_name = self.folder_name.text().strip()
-        if self.rename_folder.isChecked() or self.move_folder.isChecked():
-            if not folder_name:
-                raise ValueError("Имя папки пустое.")
+        action = self._folder_action_plan()
+        folder_target = action.get("target")
+
+        if action["mode"] in {
+            "rename_folder",
+            "move_and_rename_folder",
+            "move_file_from_staging",
+        }:
+            folder_name = self.folder_name.text().strip()
             if INVALID_WIN_CHARS.search(folder_name) or folder_name.endswith((" ", ".")):
                 raise ValueError("В имени папки есть запрещённые для Windows символы.")
 
-        if self.move_folder.isChecked():
-            library_root = Path(self.config["paths"]["library_root"])
-            if current_folder.resolve() == library_root.resolve():
-                raise ValueError("Нельзя переносить корень основного репертуара как папку песни.")
-            folder_target = library_root / folder_name
-        elif self.rename_folder.isChecked():
-            folder_target = current_folder.with_name(folder_name)
-
-        if folder_target and folder_target != current_folder and folder_target.exists():
+        if (
+            folder_target
+            and not self._same_path(folder_target, current_folder)
+            and folder_target.exists()
+        ):
             raise FileExistsError(f"Папка уже существует: {folder_target}")
-        return dest_file, folder_target, current_folder
+        return dest_file, action, current_folder
 
     def _make_plan(self, tags):
         plan = []
@@ -1626,7 +1763,8 @@ class MainWindow(QMainWindow):
         working_path = original_path
 
         try:
-            dest_file, folder_target, original_folder = self._validate()
+            dest_file, folder_action, original_folder = self._validate()
+            folder_target = folder_action.get("target")
             tags = load_tags(original_path)
             original_tags_snapshot = copy.deepcopy(tags)
             plan = self._make_plan(tags)
@@ -1637,6 +1775,9 @@ class MainWindow(QMainWindow):
                 "source": str(original_path),
                 "file_target": str(dest_file),
                 "folder_target": str(folder_target) if folder_target else "",
+                "folder_action": folder_action.get("mode", "none"),
+                "rename_folder_checked": self.rename_folder.isChecked(),
+                "move_folder_checked": self.move_folder.isChecked(),
                 "changes": [{"label": x[0], "old": x[2], "new": x[3]} for x in plan],
             })
 
@@ -1669,7 +1810,12 @@ class MainWindow(QMainWindow):
             if dest_file != original_path:
                 working_path = original_path.rename(dest_file)
 
-            if folder_target and folder_target != original_folder:
+            folder_mode = folder_action.get("mode", "none")
+            if folder_mode == "move_file_from_staging":
+                folder_target.mkdir(parents=False, exist_ok=False)
+                target_file = folder_target / working_path.name
+                working_path = Path(shutil.move(str(working_path), str(target_file)))
+            elif folder_mode in {"rename_folder", "move_folder", "move_and_rename_folder"}:
                 moved_folder = Path(shutil.move(str(original_folder), str(folder_target)))
                 working_path = moved_folder / working_path.name
 
@@ -1727,6 +1873,51 @@ class MainWindow(QMainWindow):
             QMessageBox.critical(self, "Ошибка", str(exc) + rollback_note)
             self.status.setText("Ошибка. Автоматическая обработка остановлена.")
 
+    @staticmethod
+    def _format_sylt_timestamp(milliseconds: int) -> str:
+        total = max(0, int(milliseconds))
+        minutes, rest = divmod(total, 60000)
+        seconds, millis = divmod(rest, 1000)
+        return f"[{minutes:02d}:{seconds:02d}.{millis:03d}]"
+
+    def _load_sylt_view(self, tags):
+        frames = list(tags.getall("SYLT")) if hasattr(tags, "getall") else []
+        self._has_sylt = bool(frames)
+
+        if not frames:
+            self.sylt_status_label.setText("Синхронная лирика: отсутствует")
+            self.sylt_edit.setPlainText("Синхронная лирика отсутствует.")
+            return
+
+        blocks = []
+        total_lines = 0
+        for index, frame in enumerate(frames, start=1):
+            rows = []
+            for item in getattr(frame, "text", []) or []:
+                try:
+                    lyric_text, timestamp = item
+                except Exception:
+                    continue
+                rows.append(
+                    f"{self._format_sylt_timestamp(timestamp)} {str(lyric_text).strip()}".rstrip()
+                )
+            total_lines += len(rows)
+            if len(frames) > 1:
+                lang = clean(getattr(frame, "lang", ""))
+                desc = clean(getattr(frame, "desc", ""))
+                meta = " · ".join(x for x in (lang, desc) if x)
+                blocks.append(
+                    f"--- SYLT {index}{' · ' + meta if meta else ''} ---"
+                )
+            blocks.extend(rows)
+            if index < len(frames):
+                blocks.append("")
+
+        self.sylt_status_label.setText(
+            f"Синхронная лирика: {len(frames)} дорожка(и) · {total_lines} строк"
+        )
+        self.sylt_edit.setPlainText("\n".join(blocks).strip())
+
     def paste_lyrics(self):
         text = QApplication.clipboard().text()
         if text:
@@ -1744,7 +1935,10 @@ class MainWindow(QMainWindow):
         lines = len(text.splitlines()) if stripped else 0
         chars = len(text)
         self.lyrics_count_label.setText(f"{lines} строк · {chars} символов")
-        self._set_section_status("lyrics", "ok" if stripped else "none")
+        self._set_section_status(
+            "lyrics",
+            "ok" if stripped or bool(getattr(self, "_has_sylt", False)) else "none",
+        )
 
     def _application_state_changed(self, state):
         if state == Qt.ApplicationState.ApplicationActive and self.current_path:
@@ -2575,6 +2769,9 @@ class MainWindow(QMainWindow):
         for edit in (self.artist, self.clean_title, self.display_title, self.year, self.source_url, self.version_info, self.filename, self.folder_name):
             edit.clear()
         self.lyrics_edit.clear()
+        self._has_sylt = False
+        self.sylt_status_label.setText("Синхронная лирика: не загружена")
+        self.sylt_edit.clear()
         self._set_section_status("lyrics", "none")
         with QSignalBlocker(self.trim_needed):
             self.trim_needed.setChecked(
