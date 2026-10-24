@@ -1,5 +1,5 @@
 {
-  "version": 10,
+  "version": 11,
   "paths": {
     "staging_root": "D:\\YandexDisk\\Проекты\\Пение\\Минусы\\1. Основной репертуар\\- - Добавляю в репертуар",
     "library_root": "D:\\YandexDisk\\Проекты\\Пение\\Минусы\\1. Основной репертуар"
@@ -16,10 +16,6 @@
         "—"
       ],
       [
-        "N",
-        "N — неизвестно"
-      ],
-      [
         "-3",
         "-3"
       ],
@@ -32,8 +28,8 @@
         "-1"
       ],
       [
-        "0",
-        "0"
+        "N",
+        "N"
       ],
       [
         "+1",
@@ -90,7 +86,25 @@
         "S — сокращённая"
       ]
     ],
-    "length_default": ""
+    "length_default": "",
+    "source_parse": {
+      "prefer_filename_artist_title": true,
+      "artist_title_separators": [
+        " - ",
+        " – ",
+        " — "
+      ],
+      "trailing_bracket_to_note": true,
+      "note_aliases": {
+        "мастер запись": "мз",
+        "мастер-запись": "мз",
+        "master": "мз",
+        "master recording": "мз",
+        "оригинал": "ориг",
+        "original": "ориг"
+      }
+    },
+    "version_in_name_field": true
   },
   "title": {
     "symbols": {
@@ -758,12 +772,29 @@
     "timeout_seconds": 60,
     "passive": true,
     "http_check_timeout_seconds": 10,
-    "auto_upload_on_select": true
+    "auto_upload_on_select": true,
+    "slug": {
+      "enabled": true,
+      "transliterate_cyrillic": true,
+      "lowercase": true,
+      "separator": "-",
+      "max_stem_length": 120
+    }
   },
   "audio_analysis": {
-    "foobar_path": "C:\\Program Files\\foobar2000\\foobar2000.exe",
     "bpm_frame": "TBPM",
     "replaygain_gain_frame": "TXXX:replaygain_track_gain",
-    "replaygain_peak_frame": "TXXX:replaygain_track_peak"
+    "replaygain_peak_frame": "TXXX:replaygain_track_peak",
+    "program_id": "foobar2000"
+  },
+  "programs": {
+    "foobar2000": {
+      "label": "foobar2000",
+      "path": "C:\\Program Files\\foobar2000\\foobar2000.exe"
+    },
+    "audio_editor": {
+      "label": "Аудиоредактор",
+      "path": ""
+    }
   }
 }
