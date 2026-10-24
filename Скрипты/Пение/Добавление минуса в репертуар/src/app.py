@@ -234,6 +234,7 @@ class MainWindow(QMainWindow):
         self.filename_manual = False
         self.folder_manual = False
         self.title_manual = False
+        self._last_version_value = ""
         self.controls: dict[str, QWidget] = {}
         self.field_labels: dict[str, QLabel] = {}
         self.field_defs: dict[str, dict[str, Any]] = {f["id"]: f for f in self.config["fields"]}
@@ -996,6 +997,8 @@ class MainWindow(QMainWindow):
         current = self._version_value() if hasattr(self, "version") else ""
         if current:
             candidates.add(current)
+        if self._last_version_value:
+            candidates.add(self._last_version_value)
         for candidate in sorted(candidates, key=len, reverse=True):
             suffix = f" ({candidate})"
             if result.casefold().endswith(suffix.casefold()):
@@ -1021,6 +1024,7 @@ class MainWindow(QMainWindow):
                 self.version.setCurrentIndex(max(idx, 0))
 
         self._apply_version_to_name_field()
+        self._last_version_value = self._version_value()
         self._auto_names_changed()
 
     def _version_value(self) -> str:
@@ -1056,6 +1060,7 @@ class MainWindow(QMainWindow):
 
     def _version_changed(self):
         self._apply_version_to_name_field()
+        self._last_version_value = self._version_value()
         self._auto_names_changed()
 
     def _set_tone(self, value: str):
