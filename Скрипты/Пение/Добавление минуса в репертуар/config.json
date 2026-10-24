@@ -1,5 +1,5 @@
 {
-  "version": 31,
+  "version": 32,
   "paths": {
     "staging_root": "D:\\YandexDisk\\Проекты\\Пение\\Минусы\\1. Основной репертуар\\- - Добавляю в репертуар",
     "library_root": "D:\\YandexDisk\\Проекты\\Пение\\Минусы\\1. Основной репертуар"
@@ -942,10 +942,13 @@
     "ftp_retry_attempts": 6,
     "ftp_retry_delay_seconds": 3,
     "ftp_retry_max_delay_seconds": 20,
-    "ftp_mode_switch_delay_seconds": 2,
+    "ftp_recovery_cycles": 12,
+    "ftp_recovery_cooldown_seconds": 60,
     "ftp_upload_block_size_kb": 64,
     "ftp_progress_interval_seconds": 1.0,
-    "ftp_data_connect_timeout_seconds": 12,
+    "ftp_data_connect_timeout_seconds": 5,
+    "ftp_data_port_attempts_per_mode": 3,
+    "ftp_data_port_retry_delay_seconds": 0.5,
     "ftp_data_timeout_seconds": 60,
     "ftp_passive_data_modes": [
       "pasv",
