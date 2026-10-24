@@ -7,6 +7,7 @@ import ftplib
 import getpass
 import json
 import os
+import socket
 import sys
 import time
 from collections import defaultdict
@@ -466,6 +467,86 @@ class FTPUploader:
         except Exception:
             return self.connect()
 
+    def _open_passive_data_connection(
+        self,
+        ftp: ftplib.FTP,
+        command: str,
+        connect_timeout: int,
+        transfer_timeout: int,
+    ) -> socket.socket:
+        raw_modes = self.mig_cfg.get(
+            "ftp_passive_data_modes",
+            ["epsv", "pasv"],
+        )
+        modes = [
+            clean(mode).casefold()
+            for mode in raw_modes
+            if clean(mode).casefold() in {"epsv", "pasv"}
+        ] or ["epsv", "pasv"]
+
+        peer = ftp.sock.getpeername() if ftp.sock is not None else None
+        if not peer:
+            raise ConnectionError("FTP control-соединение отсутствует.")
+
+        errors: list[str] = []
+        for mode_index, mode in enumerate(modes, 1):
+            label = mode.upper()
+            self.stage = f"открытие FTP data-соединения {label}"
+            print(
+                f"    → data-соединение {label} "
+                f"(тайм-аут {connect_timeout} с)...",
+                flush=True,
+            )
+
+            try:
+                if mode == "epsv":
+                    response = ftp.sendcmd("EPSV")
+                    host, port = ftplib.parse229(response, peer)
+                else:
+                    response = ftp.sendcmd("PASV")
+                    pasv_host, port = ftplib.parse227(response)
+                    if getattr(ftp, "trust_server_pasv_ipv4_address", False):
+                        host = pasv_host
+                    else:
+                        host = peer[0]
+
+                conn = socket.create_connection(
+                    (host, port),
+                    timeout=connect_timeout,
+                    source_address=ftp.source_address,
+                )
+                conn.settimeout(transfer_timeout)
+
+                try:
+                    response = ftp.sendcmd(command)
+                    if response[:1] == "2":
+                        response = ftp.getresp()
+                    if response[:1] != "1":
+                        raise ftplib.error_reply(response)
+                except Exception:
+                    conn.close()
+                    raise
+
+                print(f"    ✓ data-соединение {label} открыто.", flush=True)
+                return conn
+
+            except (TimeoutError, ConnectionError, OSError, ftplib.Error) as exc:
+                errors.append(f"{label}: {type(exc).__name__}: {exc}")
+                if mode_index < len(modes):
+                    print(
+                        f"    ! {label} не открылось: "
+                        f"{type(exc).__name__}: {exc}; "
+                        f"пробую {modes[mode_index].upper()}.",
+                        flush=True,
+                    )
+                    continue
+                raise ConnectionError(
+                    "Не удалось открыть FTP data-соединение: "
+                    + " | ".join(errors)
+                ) from exc
+
+        raise ConnectionError("Не задан рабочий режим FTP data-соединения.")
+
     def _upload_stream(
         self,
         ftp: ftplib.FTP,
@@ -490,10 +571,13 @@ class FTPUploader:
                 )
             ),
         )
+        data_connect_timeout = max(
+            3,
+            int(self.mig_cfg.get("ftp_data_connect_timeout_seconds", 12)),
+        )
 
         self.stage = "переключение FTP в бинарный режим"
         ftp.voidcmd("TYPE I")
-        self.stage = "открытие FTP data-соединения"
 
         sent = 0
         started = time.monotonic()
@@ -503,9 +587,12 @@ class FTPUploader:
 
         try:
             with local_path.open("rb") as source:
-                with ftp.transfercmd(f"STOR {remote_name}") as conn:
-                    conn.settimeout(data_timeout)
-
+                with self._open_passive_data_connection(
+                    ftp,
+                    f"STOR {remote_name}",
+                    data_connect_timeout,
+                    data_timeout,
+                ) as conn:
                     while True:
                         chunk = source.read(block_size)
                         if not chunk:
