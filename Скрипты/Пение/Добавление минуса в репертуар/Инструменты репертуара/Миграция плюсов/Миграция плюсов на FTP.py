@@ -473,22 +473,20 @@ class FTPUploader:
         command: str,
         connect_timeout: int,
         transfer_timeout: int,
-    ) -> socket.socket:
+    ) -> tuple[ftplib.FTP, socket.socket]:
         raw_modes = self.mig_cfg.get(
             "ftp_passive_data_modes",
-            ["epsv", "pasv"],
+            ["pasv", "epsv"],
         )
         modes = [
             clean(mode).casefold()
             for mode in raw_modes
             if clean(mode).casefold() in {"epsv", "pasv"}
-        ] or ["epsv", "pasv"]
-
-        peer = ftp.sock.getpeername() if ftp.sock is not None else None
-        if not peer:
-            raise ConnectionError("FTP control-соединение отсутствует.")
+        ] or ["pasv", "epsv"]
 
         errors: list[str] = []
+        current_ftp = ftp
+
         for mode_index, mode in enumerate(modes, 1):
             label = mode.upper()
             self.stage = f"открытие FTP data-соединения {label}"
@@ -499,13 +497,25 @@ class FTPUploader:
             )
 
             try:
+                if current_ftp.sock is None:
+                    raise ConnectionError("FTP control-соединение отсутствует.")
+
+                current_ftp.sock.settimeout(connect_timeout)
+                peer = current_ftp.sock.getpeername()
+
+                current_ftp.voidcmd("TYPE I")
+
                 if mode == "epsv":
-                    response = ftp.sendcmd("EPSV")
+                    response = current_ftp.sendcmd("EPSV")
                     host, port = ftplib.parse229(response, peer)
                 else:
-                    response = ftp.sendcmd("PASV")
+                    response = current_ftp.sendcmd("PASV")
                     pasv_host, port = ftplib.parse227(response)
-                    if getattr(ftp, "trust_server_pasv_ipv4_address", False):
+                    if getattr(
+                        current_ftp,
+                        "trust_server_pasv_ipv4_address",
+                        False,
+                    ):
                         host = pasv_host
                     else:
                         host = peer[0]
@@ -513,33 +523,45 @@ class FTPUploader:
                 conn = socket.create_connection(
                     (host, port),
                     timeout=connect_timeout,
-                    source_address=ftp.source_address,
+                    source_address=current_ftp.source_address,
                 )
                 conn.settimeout(transfer_timeout)
 
                 try:
-                    response = ftp.sendcmd(command)
+                    response = current_ftp.sendcmd(command)
                     if response[:1] == "2":
-                        response = ftp.getresp()
+                        response = current_ftp.getresp()
                     if response[:1] != "1":
                         raise ftplib.error_reply(response)
                 except Exception:
                     conn.close()
                     raise
 
+                if current_ftp.sock is not None:
+                    current_ftp.sock.settimeout(
+                        int(self.cfg.get("timeout_seconds", 60))
+                    )
+
                 print(f"    ✓ data-соединение {label} открыто.", flush=True)
-                return conn
+                return current_ftp, conn
 
             except (TimeoutError, ConnectionError, OSError, ftplib.Error) as exc:
                 errors.append(f"{label}: {type(exc).__name__}: {exc}")
+
                 if mode_index < len(modes):
+                    next_label = modes[mode_index].upper()
                     print(
                         f"    ! {label} не открылось: "
-                        f"{type(exc).__name__}: {exc}; "
-                        f"пробую {modes[mode_index].upper()}.",
+                        f"{type(exc).__name__}: {exc}. "
+                        f"Переподключаю FTP перед {next_label}.",
                         flush=True,
                     )
+                    self.close()
+                    self.stage = f"переподключение перед {next_label}"
+                    current_ftp = self.connect()
                     continue
+
+                self.close()
                 raise ConnectionError(
                     "Не удалось открыть FTP data-соединение: "
                     + " | ".join(errors)
@@ -576,9 +598,6 @@ class FTPUploader:
             int(self.mig_cfg.get("ftp_data_connect_timeout_seconds", 12)),
         )
 
-        self.stage = "переключение FTP в бинарный режим"
-        ftp.voidcmd("TYPE I")
-
         sent = 0
         started = time.monotonic()
         last_progress = started - progress_interval
@@ -587,12 +606,13 @@ class FTPUploader:
 
         try:
             with local_path.open("rb") as source:
-                with self._open_passive_data_connection(
+                ftp, conn = self._open_passive_data_connection(
                     ftp,
                     f"STOR {remote_name}",
                     data_connect_timeout,
                     data_timeout,
-                ) as conn:
+                )
+                with conn:
                     while True:
                         chunk = source.read(block_size)
                         if not chunk:
@@ -635,6 +655,7 @@ class FTPUploader:
             f"({sent / 1024 / 1024:.1f}/{total_mb:.1f} МБ)"
         )
         ftp.voidresp()
+        self.ftp = ftp
         return sent
 
     def upload(
