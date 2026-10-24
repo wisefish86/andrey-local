@@ -1,5 +1,5 @@
 {
-  "version": 3,
+  "version": 4,
   "paths": {
     "staging_root": "D:\\YandexDisk\\Проекты\\Пение\\Минусы\\1. Основной репертуар\\- - Добавляю в репертуар",
     "library_root": "D:\\YandexDisk\\Проекты\\Пение\\Минусы\\1. Основной репертуар"
@@ -11,21 +11,49 @@
     "separator": "_____",
     "info_separator": "֎",
     "tone_options": [
-      "N",
-      "-3",
-      "-2",
-      "-1",
-      "0",
-      "+1",
-      "+2",
-      "+3"
+      [
+        "",
+        "—"
+      ],
+      [
+        "N",
+        "N — неизвестно"
+      ],
+      [
+        "-3",
+        "-3"
+      ],
+      [
+        "-2",
+        "-2"
+      ],
+      [
+        "-1",
+        "-1"
+      ],
+      [
+        "0",
+        "0"
+      ],
+      [
+        "+1",
+        "+1"
+      ],
+      [
+        "+2",
+        "+2"
+      ],
+      [
+        "+3",
+        "+3"
+      ]
     ],
-    "tone_default": "N",
+    "tone_default": "",
     "template": "{name} [{tone}] _____ {artist}{info_suffix}.mp3",
     "version_options": [
       [
         "",
-        "Обычная"
+        "—"
       ],
       [
         "cover",
@@ -93,7 +121,7 @@
       "options": [
         [
           "б-#",
-          "Не заполнено"
+          "—"
         ],
         [
           "б-1-Старт",
@@ -127,7 +155,9 @@
           "б-8-Танцы",
           "Танцы"
         ]
-      ]
+      ],
+      "attention_required": true,
+      "attention_mode": "placeholder"
     },
     {
       "id": "status",
@@ -143,7 +173,7 @@
       "options": [
         [
           "г-#",
-          "Не заполнено"
+          "—"
         ],
         [
           "г-1-База",
@@ -173,7 +203,9 @@
           "г-7-Версии",
           "Версии"
         ]
-      ]
+      ],
+      "attention_required": true,
+      "attention_mode": "placeholder"
     },
     {
       "id": "difficulty",
@@ -189,7 +221,7 @@
       "options": [
         [
           "сл-#",
-          "Не заполнено"
+          "—"
         ],
         [
           "сл-1-Легко",
@@ -207,7 +239,9 @@
           "сл-4-Пик",
           "Пик"
         ]
-      ]
+      ],
+      "attention_required": true,
+      "attention_mode": "placeholder"
     },
     {
       "id": "lyrics_knowledge",
@@ -224,7 +258,7 @@
       "options": [
         [
           "з-#",
-          "Не заполнено"
+          "—"
         ],
         [
           "з-1-Наизусть",
@@ -238,7 +272,9 @@
           "з-3-Читаю",
           "Читаю"
         ]
-      ]
+      ],
+      "attention_required": true,
+      "attention_mode": "placeholder"
     },
     {
       "id": "energy",
@@ -254,7 +290,7 @@
       "options": [
         [
           "к-#",
-          "Не заполнено"
+          "—"
         ],
         [
           "к-Релакс",
@@ -292,7 +328,9 @@
           "к-Танцы-драйв",
           "Танцы / драйв"
         ]
-      ]
+      ],
+      "attention_required": true,
+      "attention_mode": "placeholder"
     },
     {
       "id": "audience",
@@ -309,7 +347,7 @@
       "options": [
         [
           "а-#",
-          "Не заполнено"
+          "—"
         ],
         [
           "а-Унив",
@@ -351,7 +389,9 @@
           "а-Ситуац",
           "Ситуационная"
         ]
-      ]
+      ],
+      "attention_required": true,
+      "attention_mode": "placeholder"
     },
     {
       "id": "recognition",
@@ -368,7 +408,7 @@
       "options": [
         [
           "уз-#",
-          "Не заполнено"
+          "—"
         ],
         [
           "уз-1-Хит",
@@ -382,7 +422,9 @@
           "уз-3-Редкая",
           "Редкая"
         ]
-      ]
+      ],
+      "attention_required": true,
+      "attention_mode": "placeholder"
     },
     {
       "id": "mood",
@@ -399,7 +441,7 @@
       "options": [
         [
           "н-#",
-          "Не заполнено"
+          "—"
         ],
         [
           "н-Нейтр",
@@ -421,7 +463,9 @@
           "н-Драма",
           "Драма"
         ]
-      ]
+      ],
+      "attention_required": false,
+      "attention_mode": "placeholder"
     },
     {
       "id": "language",
@@ -441,7 +485,7 @@
       "options": [
         [
           "Я-#",
-          "Не заполнено"
+          "—"
         ],
         [
           "Я-рус",
@@ -455,7 +499,9 @@
           "Я-ин",
           "Иностранный"
         ]
-      ]
+      ],
+      "attention_required": true,
+      "attention_mode": "placeholder"
     },
     {
       "id": "era",
@@ -472,7 +518,7 @@
       "options": [
         [
           "э-#",
-          "Не заполнено"
+          "—"
         ],
         [
           "э-50е",
@@ -506,7 +552,9 @@
           "э-20е",
           "20-е"
         ]
-      ]
+      ],
+      "attention_required": true,
+      "attention_mode": "placeholder"
     },
     {
       "id": "situations",
@@ -525,7 +573,7 @@
       "options": [
         [
           "с-#",
-          "Не разобрано"
+          "—"
         ],
         [
           "с-Любовь",
@@ -567,7 +615,9 @@
           "с-НГ",
           "Новый год"
         ]
-      ]
+      ],
+      "attention_required": true,
+      "attention_mode": "placeholder"
     },
     {
       "id": "restaurants",
@@ -589,7 +639,9 @@
           "р-ЦНК",
           "ЦНК"
         ]
-      ]
+      ],
+      "attention_required": false,
+      "attention_mode": "placeholder"
     },
     {
       "id": "vocal",
@@ -607,7 +659,9 @@
           "ф-1",
           "Фальцет"
         ]
-      ]
+      ],
+      "attention_required": false,
+      "attention_mode": "placeholder"
     }
   ],
   "file_tools": {
