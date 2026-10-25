@@ -310,18 +310,29 @@ class PlusUploadWorker(QThread):
 
     @staticmethod
     def find_winscp():
-        import winreg
+        """Prefer the known portable installation, then installed WinSCP."""
         candidates = []
+        configured = (
+            r"D:\\YandexDisk\\Ресурсы\\Софт\\Файловые менеджеры и другое"
+            r"\\Файловые менеджеры\\WinSCP\\WinSCP-5.21.8-Portable\\WinSCP.exe"
+        )
+        candidates.append(Path(configured).with_name("WinSCP.com"))
         for env in ("ProgramFiles", "ProgramFiles(x86)", "LOCALAPPDATA"):
             base = os.environ.get(env)
             if base:
                 candidates.append(Path(base) / "WinSCP" / "WinSCP.com")
-        for hive in (winreg.HKEY_CURRENT_USER, winreg.HKEY_LOCAL_MACHINE):
-            try:
-                with winreg.OpenKey(hive, r"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\WinSCP.exe") as key:
-                    candidates.append(Path(winreg.QueryValueEx(key, "")[0]).with_name("WinSCP.com"))
-            except OSError:
-                pass
+        try:
+            import winreg
+            for hive in (winreg.HKEY_CURRENT_USER, winreg.HKEY_LOCAL_MACHINE):
+                try:
+                    with winreg.OpenKey(
+                        hive, r"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\WinSCP.exe"
+                    ) as key:
+                        candidates.append(Path(winreg.QueryValueEx(key, "")[0]).with_name("WinSCP.com"))
+                except OSError:
+                    pass
+        except ImportError:
+            pass
         found = shutil.which("WinSCP.com")
         if found:
             candidates.append(Path(found))
@@ -365,9 +376,10 @@ class PlusUploadWorker(QThread):
                 "exit",
             ]
             self.detail.emit("WinSCP: загружаю " + name)
+            portable_ini = winscp.with_name("WinSCP.ini")
+            ini_args = ["/ini=" + str(portable_ini)] if portable_ini.is_file() else []
             result = subprocess.run(
-                [str(winscp), "/ini=nul" if self.settings.get("winscp_portable", False) else "/loglevel=0",
-                 "/command", *commands],
+                [str(winscp), *ini_args, "/loglevel=0", "/command", *commands],
                 capture_output=True, text=True, errors="replace",
                 timeout=max(90, int(self.settings.get("winscp_timeout_seconds", 300))),
                 creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
