@@ -310,13 +310,68 @@ class PlusUploadWorker(QThread):
             ftp.close()
             raise
 
+    def _upload_via_checked_data_port(self, ftp, remote_name, total):
+        """Open PASV/EPSV data sockets before STOR, as in the batch migration tool."""
+        timeout = max(5, int(self.settings.get("data_connect_timeout_seconds", 5)))
+        failures = []
+        peer = ftp.sock.getpeername()
+        for mode in ("pasv", "epsv"):
+            for attempt in range(1, 4):
+                try:
+                    if mode == "pasv":
+                        response = ftp.sendcmd("PASV")
+                        advertised_host, port = ftplib.parse227(response)
+                        host = (advertised_host if getattr(
+                            ftp, "trust_server_pasv_ipv4_address", False) else peer[0])
+                    else:
+                        response = ftp.sendcmd("EPSV")
+                        host, port = ftplib.parse229(response, peer)
+                    self._log("FTP %s: проверка data-порта %d (%d/3)", mode.upper(), port, attempt)
+                    data_socket = socket.create_connection(
+                        (host, port), timeout=timeout, source_address=ftp.source_address)
+                except (OSError, ftplib.error_perm, ftplib.error_reply) as exc:
+                    failures.append(f"{mode.upper()} {attempt}: {type(exc).__name__}: {exc}")
+                    self.logger.warning("FTP data-port failure: %s", failures[-1])
+                    continue
+                self._log("FTP data-порт %d доступен, запускаю STOR", port)
+                sent = 0
+                last_report = 0.0
+                try:
+                    data_socket.settimeout(max(10, int(self.settings.get("timeout_seconds", 60))))
+                    with data_socket:
+                        reply = ftp.sendcmd("STOR " + remote_name)
+                        if reply.startswith("2"):
+                            reply = ftp.getresp()
+                        if not reply.startswith("1"):
+                            raise ftplib.error_reply(reply)
+                        with self.path.open("rb") as stream:
+                            while True:
+                                chunk = stream.read(128 * 1024)
+                                if not chunk:
+                                    break
+                                data_socket.sendall(chunk)
+                                sent += len(chunk)
+                                now = time.monotonic()
+                                if now - last_report >= 0.2 or sent == total:
+                                    self.progress.emit(sent, total)
+                                    last_report = now
+                    ftp.voidresp()
+                    self._log("FTP data transfer completed via %s: %d/%d bytes",
+                              mode.upper(), sent, total)
+                    return
+                except Exception:
+                    self.logger.exception("FTP STOR failed after data socket opened")
+                    raise  # Control state is uncertain: reconnect for the next attempt.
+        raise ConnectionError("Не удалось открыть FTP data-порт до STOR: " +
+                              " | ".join(failures))
+
     def run(self):
         cfg = self.settings
         name = slugify_remote_name(self.path, cfg.get("slug", {}))
         url = clean(cfg["public_base_url"]).rstrip("/") + "/" + quote(name)
         size = self.path.stat().st_size
         # A unique staging filename avoids deleting another interrupted transfer.
-        stage_name = ".__uploading__" + uuid.uuid4().hex + "__" + name
+        stage_name = "__uploading__" + uuid.uuid4().hex + "__" + name
         max_attempts = max(1, min(4, int(cfg.get("retry_attempts", 3))))
         self.logger.info("FTP upload started: file=%s bytes=%d target=%s", self.path, size, name)
         for attempt in range(1, max_attempts + 1):
@@ -337,18 +392,7 @@ class PlusUploadWorker(QThread):
                 if existing is None:
                     raise RuntimeError("Невозможно достоверно проверить наличие итогового файла на FTP.")
                 self._log("Передача во временный файл %s (%d байт)", stage_name, size)
-                sent = 0
-                last_report = 0.0
-                def report(chunk):
-                    nonlocal sent, last_report
-                    sent += len(chunk)
-                    now = time.monotonic()
-                    if now - last_report >= 0.2 or sent == size:
-                        self.progress.emit(sent, size)
-                        last_report = now
-                with self.path.open("rb") as stream:
-                    ftp.storbinary("STOR " + stage_name, stream, blocksize=128 * 1024,
-                                   callback=report)
+                self._upload_via_checked_data_port(ftp, stage_name, size)
                 staged_size = MainWindow._ftp_remote_size(ftp, stage_name)
                 if staged_size != size:
                     raise RuntimeError(
@@ -376,7 +420,7 @@ class PlusUploadWorker(QThread):
                     return
                 # Never reuse a connection after timeout. A new STOR starts from byte zero;
                 # an uncertain completed transfer is detected by final-name size on reconnect.
-                self._log("Переподключаюсь с новой FTP-сессией")
+                self._log("Переподключаюсь с новой FTP-сессией; data-порты будут проверены заново")
             finally:
                 if ftp is not None:
                     try:
