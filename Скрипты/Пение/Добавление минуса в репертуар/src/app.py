@@ -309,14 +309,16 @@ class PlusUploadWorker(QThread):
             return "uncertain"
 
     @staticmethod
-    def find_winscp():
-        """Prefer the known portable installation, then installed WinSCP."""
+    def find_winscp(settings: dict):
+        """Use JSON configuration; discover installed WinSCP as a fallback."""
+        configured = clean(settings.get("winscp_executable"))
+        if configured:
+            path = Path(os.path.expandvars(os.path.expanduser(configured)))
+            if not path.is_file():
+                raise FileNotFoundError(
+                    f"WinSCP.com не найден по пути из config.json: {path}")
+            return path
         candidates = []
-        configured = (
-            r"D:\\YandexDisk\\Ресурсы\\Софт\\Файловые менеджеры и другое"
-            r"\\Файловые менеджеры\\WinSCP\\WinSCP-5.21.8-Portable\\WinSCP.exe"
-        )
-        candidates.append(Path(configured).with_name("WinSCP.com"))
         for env in ("ProgramFiles", "ProgramFiles(x86)", "LOCALAPPDATA"):
             base = os.environ.get(env)
             if base:
@@ -344,7 +346,7 @@ class PlusUploadWorker(QThread):
         try:
             if os.name != "nt":
                 raise RuntimeError("WinSCP доступен только в Windows.")
-            winscp = self.find_winscp()
+            winscp = self.find_winscp(self.settings)
             if not winscp:
                 raise FileNotFoundError("WinSCP.com не найден. Проверь установку WinSCP.")
             name = slugify_remote_name(self.path, self.settings.get("slug", {}))
