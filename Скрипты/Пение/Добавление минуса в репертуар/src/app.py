@@ -367,7 +367,7 @@ class PlusUploadWorker(QThread):
                 self.logger.exception("FTP conflict: %s", name)
                 self.failed.emit(str(exc))
                 return
-            except (OSError, EOFError, ftplib.all_errors, RuntimeError) as exc:
+            except (OSError, EOFError, ftplib.Error, RuntimeError) as exc:
                 self.logger.exception("FTP attempt %d/%d failed (%s)", attempt, max_attempts, type(exc).__name__)
                 self._log("Ошибка на попытке %d: %s: %s", attempt, type(exc).__name__, exc)
                 if attempt == max_attempts:
