@@ -1484,14 +1484,15 @@ class MainWindow(QMainWindow):
         if language_symbol:
             parts.append(language_symbol)
         prefix = " ".join(parts)
-        return f"{prefix} {"`" if self._has_sylt else ""}{name}{self._tone_suffix()}{self._length_suffix()}".strip()
+        marker = "`" if self._has_sylt else ""
+        return f"{prefix} {marker}{name}{self._tone_suffix()}{self._length_suffix()}".strip()
 
     def _trim_changed(self, _checked: bool):
         self.title_manual = False
         self.display_title.setText(self.generated_title())
 
     def _sylt_marker_present(self, value: str) -> bool:
-        return bool(re.match(r"^.*?[⚪🔴][^\\w]*`", value))
+        return bool(re.match(r"^.*?[⚪🔴][^\w]*`", value))
 
     def _refresh_title_indicators(self, *_args):
         if not hasattr(self, "reset_title_btn"):
@@ -1509,9 +1510,9 @@ class MainWindow(QMainWindow):
     def fix_sylt_marker(self):
         value = self.display_title.text()
         if self._has_sylt:
-            value = re.sub(r"^((?:.*?[⚪🔴])\\s*)(?!`)", r"\\1`", value, count=1)
+            value = re.sub(r"^((?:.*?[⚪🔴])\s*)(?!`)", r"\1`", value, count=1)
         else:
-            value = re.sub(r"^((?:.*?[⚪🔴])\\s*)`", r"\\1", value, count=1)
+            value = re.sub(r"^((?:.*?[⚪🔴])\s*)`", r"\1", value, count=1)
         self.title_manual = True
         self.display_title.setText(value)
 
@@ -2813,7 +2814,7 @@ class MainWindow(QMainWindow):
             stem = Path(source_name).stem
             marker = self.config["filename"].get("info_separator", "֎")
             if self.config.get("file_tools", {}).get("files_copy_remove_marker_only", True):
-                stem = re.sub(r"\\s*" + re.escape(marker) + r"\\s*", " ", stem).strip()
+                stem = re.sub(r"\s*" + re.escape(marker) + r"\s*", " ", stem).strip()
                 stem = re.sub(r"\\s{2,}", " ", stem)
             target = target_dir / f"{stem}.mp3"
             if target.exists():
