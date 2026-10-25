@@ -2,6 +2,10 @@ from __future__ import annotations
 
 import copy
 import ftplib
+import logging
+import socket
+import time
+import uuid
 import json
 import os
 import re
@@ -13,7 +17,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import quote, quote_plus, unquote, urlsplit
 
-from PySide6.QtCore import Qt, QSignalBlocker, Signal, QTimer
+from PySide6.QtCore import Qt, QSignalBlocker, Signal, QTimer, QThread
 from PySide6.QtGui import QAction, QDesktopServices
 from PySide6.QtNetwork import QNetworkAccessManager, QNetworkReply, QNetworkRequest
 from PySide6.QtWidgets import (
@@ -60,6 +64,17 @@ from _common.id3_io import (
 from _common.plus_storage import ftp_ensure_dir, slugify_remote_name
 
 APP_ROOT = Path(__file__).resolve().parents[1]
+LOG_DIR = APP_ROOT / "data" / "logs"
+LOG_DIR.mkdir(parents=True, exist_ok=True)
+_ftp_log = logging.getLogger("repertoire.plus_ftp")
+if not _ftp_log.handlers:
+    from logging.handlers import RotatingFileHandler
+    _handler = RotatingFileHandler(LOG_DIR / "ftp_upload.log", maxBytes=2_000_000,
+                                   backupCount=4, encoding="utf-8")
+    _handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(threadName)s %(message)s"))
+    _ftp_log.addHandler(_handler)
+    _ftp_log.setLevel(logging.INFO)
+
 CONFIG_PATH = APP_ROOT / "config.json"
 INVALID_WIN_CHARS = re.compile(r'[<>:"/\\|?*]')
 
@@ -259,6 +274,115 @@ class PlusDropFrame(QFrame):
         path = event.mimeData().urls()[0].toLocalFile()
         self.fileDropped.emit(path)
         event.acceptProposedAction()
+
+
+
+class PlusUploadWorker(QThread):
+    """FTP is never called from the Qt GUI thread."""
+    progress = Signal(int, int)
+    detail = Signal(str)
+    completed = Signal(str, str)
+    failed = Signal(str)
+
+    def __init__(self, path: Path, settings: dict, password: str, parent=None):
+        super().__init__(parent)
+        self.path = path
+        self.settings = dict(settings)
+        self.password = password
+        self.logger = logging.getLogger("repertoire.plus_ftp")
+
+    def _log(self, msg, *args):
+        self.logger.info(msg, *args)
+        self.detail.emit(msg % args if args else msg)
+
+    def _connect(self):
+        cfg = self.settings
+        ftp = ftplib.FTP()
+        try:
+            ftp.connect(clean(cfg["server"]), int(cfg.get("port", 21)),
+                        timeout=max(10, int(cfg.get("timeout_seconds", 60))))
+            ftp.login(clean(cfg["username"]), self.password)
+            ftp.set_pasv(bool(cfg.get("passive", True)))
+            ftp_ensure_dir(ftp, clean(cfg["remote_dir"]))
+            ftp.voidcmd("TYPE I")
+            return ftp
+        except Exception:
+            ftp.close()
+            raise
+
+    def run(self):
+        cfg = self.settings
+        name = slugify_remote_name(self.path, cfg.get("slug", {}))
+        url = clean(cfg["public_base_url"]).rstrip("/") + "/" + quote(name)
+        size = self.path.stat().st_size
+        # A unique staging filename avoids deleting another interrupted transfer.
+        stage_name = ".__uploading__" + uuid.uuid4().hex + "__" + name
+        max_attempts = max(1, min(4, int(cfg.get("retry_attempts", 3))))
+        self.logger.info("FTP upload started: file=%s bytes=%d target=%s", self.path, size, name)
+        for attempt in range(1, max_attempts + 1):
+            ftp = None
+            try:
+                self._log("FTP попытка %d/%d: подключение", attempt, max_attempts)
+                ftp = self._connect()
+                existing = MainWindow._ftp_remote_exists(ftp, name)
+                if existing is True:
+                    remote_size = MainWindow._ftp_remote_size(ftp, name)
+                    if remote_size == size:
+                        self._log("Файл уже существует, размер совпадает (%d)", size)
+                        self.completed.emit(url, "existing")
+                        return
+                    raise FileExistsError(
+                        "На FTP уже есть файл с таким именем и другим/неизвестным размером. "
+                        "Автоматическая перезапись запрещена.")
+                if existing is None:
+                    raise RuntimeError("Невозможно достоверно проверить наличие итогового файла на FTP.")
+                self._log("Передача во временный файл %s (%d байт)", stage_name, size)
+                sent = 0
+                last_report = 0.0
+                def report(chunk):
+                    nonlocal sent, last_report
+                    sent += len(chunk)
+                    now = time.monotonic()
+                    if now - last_report >= 0.2 or sent == size:
+                        self.progress.emit(sent, size)
+                        last_report = now
+                with self.path.open("rb") as stream:
+                    ftp.storbinary("STOR " + stage_name, stream, blocksize=128 * 1024,
+                                   callback=report)
+                staged_size = MainWindow._ftp_remote_size(ftp, stage_name)
+                if staged_size != size:
+                    raise RuntimeError(
+                        f"Нельзя подтвердить размер временного файла: {staged_size} != {size}")
+                if MainWindow._ftp_remote_exists(ftp, name) is not False:
+                    raise FileExistsError("Итоговое имя занято во время передачи; файл не заменён.")
+                self._log("Размер проверен; публикую через RENAME")
+                ftp.rename(stage_name, name)
+                final_size = MainWindow._ftp_remote_size(ftp, name)
+                if final_size != size:
+                    raise RuntimeError(f"Финальная проверка размера: {final_size} != {size}")
+                self._log("FTP завершён: %s (%d байт)", name, size)
+                self.completed.emit(url, "uploaded")
+                return
+            except FileExistsError as exc:
+                self.logger.exception("FTP conflict: %s", name)
+                self.failed.emit(str(exc))
+                return
+            except (OSError, EOFError, ftplib.all_errors, RuntimeError) as exc:
+                self.logger.exception("FTP attempt %d/%d failed (%s)", attempt, max_attempts, type(exc).__name__)
+                self._log("Ошибка на попытке %d: %s: %s", attempt, type(exc).__name__, exc)
+                if attempt == max_attempts:
+                    self.failed.emit(f"{type(exc).__name__}: {exc}. "
+                                     "Исходный MP3 не затронут; временный файл оставлен для диагностики.")
+                    return
+                # Never reuse a connection after timeout. A new STOR starts from byte zero;
+                # an uncertain completed transfer is detected by final-name size on reconnect.
+                self._log("Переподключаюсь с новой FTP-сессией")
+            finally:
+                if ftp is not None:
+                    try:
+                        ftp.close()
+                    except Exception:
+                        pass
 
 
 class MainWindow(QMainWindow):
@@ -2233,211 +2357,75 @@ class MainWindow(QMainWindow):
         if self._plus_upload_in_progress:
             return
         if not self.current_path or not self.current_path.is_file():
-            QMessageBox.warning(
-                self,
-                "Минус не выбран",
-                "Сначала перетащи основной MP3-минус. После загрузки плюса ссылка должна сразу записаться в его WOAS.",
-            )
+            QMessageBox.warning(self, "Минус не выбран", "Сначала выбери MP3-минус.")
             return
         if not self.plus_path or not self.plus_path.is_file():
-            QMessageBox.warning(self, "Плюс песни", "Сначала перетащи или выбери MP3-плюс.")
+            QMessageBox.warning(self, "Плюс не выбран", "Сначала выбери MP3-плюс.")
             return
-
         cfg = self.config.get("plus_upload", {})
         if not cfg.get("enabled"):
             QMessageBox.warning(self, "FTP", "FTP-загрузка выключена в config.json.")
             return
-
+        if not all(clean(cfg.get(key)) for key in
+                   ("server", "username", "remote_dir", "public_base_url")):
+            QMessageBox.warning(self, "FTP", "Не заполнены FTP-настройки.")
+            return
         password = self._ftp_password()
         if not password:
             return
-
-        server = clean(cfg.get("server"))
-        username = clean(cfg.get("username"))
-        remote_dir = clean(cfg.get("remote_dir"))
-        public_base = clean(cfg.get("public_base_url")).rstrip("/")
-        port = int(cfg.get("port", 21))
-        timeout = int(cfg.get("timeout_seconds", 60))
-        passive = bool(cfg.get("passive", True))
-
-        if not all([server, username, remote_dir, public_base]):
-            QMessageBox.critical(self, "FTP", "Не заполнены FTP-настройки в config.json.")
-            return
-
-        remote_name = self._slugify_remote_name(self.plus_path)
-        local_size = self.plus_path.stat().st_size
-        url = public_base + "/" + quote(remote_name)
-        temp_name = f".__uploading__{remote_name}"
-        ftp = ftplib.FTP()
-        stage = "подключение к FTP"
-
         self._plus_upload_in_progress = True
+        self._upload_target_mp3 = self.current_path
+        self._upload_target_plus = self.plus_path
+        self._plus_worker = PlusUploadWorker(self.plus_path, cfg, password, self)
+        self._plus_worker.progress.connect(self._on_plus_upload_progress)
+        self._plus_worker.detail.connect(self._on_plus_upload_detail)
+        self._plus_worker.completed.connect(self._on_plus_upload_completed)
+        self._plus_worker.failed.connect(self._on_plus_upload_failed)
+        self._plus_worker.finished.connect(self._on_plus_upload_finished)
         self.upload_plus_btn.setEnabled(False)
-        self.plus_drop.label.setText(f"⏳ {remote_name} · загрузка…")
-        self.status.setText("Подключаюсь к FTP…")
-        QApplication.setOverrideCursor(Qt.WaitCursor)
+        self.plus_drop.label.setText("⏳ FTP: подключение…")
+        self._plus_worker.start()
 
+    def _on_plus_upload_progress(self, sent: int, total: int):
+        percent = round(sent * 100 / max(total, 1))
+        self.plus_drop.label.setText(f"⬆ FTP: {percent}% ({sent:,}/{total:,} байт)")
+        self.status.setText(f"Загрузка плюса: {percent}%")
+
+    def _on_plus_upload_detail(self, message: str):
+        self.status.setText(message)
+
+    def _on_plus_upload_completed(self, url: str, outcome: str):
+        # UI state can change during a background transfer. Never write WOAS to another song.
+        if (self.current_path != self._upload_target_mp3
+                or self.plus_path != self._upload_target_plus):
+            self.status.setText("FTP завершён, но выбран другой минус. WOAS не изменён.")
+            return
         try:
-            stage = "подключение к FTP"
-            ftp.connect(server, port, timeout=timeout)
-
-            stage = "вход на FTP"
-            ftp.login(username, password)
-            ftp.set_pasv(passive)
-
-            stage = "переход в каталог плюсов"
-            self._ftp_ensure_dir(ftp, remote_dir)
-
-            stage = "проверка существующего файла"
-            exists = self._ftp_remote_exists(ftp, remote_name)
-            if exists is True:
-                stage = "проверка размера существующего файла"
-                existing_size = self._ftp_remote_size(ftp, remote_name)
-
-                if existing_size == local_size:
-                    self.source_url.setText(url)
-                    self._update_plus_delete_enabled()
-
-                    stage = "запись существующей ссылки в WOAS"
-                    self._save_plus_url_to_current_mp3(url)
-
-                    self.plus_drop.label.setText(
-                        f"✓ {remote_name} · уже на FTP, ссылка использована"
-                    )
-                    self.status.setText(
-                        "Плюс уже есть на FTP; повторная загрузка не нужна. "
-                        "Ссылка сохранена в WOAS текущего минуса."
-                    )
-                    self.check_plus_url(True)
-
-                    if cfg.get("open_public_url_after_upload"):
-                        QDesktopServices.openUrl(QUrl(url))
-                    return
-
-                if existing_size is None:
-                    size_note = (
-                        "Размер существующего файла сервер определить не дал."
-                    )
-                else:
-                    size_note = (
-                        f"Размер на FTP: {existing_size} байт.\n"
-                        f"Локальный файл: {local_size} байт."
-                    )
-
-                answer = QMessageBox.question(
-                    self,
-                    "Файл уже есть",
-                    f"{remote_name}\n\n{size_note}\n\n"
-                    "Автоматически использовать существующий файл нельзя. "
-                    "Перезаписать его текущим плюсом?",
-                    QMessageBox.Yes | QMessageBox.No,
-                    QMessageBox.No,
-                )
-                if answer != QMessageBox.Yes:
-                    self.status.setText("FTP-загрузка отменена.")
-                    return
-            elif exists is None:
-                answer = QMessageBox.question(
-                    self,
-                    "Не удалось проверить файл",
-                    "FTP-сервер не смог надёжно проверить, существует ли файл с таким именем.\n\n"
-                    "Продолжить? При совпадении имени существующий файл может быть заменён.",
-                    QMessageBox.Yes | QMessageBox.No,
-                    QMessageBox.No,
-                )
-                if answer != QMessageBox.Yes:
-                    self.status.setText("FTP-загрузка отменена.")
-                    return
-
-            # Clean up a stale temporary upload if one is left from an interrupted run.
-            try:
-                ftp.delete(temp_name)
-            except ftplib.error_perm:
-                pass
-
-            stage = "загрузка файла"
-            self.status.setText("Загружаю плюс на FTP…")
-            with self.plus_path.open("rb") as source:
-                ftp.storbinary(f"STOR {temp_name}", source, blocksize=256 * 1024)
-
-            stage = "проверка размера загруженного файла"
-            remote_size = self._ftp_remote_size(ftp, temp_name)
-            if remote_size is not None and remote_size != local_size:
-                raise RuntimeError(
-                    f"Размер временного файла на FTP не совпал: {remote_size} != {local_size}"
-                )
-
-            stage = "замена итогового файла"
-            if exists is True:
-                try:
-                    ftp.delete(remote_name)
-                except ftplib.error_perm as exc:
-                    if str(exc)[:3] != "550":
-                        raise
-
-            try:
-                ftp.rename(temp_name, remote_name)
-            except ftplib.error_perm:
-                # Some FTP servers do not allow RNTO over an existing target.
-                if exists is None:
-                    try:
-                        ftp.delete(remote_name)
-                        ftp.rename(temp_name, remote_name)
-                    except Exception:
-                        raise
-                else:
-                    raise
-
-            stage = "финальная проверка"
-            final_size = self._ftp_remote_size(ftp, remote_name)
-            if final_size is not None and final_size != local_size:
-                raise RuntimeError(
-                    f"Размер итогового файла на FTP не совпал: {final_size} != {local_size}"
-                )
-
-            self.source_url.setText(url)
-            self._update_plus_delete_enabled()
-
-            stage = "запись ссылки в WOAS"
             self._save_plus_url_to_current_mp3(url)
-
-            self.plus_drop.label.setText(f"✓ {remote_name} · загружен")
-            self.status.setText("Плюс загружен; ссылка сразу сохранена в WOAS. Проверяю URL…")
-            self.check_plus_url(True)
-
-            if cfg.get("open_public_url_after_upload"):
-                QDesktopServices.openUrl(QUrl(url))
-
         except Exception as exc:
-            message = f"Этап: {stage}\n\n{type(exc).__name__}: {exc}"
-            if "timed out" in str(exc).lower():
-                message += (
-                    "\n\nFTP-соединение оборвалось по таймауту. "
-                    "Повторно использованное соединение после таймаута теперь не применяется."
-                )
-            self.plus_drop.label.setText(f"✕ {remote_name} · ошибка")
-            QMessageBox.critical(self, "FTP-загрузка", message)
-            self.status.setText(f"Ошибка FTP: {stage}.")
-            try:
-                if ftp.sock is not None:
-                    ftp.delete(temp_name)
-            except Exception:
-                pass
-        finally:
-            self._plus_upload_in_progress = False
-            try:
-                ftp.close()
-            except Exception:
-                pass
-            QApplication.restoreOverrideCursor()
-            self.upload_plus_btn.setEnabled(
-                bool(
-                    self.current_path
-                    and self.current_path.is_file()
-                    and self.plus_path
-                    and self.plus_path.is_file()
-                )
-            )
+            logging.getLogger("repertoire.plus_ftp").exception("WOAS save failed")
+            self._on_plus_upload_failed(f"FTP успешен, но WOAS не записан: {exc}")
+            return
+        self.source_url.setText(url)
+        self._update_plus_delete_enabled()
+        self.plus_drop.label.setText("✓ Плюс на FTP · WOAS сохранён")
+        self.status.setText("Плюс уже был на FTP; WOAS сохранён." if outcome == "existing"
+                            else "Плюс загружен; WOAS сохранён. Проверяю ссылку…")
+        self.check_plus_url(True)
+        if self.config.get("plus_upload", {}).get("open_public_url_after_upload"):
+            QDesktopServices.openUrl(QUrl(url))
+
+    def _on_plus_upload_failed(self, message: str):
+        self.plus_drop.label.setText("✕ FTP: ошибка (подробности в логе)")
+        self.status.setText("FTP-загрузка не завершена")
+        QMessageBox.critical(self, "FTP-загрузка", message)
+
+    def _on_plus_upload_finished(self):
+        self._plus_upload_in_progress = False
+        self.upload_plus_btn.setEnabled(bool(
+            self.current_path and self.current_path.is_file()
+            and self.plus_path and self.plus_path.is_file()))
+        self._plus_worker = None
 
     def _save_plus_url_to_current_mp3(self, url: str):
         if not self.current_path or not self.current_path.is_file():
