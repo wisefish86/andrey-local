@@ -396,9 +396,14 @@ class MainWindow(QMainWindow):
 
         grid.addWidget(QLabel("Название (Title)"), 2, 0)
         grid.addWidget(self.display_title, 2, 1, 1, 4)
-        reset_title = QPushButton("По шаблону")
+        self.reset_title_btn = QPushButton("По шаблону")
+        reset_title = self.reset_title_btn
         reset_title.clicked.connect(self.reset_title_template)
         grid.addWidget(reset_title, 2, 5)
+        self.sylt_fix_btn = QPushButton("Исправить знак синхронного текста")
+        self.sylt_fix_btn.setVisible(False)
+        self.sylt_fix_btn.clicked.connect(self.fix_sylt_marker)
+        grid.addWidget(self.sylt_fix_btn, 3, 5)
 
         grid.addWidget(QLabel("Тональность"), 3, 0)
         grid.addWidget(self.tone, 3, 1)
@@ -826,6 +831,7 @@ class MainWindow(QMainWindow):
         self.length_version.currentIndexChanged.connect(self._auto_names_changed)
         self.trim_needed.toggled.connect(self._trim_changed)
         self.display_title.textEdited.connect(lambda _t: setattr(self, "title_manual", True))
+        self.display_title.textChanged.connect(self._refresh_title_indicators)
         self.filename.textEdited.connect(lambda _t: setattr(self, "filename_manual", True))
         self.folder_name.textEdited.connect(lambda _t: setattr(self, "folder_manual", True))
         self.folder_name.textEdited.connect(lambda _t: self._update_target_preview())
@@ -986,13 +992,14 @@ class MainWindow(QMainWindow):
         ]
         self._show_unknown_warning()
 
-        self.title_manual = False
-        self.display_title.setText(self.generated_title())
+        self.title_manual = bool(existing_title)
+        self.display_title.setText(existing_title if existing_title else self.generated_title())
 
-        self.filename_manual = False
-        self.folder_manual = False
-        self.reset_filename_template()
-        self.reset_folder_template()
+        self.filename_manual = True
+        self.folder_manual = True
+        self.filename.setText(path.name)
+        self.folder_name.setText(path.parent.name)
+        self._refresh_title_indicators()
 
         library_root = Path(self.config["paths"]["library_root"])
         staging_raw = clean(self.config.get("paths", {}).get("staging_root"))
@@ -1477,11 +1484,36 @@ class MainWindow(QMainWindow):
         if language_symbol:
             parts.append(language_symbol)
         prefix = " ".join(parts)
-        return f"{prefix} {name}{self._tone_suffix()}{self._length_suffix()}".strip()
+        return f"{prefix} {"`" if self._has_sylt else ""}{name}{self._tone_suffix()}{self._length_suffix()}".strip()
 
     def _trim_changed(self, _checked: bool):
         self.title_manual = False
         self.display_title.setText(self.generated_title())
+
+    def _sylt_marker_present(self, value: str) -> bool:
+        return bool(re.match(r"^.*?[⚪🔴][^\\w]*`", value))
+
+    def _refresh_title_indicators(self, *_args):
+        if not hasattr(self, "reset_title_btn"):
+            return
+        current = self.display_title.text()
+        different = current != self.generated_title()
+        self.reset_title_btn.setStyleSheet("background-color: #8057c8; color: white; font-weight: bold;" if different else "")
+        self.reset_title_btn.setToolTip("Название отличается от шаблона" if different else "Название соответствует шаблону")
+        mismatch = bool(self.current_path) and (self._sylt_marker_present(current) != self._has_sylt)
+        self.sylt_fix_btn.setVisible(mismatch)
+        if mismatch:
+            self.sylt_fix_btn.setText("⚠ Добавить `" if self._has_sylt else "⚠ Убрать `")
+            self.sylt_fix_btn.setStyleSheet("background-color: #a56b16; color: white; font-weight: bold;")
+
+    def fix_sylt_marker(self):
+        value = self.display_title.text()
+        if self._has_sylt:
+            value = re.sub(r"^((?:.*?[⚪🔴])\\s*)(?!`)", r"\\1`", value, count=1)
+        else:
+            value = re.sub(r"^((?:.*?[⚪🔴])\\s*)`", r"\\1", value, count=1)
+        self.title_manual = True
+        self.display_title.setText(value)
 
     def reset_title_template(self):
         self.title_manual = False
@@ -1904,6 +1936,7 @@ class MainWindow(QMainWindow):
         if not frames:
             self.sylt_status_label.setText("Синхронная лирика: отсутствует")
             self.sylt_edit.setPlainText("Синхронная лирика отсутствует.")
+            self._refresh_title_indicators()
             return
 
         blocks = []
@@ -1937,6 +1970,7 @@ class MainWindow(QMainWindow):
             f"Синхронная лирика: {len(frames)} дорожка(и) · {total_lines} строк"
         )
         self.sylt_edit.setPlainText("\n".join(blocks).strip())
+        self._refresh_title_indicators()
 
     def paste_lyrics(self):
         text = QApplication.clipboard().text()
@@ -2826,6 +2860,7 @@ class MainWindow(QMainWindow):
         self.lyrics_edit.clear()
         self._has_sylt = False
         self.sylt_status_label.setText("Синхронная лирика: не загружена")
+        self.sylt_fix_btn.setVisible(False)
         self.sylt_edit.clear()
         self._set_section_status("lyrics", "none")
         with QSignalBlocker(self.trim_needed):
