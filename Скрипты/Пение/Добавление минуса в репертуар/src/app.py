@@ -534,11 +534,19 @@ class MainWindow(QMainWindow):
         self.reset_title_btn = QPushButton("По шаблону")
         reset_title = self.reset_title_btn
         reset_title.clicked.connect(self.reset_title_template)
-        grid.addWidget(reset_title, 2, 5)
+        # Both Title actions belong to the same cell. The old SYLT button
+        # occupied row 3 / column 5, overlapping the trim checkbox spanning
+        # columns 4-5; it was painted underneath that checkbox.
+        title_actions = QWidget()
+        title_actions_layout = QVBoxLayout(title_actions)
+        title_actions_layout.setContentsMargins(0, 0, 0, 0)
+        title_actions_layout.setSpacing(4)
+        title_actions_layout.addWidget(reset_title)
         self.sylt_fix_btn = QPushButton("Исправить знак синхронного текста")
         self.sylt_fix_btn.setVisible(False)
         self.sylt_fix_btn.clicked.connect(self.fix_sylt_marker)
-        grid.addWidget(self.sylt_fix_btn, 3, 5)
+        title_actions_layout.addWidget(self.sylt_fix_btn)
+        grid.addWidget(title_actions, 2, 5)
 
         grid.addWidget(QLabel("Тональность"), 3, 0)
         grid.addWidget(self.tone, 3, 1)
