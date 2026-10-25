@@ -2640,6 +2640,15 @@ class MainWindow(QMainWindow):
                 QMessageBox.warning(self, "Проверка ссылки", f"Некорректный URL:\n{url}")
             return
 
+        try:
+            self._remote_name_from_public_url(url)
+        except ValueError as exc:
+            self._set_plus_link_status("error", "✕ ссылка не на сервере плюсов")
+            self.status.setText("Ссылка на плюс не прошла проверку.")
+            if show_dialog:
+                QMessageBox.warning(self, "Проверка ссылки", str(exc))
+            return
+
         if self._link_check_reply is not None and self._link_check_reply.isRunning():
             self._link_check_reply.abort()
 
@@ -2669,7 +2678,13 @@ class MainWindow(QMainWindow):
         error = reply.error()
         url = reply.url().toString()
 
-        if error == QNetworkReply.NetworkError.NoError and status is not None and 200 <= int(status) < 400:
+        try:
+            self._remote_name_from_public_url(url)
+            destination_ok = True
+        except ValueError:
+            destination_ok = False
+
+        if destination_ok and error == QNetworkReply.NetworkError.NoError and status is not None and 200 <= int(status) < 300:
             self._set_plus_link_status("ok", f"✓ ссылка работает · HTTP {int(status)}")
             self.status.setText("Ссылка на плюс работает.")
             if show_dialog:
@@ -2679,7 +2694,9 @@ class MainWindow(QMainWindow):
                     f"Ссылка работает.\nHTTP {int(status)}\n\n{url}",
                 )
         else:
-            if error == QNetworkReply.NetworkError.OperationCanceledError:
+            if not destination_ok:
+                reason = "ссылка не на сервере плюсов"
+            elif error == QNetworkReply.NetworkError.OperationCanceledError:
                 reason = "таймаут проверки"
             else:
                 reason = reply.errorString() or "неизвестная ошибка"
