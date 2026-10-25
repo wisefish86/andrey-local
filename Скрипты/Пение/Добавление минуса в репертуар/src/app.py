@@ -381,7 +381,7 @@ class PlusUploadWorker(QThread):
             # /command is decoded with the console code page on older WinSCP.
             # A UTF-8 BOM script preserves Cyrillic paths and session names.
             script_path = stage_dir / "winscp-upload.txt"
-            script_path.write_text("\\n".join(commands) + "\\n", encoding="utf-8-sig")
+            script_path.write_text(chr(10).join(commands) + chr(10), encoding="utf-8-sig")
             result = subprocess.run(
                 [str(winscp), *ini_args, "/loglevel=0",
                  "/script=" + str(script_path)],
