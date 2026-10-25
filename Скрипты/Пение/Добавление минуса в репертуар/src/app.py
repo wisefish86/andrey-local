@@ -278,11 +278,10 @@ class PlusDropFrame(QFrame):
 
 
 class PlusUploadWorker(QThread):
-    """Prepare a local copy for the Windows FTP shortcut; never alter source."""
+    """Send a local MP3 through a saved WinSCP session and verify the result."""
     detail = Signal(str)
     completed = Signal(str, str)
     failed = Signal(str)
-    copy_ready = Signal(str, str, str, int)
 
     def __init__(self, path: Path, settings: dict, password: str = "", parent=None):
         super().__init__(parent)
@@ -292,7 +291,6 @@ class PlusUploadWorker(QThread):
 
     @staticmethod
     def check_public_file(url: str, expected_size: int) -> str:
-        """Return verified, absent, or uncertain. HTTP size must match exactly."""
         from urllib.error import HTTPError, URLError
         from urllib.request import Request, urlopen
         request = Request(url, method="HEAD", headers={
@@ -310,37 +308,80 @@ class PlusUploadWorker(QThread):
         except (URLError, OSError, ValueError, TimeoutError):
             return "uncertain"
 
+    @staticmethod
+    def find_winscp():
+        import winreg
+        candidates = []
+        for env in ("ProgramFiles", "ProgramFiles(x86)", "LOCALAPPDATA"):
+            base = os.environ.get(env)
+            if base:
+                candidates.append(Path(base) / "WinSCP" / "WinSCP.com")
+        for hive in (winreg.HKEY_CURRENT_USER, winreg.HKEY_LOCAL_MACHINE):
+            try:
+                with winreg.OpenKey(hive, r"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\WinSCP.exe") as key:
+                    candidates.append(Path(winreg.QueryValueEx(key, "")[0]).with_name("WinSCP.com"))
+            except OSError:
+                pass
+        found = shutil.which("WinSCP.com")
+        if found:
+            candidates.append(Path(found))
+        return next((p for p in candidates if p.is_file()), None)
+
     def run(self):
+        import tempfile
+        stage = None
         try:
             if os.name != "nt":
-                raise RuntimeError("FTP-ярлык работает только в Windows.")
-            shortcut = APP_ROOT / "andreway.ru (audio - plus).lnk"
-            if not shortcut.is_file():
-                raise FileNotFoundError(f"Не найден FTP-ярлык: {shortcut}")
+                raise RuntimeError("WinSCP доступен только в Windows.")
+            winscp = self.find_winscp()
+            if not winscp:
+                raise FileNotFoundError("WinSCP.com не найден. Проверь установку WinSCP.")
             name = slugify_remote_name(self.path, self.settings.get("slug", {}))
             url = clean(self.settings["public_base_url"]).rstrip("/") + "/" + quote(name)
             size = self.path.stat().st_size
-            stage = self.path.with_name(name)
-            before = self.check_public_file(url, size)
-            if before == "verified":
+            state = self.check_public_file(url, size)
+            if state == "verified":
                 self.completed.emit(url, "existing")
                 return
-            if before != "absent":
-                raise RuntimeError(
-                    "Невозможно подтвердить отсутствие целевого файла на сервере. "
-                    "Во избежание перезаписи загрузка остановлена.")
-            if stage.resolve() == self.path.resolve():
-                raise RuntimeError("Имя временной копии совпадает с оригиналом.")
-            if stage.exists():
-                raise FileExistsError(f"Копия уже существует, не перезаписываю: {stage}")
+            if state != "absent":
+                raise RuntimeError("Нельзя подтвердить отсутствие целевого файла на сервере.")
+            # Temporary directory prevents clobbering another file next to the MP3.
+            stage_dir = Path(tempfile.mkdtemp(prefix="andrey-plus-", dir=str(self.path.parent)))
+            stage = stage_dir / name
             shutil.copy2(self.path, stage)
             if stage.stat().st_size != size:
-                raise RuntimeError("Размер копии не соответствует оригиналу.")
-            self.detail.emit("Временная копия готова: " + str(stage))
-            self.copy_ready.emit(str(stage), str(shortcut), url, size)
+                raise RuntimeError("Временная копия отличается по размеру.")
+            session = self.settings.get("winscp_session", "andreway.ru (audio - plus)")
+            remote_dir = clean(self.settings["remote_dir"])
+            # WinSCP scripting requires its own quoting, not shell quoting.
+            def quote_arg(value):
+                return '"' + str(value).replace('"', '""') + '"'
+            commands = [
+                "option batch abort",
+                "option confirm off",
+                "open " + quote_arg(session),
+                "cd " + quote_arg(remote_dir),
+                "put -nopreservetime -resumesupport=off " + quote_arg(stage),
+                "exit",
+            ]
+            self.detail.emit("WinSCP: загружаю " + name)
+            result = subprocess.run(
+                [str(winscp), "/ini=nul" if self.settings.get("winscp_portable", False) else "/loglevel=0",
+                 "/command", *commands],
+                capture_output=True, text=True, errors="replace",
+                timeout=max(90, int(self.settings.get("winscp_timeout_seconds", 300))),
+                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+            )
+            if result.returncode:
+                raise RuntimeError("WinSCP завершился с ошибкой. " + (result.stderr or result.stdout)[-1000:])
+            if self.check_public_file(url, size) != "verified":
+                raise RuntimeError("WinSCP завершился, но размер файла по HTTP не подтверждён.")
+            stage.unlink()
+            stage_dir.rmdir()
+            self.completed.emit(url, "uploaded")
         except Exception as exc:
-            self.logger.exception("FTP shortcut preparation failed")
-            self.failed.emit(f"{type(exc).__name__}: {exc}. Исходный MP3 не затронут.")
+            self.logger.exception("WinSCP upload failed")
+            self.failed.emit(f"{type(exc).__name__}: {exc}. Исходный MP3 не затронут; копия сохранена: {stage}")
 
 
 class MainWindow(QMainWindow):
@@ -2314,9 +2355,6 @@ class MainWindow(QMainWindow):
     def upload_plus(self):
         if self._plus_upload_in_progress:
             return
-        if getattr(self, "_ftp_pending_copy", None) is not None:
-            self._verify_shortcut_upload()
-            return
         if not self.current_path or not self.current_path.is_file():
             QMessageBox.warning(self, "Минус не выбран", "Сначала выбери MP3-минус.")
             return
@@ -2334,58 +2372,10 @@ class MainWindow(QMainWindow):
         self._plus_worker.detail.connect(self._on_plus_upload_detail)
         self._plus_worker.completed.connect(self._on_plus_upload_completed)
         self._plus_worker.failed.connect(self._on_plus_upload_failed)
-        self._plus_worker.copy_ready.connect(self._on_plus_copy_ready)
         self._plus_worker.finished.connect(self._on_plus_upload_finished)
         self.upload_plus_btn.setEnabled(False)
-        self.plus_drop.label.setText("Готовлю копию для FTP…")
+        self.plus_drop.label.setText("Загружаю через WinSCP…")
         self._plus_worker.start()
-
-    def _on_plus_copy_ready(self, copy_path: str, shortcut_path: str,
-                            url: str, size: int):
-        # Windows Explorer FTP shortcuts use an interactive IDropTarget;
-        # launching the .lnk with argv is not equivalent to a shell drop.
-        self._ftp_pending_copy = Path(copy_path)
-        self._ftp_pending_url = url
-        self._ftp_pending_size = size
-        self._ftp_pending_minus = self.current_path
-        self._ftp_pending_plus = self.plus_path
-        try:
-            os.startfile(shortcut_path)
-        except OSError as exc:
-            QMessageBox.warning(self, "FTP-ярлык", f"Открой ярлык вручную: {exc}")
-        QMessageBox.information(
-            self, "Копия подготовлена",
-            "Копия с правильным именем создана рядом с исходным MP3.\n\n"
-            "Перетащи её на FTP-ярлык, подтверди копирование и дождись окончания.\n\n"
-            f"Копия: {copy_path}\n\n"
-            "После этого нажми «Проверить FTP».")
-        self.upload_plus_btn.setText("Проверить FTP")
-        self.plus_drop.label.setText("Копия подготовлена · ожидаю FTP")
-        self.upload_plus_btn.setEnabled(True)
-
-    def _verify_shortcut_upload(self):
-        if (self.current_path != self._ftp_pending_minus
-                or self.plus_path != self._ftp_pending_plus):
-            QMessageBox.warning(self, "FTP", "Выбран другой минус или плюс. WOAS не изменён.")
-            return
-        result = PlusUploadWorker.check_public_file(
-            self._ftp_pending_url, self._ftp_pending_size)
-        if result != "verified":
-            QMessageBox.warning(
-                self, "FTP не подтверждён",
-                "Сервер ещё не подтвердил точный размер MP3. "
-                "Копия оставлена, WOAS не изменён.")
-            return
-        path = self._ftp_pending_copy
-        url = self._ftp_pending_url
-        self._ftp_pending_copy = None
-        self.upload_plus_btn.setText("Загрузить плюс на FTP")
-        self._on_plus_upload_completed(url, "uploaded")
-        if self.source_url.text().strip() == url:
-            try:
-                path.unlink()
-            except OSError as exc:
-                self.status.setText(f"WOAS сохранён, но копия не удалена: {exc}")
 
     def _on_plus_upload_progress(self, sent: int, total: int):
         percent = round(sent * 100 / max(total, 1))
@@ -2424,9 +2414,8 @@ class MainWindow(QMainWindow):
     def _on_plus_upload_finished(self):
         self._plus_upload_in_progress = False
         self.upload_plus_btn.setEnabled(bool(
-            getattr(self, '_ftp_pending_copy', None) or (
-                self.current_path and self.current_path.is_file()
-                and self.plus_path and self.plus_path.is_file())))
+            self.current_path and self.current_path.is_file()
+            and self.plus_path and self.plus_path.is_file()))
         self._plus_worker = None
 
     def _save_plus_url_to_current_mp3(self, url: str):
