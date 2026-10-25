@@ -1,0 +1,30 @@
+name: Repertoire Python syntax
+on:
+  push:
+    paths:
+      - 'Скрипты/Пение/Добавление минуса в репертуар/**/*.py'
+      - 'Скрипты/Пение/Добавление минуса в репертуар/**/*.pyw'
+      - '.github/workflows/repertoire-python-syntax.yml'
+  workflow_dispatch:
+jobs:
+  syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile repertoire sources without importing dependencies
+        shell: bash
+        run: |
+          python - <<'PY'
+          import ast
+          from pathlib import Path
+          root = Path('Скрипты/Пение/Добавление минуса в репертуар')
+          files = list(root.rglob('*.py')) + list(root.rglob('*.pyw'))
+          assert files, 'No Python sources found'
+          for path in files:
+              ast.parse(path.read_text(encoding='utf-8-sig'), filename=str(path))
+              print('Syntax OK:', path)
+          print('Checked:', len(files))
+          PY
