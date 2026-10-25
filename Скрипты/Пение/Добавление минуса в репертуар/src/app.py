@@ -1117,7 +1117,13 @@ class MainWindow(QMainWindow):
         self._set_length(inferred["length"] or length_from_title)
         self.version_info.setText(inferred["version_info"])
 
-        tit1_values = read_text(tags, "TIT1")
+        # TIT1 may contain separate ID3 values or one semicolon-delimited string.
+        tit1_values = [
+            part.strip()
+            for raw in read_text(tags, "TIT1")
+            for part in raw.split(";")
+            if part.strip()
+        ]
         managed_prefixes = []
         for field in self.config["fields"]:
             control = self.controls[field["id"]]
