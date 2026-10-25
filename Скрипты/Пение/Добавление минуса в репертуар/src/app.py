@@ -378,8 +378,13 @@ class PlusUploadWorker(QThread):
             self.detail.emit("WinSCP: загружаю " + name)
             portable_ini = winscp.with_name("WinSCP.ini")
             ini_args = ["/ini=" + str(portable_ini)] if portable_ini.is_file() else []
+            # /command is decoded with the console code page on older WinSCP.
+            # A UTF-8 BOM script preserves Cyrillic paths and session names.
+            script_path = stage_dir / "winscp-upload.txt"
+            script_path.write_text("\\n".join(commands) + "\\n", encoding="utf-8-sig")
             result = subprocess.run(
-                [str(winscp), *ini_args, "/loglevel=0", "/command", *commands],
+                [str(winscp), *ini_args, "/loglevel=0",
+                 "/script=" + str(script_path)],
                 capture_output=True, text=True, errors="replace",
                 timeout=max(90, int(self.settings.get("winscp_timeout_seconds", 300))),
                 creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
@@ -389,6 +394,7 @@ class PlusUploadWorker(QThread):
             if self.check_public_file(url, size) != "verified":
                 raise RuntimeError("WinSCP завершился, но размер файла по HTTP не подтверждён.")
             stage.unlink()
+            script_path.unlink()
             stage_dir.rmdir()
             self.completed.emit(url, "uploaded")
         except Exception as exc:
