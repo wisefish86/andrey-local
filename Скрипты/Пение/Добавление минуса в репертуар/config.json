@@ -869,7 +869,10 @@
         "ъ": ""
       }
     },
-    "allow_delete": true
+    "allow_delete": true,
+    "winscp_executable": "D:\\YandexDisk\\Ресурсы\\Софт\\Файловые менеджеры и другое\\Файловые менеджеры\\WinSCP\\WinSCP-5.21.8-Portable\\WinSCP.com",
+    "winscp_session": "andreway.ru (audio - plus)",
+    "winscp_timeout_seconds": 300
   },
   "audio_analysis": {
     "bpm_frame": "TBPM",
@@ -945,7 +948,7 @@
     "ftp_recovery_cycles": 12,
     "ftp_recovery_cooldown_seconds": 60,
     "ftp_upload_block_size_kb": 64,
-    "ftp_progress_interval_seconds": 1.0,
+    "ftp_progress_interval_seconds": 1,
     "ftp_data_connect_timeout_seconds": 5,
     "ftp_data_port_attempts_per_mode": 3,
     "ftp_data_port_retry_delay_seconds": 0.5,
