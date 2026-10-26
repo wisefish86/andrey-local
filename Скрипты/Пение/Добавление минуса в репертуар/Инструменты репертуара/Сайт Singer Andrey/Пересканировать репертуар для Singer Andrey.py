@@ -27,6 +27,38 @@ from _common.id3_io import clean, load_tags, read_field, read_text, read_url
 
 CONFIG_PATH = APP_ROOT / "config.json"
 
+# Only these repertoire categories may be published; internal fields remain local.
+PUBLIC_FILTER_FIELDS = ("language", "audience", "situations", "energy", "mood", "recognition", "era")
+
+
+def public_facets(config: dict[str, Any]) -> dict[str, list[dict[str, str]]]:
+    result = {}
+    for field in config.get("fields", []):
+        field_id = field.get("id")
+        if field_id not in PUBLIC_FILTER_FIELDS:
+            continue
+        result[field_id] = [
+            {"value": str(option[0]), "label": str(option[1])}
+            for option in field.get("options", [])
+            if len(option) >= 2 and not str(option[0]).endswith("#")
+        ]
+    return result
+
+
+def public_filters(managed: dict[str, Any], facets: dict[str, list[dict[str, str]]]) -> dict[str, list[str]]:
+    result = {}
+    for field_id in PUBLIC_FILTER_FIELDS:
+        raw = managed.get(field_id)
+        values = raw if isinstance(raw, list) else ([raw] if raw else [])
+        allowed = {item["value"].casefold(): item["value"] for item in facets.get(field_id, [])}
+        result[field_id] = list(dict.fromkeys(
+            allowed[str(value).strip().casefold()]
+            for value in values
+            if str(value).strip().casefold() in allowed
+        ))
+    return result
+
+
 
 def load_config() -> dict[str, Any]:
     return json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
@@ -216,9 +248,18 @@ def main() -> int:
         track["song_id"] = song_id
         grouped[song_id].append(track)
 
+    facets = public_facets(config)
     songs = []
     for song_id, variants in grouped.items():
         chosen = variants[0]
+        filters = public_filters(chosen["managed"], facets)
+        if len(variants) > 1:
+            disagreements = [
+                field_id for field_id in PUBLIC_FILTER_FIELDS
+                if any(public_filters(v["managed"], facets)[field_id] != filters[field_id] for v in variants[1:])
+            ]
+            if disagreements:
+                warnings.append({"song_id": song_id, "reason": "version_filter_disagreement", "fields": disagreements})
         songs.append({
             "id": song_id,
             "artist": chosen["artist"],
@@ -227,6 +268,7 @@ def main() -> int:
             "year": chosen["year"],
             "bpm": chosen["bpm"],
             "genre": chosen["managed"].get("energy", ""),
+            "filters": filters,
             "version_count": len(variants),
         })
     songs.sort(key=lambda song: (clean(song["artist"]).casefold(), clean(song["name"]).casefold()))
@@ -236,9 +278,10 @@ def main() -> int:
 
     public_output = output.with_name("repertoire.public.json")
     public_output.write_text(json.dumps({
-        "schema_version": 2,
+        "schema_version": 3,
         "generated_at": payload["generated_at"],
         "song_count": len(songs),
+        "facets": facets,
         "songs": songs,
     }, ensure_ascii=False, indent=2), encoding="utf-8")
 
