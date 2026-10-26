@@ -31,6 +31,7 @@ from _common.id3_io import clean, read_rating, read_text, read_txxx, read_url
 
 CONFIG_PATH = APP_ROOT / "config.json"
 DEFAULT_OUTPUT_DIR = APP_ROOT / "data" / "id3_audit"
+EXCLUDED_FRAME_IDS = {"USLT", "SYLT"}  # Текст песен и синхронная лирика
 
 
 def load_config() -> dict[str, Any]:
@@ -72,7 +73,11 @@ def serialize_value(value: Any, depth: int = 0) -> Any:
         return {
             "_type": "ID3",
             "version": list(value.version) if getattr(value, "version", None) else None,
-            "frames": [serialize_frame(frame, depth + 1) for frame in value.values()],
+            "frames": [
+                serialize_frame(frame, depth + 1)
+                for frame in value.values()
+                if getattr(frame, "FrameID", "") not in EXCLUDED_FRAME_IDS
+            ],
         }
 
     try:
@@ -166,8 +171,6 @@ def summary(tags: ID3) -> dict[str, Any]:
         "rating": read_rating(tags),
         "replaygain_track_gain": first(read_txxx(tags, "TXXX:replaygain_track_gain")),
         "replaygain_track_peak": first(read_txxx(tags, "TXXX:replaygain_track_peak")),
-        "uslt_count": len(tags.getall("USLT")),
-        "sylt_count": len(tags.getall("SYLT")),
     }
 
 
@@ -176,7 +179,11 @@ def build_track(path: Path, root: Path) -> dict[str, Any]:
     relative = path.relative_to(root).as_posix()
     stat = path.stat()
 
-    frames = [serialize_frame(frame) for frame in tags.values()]
+    frames = [
+        serialize_frame(frame)
+        for frame in tags.values()
+        if getattr(frame, "FrameID", "") not in EXCLUDED_FRAME_IDS
+    ]
     frame_ids = Counter(item["frame_id"] or item["class"] for item in frames)
 
     return {
@@ -247,7 +254,7 @@ def default_output_path() -> Path:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Полный безопасный экспорт ID3 всех репертуарных MP3 в JSON."
+        description="Аудит ID3 репертуарных MP3 без текстов песен USLT и SYLT."
     )
     parser.add_argument("--root", help="Переопределить корневую папку репертуара.")
     parser.add_argument("--output", help="Явно указать путь выходного JSON.")
@@ -295,6 +302,7 @@ def main() -> int:
         "library_root": str(root),
         "marker": marker,
         "excluded_dirs": excluded_list,
+        "excluded_frame_ids": sorted(EXCLUDED_FRAME_IDS),
         "track_count": len(tracks),
         "error_count": len(errors),
         "frame_type_counts": dict(
