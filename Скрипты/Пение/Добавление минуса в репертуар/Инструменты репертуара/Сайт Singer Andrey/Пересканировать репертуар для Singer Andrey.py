@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 from collections import defaultdict
 from mutagen.mp3 import MP3
+from publish_public_catalog import publish
 
 def find_app_root(start: Path) -> Path:
     for candidate in [start, *start.parents]:
@@ -263,7 +264,15 @@ def main() -> int:
         if len(errors) > 30:
             print(f"... ещё {len(errors) - 30}")
 
-    return 1 if errors else 0
+    if errors:
+        print("Публикация пропущена из-за ошибок сканирования.")
+        return 1
+    try:
+        publish(public_output, config)
+    except Exception as exc:
+        print(f"Ошибка автоматической публикации WinSCP: {exc}")
+        return 2
+    return 0
 
 
 if __name__ == "__main__":
