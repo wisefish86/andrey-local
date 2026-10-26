@@ -24,7 +24,7 @@ PENIE_ROOT = APP_ROOT.parent
 if str(PENIE_ROOT) not in sys.path:
     sys.path.insert(0, str(PENIE_ROOT))
 
-from _common.id3_io import clean, load_tags, read_field, read_text, read_url
+from _common.id3_io import clean, load_tags, read_field, read_rating, read_text, read_url
 
 CONFIG_PATH = APP_ROOT / "config.json"
 
@@ -172,6 +172,7 @@ def build_track(path: Path, root: Path, config: dict[str, Any]) -> dict[str, Any
         "album": first_text(tags, "TALB"),
         "year": first_text(tags, "TDRC"),
         "bpm": first_text(tags, "TBPM"),
+        "rating": int(read_rating(tags) or 0),
         "plus_url": read_url(tags, "WOAS"),
         "replaygain": {
             "track_gain": replaygain_gain,
@@ -273,6 +274,13 @@ def main() -> int:
     for song_id, variants in grouped.items():
         chosen = variants[0]
         filters = public_filters(chosen["managed"], facets)
+        # All technical versions represent one public song. Use its highest MusicBee rating.
+        rating = max(int(variant.get("rating") or 0) for variant in variants)
+        # A hit in any version is a hit for the whole song.
+        is_hit = any(
+            "уз-1-Хит" in public_filters(variant["managed"], facets)["recognition"]
+            for variant in variants
+        )
         if len(variants) > 1:
             disagreements = [
                 field_id for field_id in PUBLIC_FILTER_FIELDS
@@ -289,17 +297,24 @@ def main() -> int:
             "bpm": chosen["bpm"],
             "genre": chosen["managed"].get("energy", ""),
             "filters": filters,
+            "rating": rating,
+            "is_hit": is_hit,
             "preview_url": public_preview_url(variants),
             "version_count": len(variants),
         })
-    songs.sort(key=lambda song: (clean(song["artist"]).casefold(), clean(song["name"]).casefold()))
+    # Ranking: higher POPM first; for equal ratings, recognized hits come first.
+    # Alphabetical tie-break makes ordering stable across repeat exports.
+    songs.sort(key=lambda song: (
+        -song["rating"], -int(song["is_hit"]),
+        clean(song["artist"]).casefold(), clean(song["name"]).casefold(),
+    ))
     payload["songs"] = songs
     payload["song_count"] = len(songs)
     payload["warnings"] = warnings
 
     public_output = output.with_name("repertoire.public.json")
     public_output.write_text(json.dumps({
-        "schema_version": 3,
+        "schema_version": 4,
         "generated_at": payload["generated_at"],
         "song_count": len(songs),
         "facets": facets,
