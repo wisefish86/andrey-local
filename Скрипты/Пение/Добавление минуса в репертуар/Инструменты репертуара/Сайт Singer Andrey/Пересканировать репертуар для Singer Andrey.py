@@ -225,7 +225,7 @@ def main() -> int:
             "duration_seconds": chosen["duration_seconds"],
             "year": chosen["year"],
             "bpm": chosen["bpm"],
-            "managed": chosen["managed"],
+            "genre": chosen["managed"].get("energy", ""),
             "version_count": len(variants),
         })
     songs.sort(key=lambda song: (clean(song["artist"]).casefold(), clean(song["name"]).casefold()))
