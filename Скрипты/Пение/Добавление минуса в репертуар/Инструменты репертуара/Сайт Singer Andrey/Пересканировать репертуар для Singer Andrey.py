@@ -7,6 +7,8 @@ import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+from collections import defaultdict
+from mutagen.mp3 import MP3
 
 def find_app_root(start: Path) -> Path:
     for candidate in [start, *start.parents]:
@@ -104,6 +106,11 @@ def build_track(path: Path, root: Path, config: dict[str, Any]) -> dict[str, Any
         {"kind": "txxx", "frame": "TXXX:replaygain_track_peak"},
     )
 
+    try:
+        duration = round(float(MP3(path).info.length), 2)
+    except Exception:
+        duration = None
+
     track = {
         "id": hashlib.sha1(relative.encode("utf-8")).hexdigest()[:16],
         "artist": first_text(tags, "TPE1"),
@@ -120,6 +127,9 @@ def build_track(path: Path, root: Path, config: dict[str, Any]) -> dict[str, Any
         "managed": managed,
         "has_lyrics": bool(clean(lyrics)),
         "source_name": path.name,
+        "duration_seconds": duration,
+        "relative_path": relative,
+        "folder_name": path.parent.name,
     }
     if include_lyrics:
         track["lyrics"] = lyrics
@@ -190,6 +200,47 @@ def main() -> int:
         "errors": errors,
     }
 
+    # Public catalogue: one song per Artist + MVNM. Local JSON retains every version.
+    grouped = defaultdict(list)
+    warnings = []
+    for track in tracks:
+        artist = clean(track["artist"])
+        name = clean(track["name"])
+        if artist and name:
+            stable = artist.casefold() + chr(0) + name.casefold()
+            song_id = hashlib.sha1(stable.encode("utf-8")).hexdigest()[:16]
+        else:
+            song_id = track["id"]
+            warnings.append({"track_id": track["id"], "reason": "missing_artist_or_name"})
+        track["song_id"] = song_id
+        grouped[song_id].append(track)
+
+    songs = []
+    for song_id, variants in grouped.items():
+        chosen = variants[0]
+        songs.append({
+            "id": song_id,
+            "artist": chosen["artist"],
+            "name": chosen["name"],
+            "duration_seconds": chosen["duration_seconds"],
+            "year": chosen["year"],
+            "bpm": chosen["bpm"],
+            "managed": chosen["managed"],
+            "version_count": len(variants),
+        })
+    songs.sort(key=lambda song: (clean(song["artist"]).casefold(), clean(song["name"]).casefold()))
+    payload["songs"] = songs
+    payload["song_count"] = len(songs)
+    payload["warnings"] = warnings
+
+    public_output = output.with_name("repertoire.public.json")
+    public_output.write_text(json.dumps({
+        "schema_version": 2,
+        "generated_at": payload["generated_at"],
+        "song_count": len(songs),
+        "songs": songs,
+    }, ensure_ascii=False, indent=2), encoding="utf-8")
+
     output.write_text(
         json.dumps(
             payload,
@@ -202,7 +253,8 @@ def main() -> int:
     print("Готово")
     print(f"Минусовок: {len(tracks)}")
     print(f"Ошибок: {len(errors)}")
-    print(f"JSON: {output}")
+    print(f"Внутренний JSON: {output}")
+    print(f"Публичный JSON: {public_output}")
     if errors:
         print()
         print("Ошибки:")
