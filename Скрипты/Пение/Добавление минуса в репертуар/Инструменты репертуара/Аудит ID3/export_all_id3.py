@@ -252,9 +252,9 @@ def main() -> int:
     parser.add_argument("--root", help="Переопределить корневую папку репертуара.")
     parser.add_argument("--output", help="Явно указать путь выходного JSON.")
     parser.add_argument(
-        "--include-excluded",
+        "--use-site-excludes",
         action="store_true",
-        help="Не исключать служебные папки из site_export.exclude_dirs.",
+        help="Исключить служебные папки из site_export.exclude_dirs.",
     )
     args = parser.parse_args()
 
@@ -266,11 +266,11 @@ def main() -> int:
 
     site_cfg = config.get("site_export", {})
     marker = clean(site_cfg.get("marker")) or "֎"
-    excluded_list = [] if args.include_excluded else [
+    excluded_list = [
         clean(name)
         for name in site_cfg.get("exclude_dirs", [])
         if clean(name)
-    ]
+    ] if args.use_site_excludes else []
     excluded_dirs = {name.casefold() for name in excluded_list}
 
     output = Path(args.output).resolve() if args.output else default_output_path()
