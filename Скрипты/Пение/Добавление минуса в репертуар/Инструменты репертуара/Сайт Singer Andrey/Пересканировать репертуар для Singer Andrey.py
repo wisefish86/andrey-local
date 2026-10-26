@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 from collections import defaultdict
 from mutagen.mp3 import MP3
+from urllib.parse import urlsplit
 from publish_public_catalog import publish
 
 def find_app_root(start: Path) -> Path:
@@ -58,6 +59,25 @@ def public_filters(managed: dict[str, Any], facets: dict[str, list[dict[str, str
         ))
     return result
 
+
+
+def public_preview_url(variants: list[dict[str, Any]]) -> str:
+    """Allowlist only public, already-uploaded WOAS original-audio URLs."""
+    for variant in variants:
+        url = clean(variant.get("plus_url"))
+        try:
+            parsed = urlsplit(url)
+            if (
+                parsed.scheme == "https"
+                and parsed.netloc.lower() == "singer.andreway.ru"
+                and parsed.path.startswith("/audio/plus/")
+                and not parsed.query
+                and not parsed.fragment
+            ):
+                return url
+        except ValueError:
+            pass
+    return ""
 
 
 def load_config() -> dict[str, Any]:
@@ -269,6 +289,7 @@ def main() -> int:
             "bpm": chosen["bpm"],
             "genre": chosen["managed"].get("energy", ""),
             "filters": filters,
+            "preview_url": public_preview_url(variants),
             "version_count": len(variants),
         })
     songs.sort(key=lambda song: (clean(song["artist"]).casefold(), clean(song["name"]).casefold()))
