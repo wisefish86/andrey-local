@@ -30,6 +30,13 @@ CONFIG_PATH = APP_ROOT / "config.json"
 
 # Only these repertoire categories may be published; internal fields remain local.
 PUBLIC_FILTER_FIELDS = ("language", "audience", "situations", "energy", "mood", "recognition", "era")
+# These are values of the TXXX:OCCASION status field, not folders or file names.
+PUBLIC_EXCLUDED_STATUSES = frozenset({"г-6-запас", "г-7-версии"})
+LEARNING_STATUS = "г-5-выучить"
+
+
+def repertoire_status(track: dict[str, Any]) -> str:
+    return clean(track.get("managed", {}).get("status", "")).casefold()
 
 
 def public_facets(config: dict[str, Any]) -> dict[str, list[dict[str, str]]]:
@@ -271,24 +278,37 @@ def main() -> int:
 
     facets = public_facets(config)
     songs = []
+    learning_songs = []
+    excluded_public_tracks = 0
     for song_id, variants in grouped.items():
-        chosen = variants[0]
+        # Never publish the "Reserve" or "Versions" MP3 records, even as
+        # alternative versions or sources of ratings/preview URLs.
+        allowed = [v for v in variants if repertoire_status(v) not in PUBLIC_EXCLUDED_STATUSES]
+        excluded_public_tracks += len(variants) - len(allowed)
+        regular = [v for v in allowed if repertoire_status(v) != LEARNING_STATUS]
+        learning = [v for v in allowed if repertoire_status(v) == LEARNING_STATUS]
+        if not regular and not learning:
+            continue
+        # Songs to learn are a separate, opt-in catalogue, not regular repertoire.
+        # If a song already has a usable version, show only that regular version.
+        visible_variants = regular if regular else learning
+        chosen = visible_variants[0]
         filters = public_filters(chosen["managed"], facets)
         # All technical versions represent one public song. Use its highest MusicBee rating.
-        rating = max(int(variant.get("rating") or 0) for variant in variants)
+        rating = max(int(variant.get("rating") or 0) for variant in visible_variants)
         # A hit in any version is a hit for the whole song.
         is_hit = any(
             "уз-1-Хит" in public_filters(variant["managed"], facets)["recognition"]
-            for variant in variants
+            for variant in visible_variants
         )
-        if len(variants) > 1:
+        if len(visible_variants) > 1:
             disagreements = [
                 field_id for field_id in PUBLIC_FILTER_FIELDS
-                if any(public_filters(v["managed"], facets)[field_id] != filters[field_id] for v in variants[1:])
+                if any(public_filters(v["managed"], facets)[field_id] != filters[field_id] for v in visible_variants[1:])
             ]
             if disagreements:
                 warnings.append({"song_id": song_id, "reason": "version_filter_disagreement", "fields": disagreements})
-        songs.append({
+        record = {
             "id": song_id,
             "artist": chosen["artist"],
             "name": chosen["name"],
@@ -299,26 +319,34 @@ def main() -> int:
             "filters": filters,
             "rating": rating,
             "is_hit": is_hit,
-            "preview_url": public_preview_url(variants),
-            "version_count": len(variants),
-        })
+            "preview_url": public_preview_url(visible_variants),
+            "version_count": len(visible_variants),
+        }
+        (songs if regular else learning_songs).append(record)
     # Ranking: higher POPM first; for equal ratings, recognized hits come first.
     # Alphabetical tie-break makes ordering stable across repeat exports.
-    songs.sort(key=lambda song: (
+    rank_key = lambda song: (
         -song["rating"], -int(song["is_hit"]),
         clean(song["artist"]).casefold(), clean(song["name"]).casefold(),
-    ))
+    )
+    songs.sort(key=rank_key)
+    learning_songs.sort(key=rank_key)
     payload["songs"] = songs
     payload["song_count"] = len(songs)
+    payload["learning_songs"] = learning_songs
+    payload["learning_song_count"] = len(learning_songs)
+    payload["excluded_public_tracks"] = excluded_public_tracks
     payload["warnings"] = warnings
 
     public_output = output.with_name("repertoire.public.json")
     public_output.write_text(json.dumps({
-        "schema_version": 4,
+        "schema_version": 5,
         "generated_at": payload["generated_at"],
         "song_count": len(songs),
+        "learning_song_count": len(learning_songs),
         "facets": facets,
         "songs": songs,
+        "learning_songs": learning_songs,
     }, ensure_ascii=False, indent=2), encoding="utf-8")
 
     output.write_text(
@@ -332,6 +360,9 @@ def main() -> int:
 
     print("Готово")
     print(f"Минусовок: {len(tracks)}")
+    print(f"В публичном репертуаре: {len(songs)} песен")
+    print(f"Отдельно 'Выучить': {len(learning_songs)} песен")
+    print(f"Исключено из публикации ('Запас'/'Версии'): {excluded_public_tracks} минусовок")
     print(f"Ошибок: {len(errors)}")
     print(f"Внутренний JSON: {output}")
     print(f"Публичный JSON: {public_output}")
