@@ -23,13 +23,11 @@ def publish(public_file: Path, config: dict) -> None:
     session = settings["winscp_session"]
     if not session:
         raise RuntimeError("WinSCP saved session is missing")
-    temp_remote = REMOTE_FILE + ".uploading"
     script = "\n".join([
         "option batch abort",
         "option confirm off",
         "open " + quote(session),
-        "put -transfer=binary " + quote(str(public_file.resolve())) + " " + quote(temp_remote),
-        "mv " + quote(temp_remote) + " " + quote(REMOTE_FILE),
+        "put -transfer=binary -resumesupport=off " + quote(str(public_file.resolve())) + " " + quote(REMOTE_FILE),
         "exit",
         "",
     ])
