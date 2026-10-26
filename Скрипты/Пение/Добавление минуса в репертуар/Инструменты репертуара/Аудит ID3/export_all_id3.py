@@ -31,7 +31,7 @@ from _common.id3_io import clean, read_rating, read_text, read_txxx, read_url
 
 CONFIG_PATH = APP_ROOT / "config.json"
 DEFAULT_OUTPUT_DIR = APP_ROOT / "data" / "id3_audit"
-EXCLUDED_FRAME_IDS = {"USLT", "SYLT"}  # Текст песен и синхронная лирика
+EXCLUDED_FRAME_IDS = {"USLT", "SYLT", "APIC", "GEOB", "PRIV"}  # Лирика, обложки, бинарные вложения, служебные данные
 
 
 def load_config() -> dict[str, Any]:
@@ -254,7 +254,7 @@ def default_output_path() -> Path:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Аудит ID3 репертуарных MP3 без текстов песен USLT и SYLT."
+        description="Аудит ID3 без лирики и тяжёлых бинарных вложений."
     )
     parser.add_argument("--root", help="Переопределить корневую папку репертуара.")
     parser.add_argument("--output", help="Явно указать путь выходного JSON.")
