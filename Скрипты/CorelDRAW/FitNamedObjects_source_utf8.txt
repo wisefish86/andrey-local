@@ -6,7 +6,8 @@
 ' Использование:
 '   1. Назначьте имена объектам в диспетчере объектов.
 '   2. Запустите Main_FitNamedObjects.
-'   3. Выберите режим и введите пределы в мм (0 = не ограничивать).
+'   3. Выберите номер имени из списка @ или введите любое имя.
+'   4. Выберите режим и введите пределы в мм (0 = не ограничивать).
 ' Условия: имя должно совпадать точно; группы просматриваются рекурсивно.
 ' Изменяет размеры и сохраняет центры. Поддерживает отмену одним действием.
 Option Explicit
@@ -28,6 +29,8 @@ Public Sub Main_FitNamedObjects()
     Dim oldReference As cdrReferencePoint
     Dim commandStarted As Boolean
     Dim errText As String
+    Dim names As Collection
+    Dim selectedIndex As Long
 
     If Application.Documents.Count = 0 Then
         MsgBox "Нет открытого документа.", vbExclamation
@@ -35,10 +38,31 @@ Public Sub Main_FitNamedObjects()
     End If
     Set d = ActiveDocument
 
-    answer = InputBox("Точное имя объекта (на всех страницах, включая группы):", _
-                      "Вписать объекты по имени")
+    Set names = New Collection
+    For Each p In d.Pages
+        For Each lyr In p.Layers
+            CollectPlaceholderNames lyr.Shapes, names
+        Next lyr
+    Next p
+
+    answer = InputBox(BuildNamePrompt(names), "Выбор имени объекта")
     If Len(answer) = 0 Then Exit Sub
-    mTargetName = answer
+    answer = Trim$(answer)
+    If IsNumeric(answer) And Len(answer) < 9 Then
+        If InStr(answer, ".") = 0 And InStr(answer, ",") = 0 Then
+            selectedIndex = CLng(answer)
+            If selectedIndex >= 1 And selectedIndex <= names.Count Then
+                mTargetName = CStr(names(selectedIndex))
+            Else
+                MsgBox "Нет такого номера. Введите имя вручную.", vbExclamation
+                Exit Sub
+            End If
+        Else
+            mTargetName = answer
+        End If
+    Else
+        mTargetName = answer
+    End If
 
     answer = InputBox("Режим:" & vbCrLf & _
                       "1 — вписать в рамку (увеличить или уменьшить)" & vbCrLf & _
@@ -110,6 +134,44 @@ Failed:
     errText = Err.Description
     Resume Finish
 End Sub
+
+Private Sub CollectPlaceholderNames(ByVal shapes As Shapes, ByRef result As Collection)
+    Dim s As Shape
+    Dim nameValue As String
+    For Each s In shapes
+        nameValue = s.Name
+        If Left$(nameValue, 1) = "@" Then
+            ' Collection key filters duplicates without external dependencies.
+            On Error Resume Next
+            result.Add nameValue, nameValue
+            Err.Clear
+            On Error GoTo 0
+        End If
+        If s.Type = cdrGroupShape Then CollectPlaceholderNames s.Shapes, result
+    Next s
+End Sub
+
+Private Function BuildNamePrompt(ByVal names As Collection) As String
+    Dim prompt As String
+    Dim i As Long
+    Dim entry As String
+    prompt = "Найденные уникальные имена с @:" & vbCrLf
+    If names.Count = 0 Then
+        prompt = prompt & "(нет)" & vbCrLf
+    Else
+        For i = 1 To names.Count
+            entry = CStr(i) & ". " & CStr(names(i)) & vbCrLf
+            ' Prevent the InputBox prompt from becoming unusably long.
+            If Len(prompt) + Len(entry) > 650 Then
+                prompt = prompt & "... ещё " & CStr(names.Count - i + 1) & " имен(а)" & vbCrLf
+                Exit For
+            End If
+            prompt = prompt & entry
+        Next i
+    End If
+    BuildNamePrompt = prompt & vbCrLf & _
+        "Введите номер из списка или любое точное имя объекта:"
+End Function
 
 Private Sub VisitShapes(ByVal shapes As Shapes)
     Dim s As Shape
