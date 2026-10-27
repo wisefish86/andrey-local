@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -242,6 +243,56 @@ def scan(config: dict[str, Any]) -> tuple[list[dict[str, Any]], list[dict[str, s
     return tracks, errors
 
 
+def load_song_identity_registry(registry_path: Path, previous_catalog: Path) -> dict[str, Any]:
+    """Preserve IDs after changes to clean titles or file locations."""
+    registry = {"version": 1, "by_key": {}, "by_path": {}}
+    if registry_path.is_file():
+        loaded = json.loads(registry_path.read_text(encoding="utf-8"))
+        if not isinstance(loaded, dict) or not isinstance(loaded.get("by_key"), dict) or not isinstance(loaded.get("by_path"), dict):
+            raise RuntimeError(f"Повреждён реестр ID песен: {registry_path}")
+        registry.update(loaded)
+    elif previous_catalog.is_file():
+        old_payload = json.loads(previous_catalog.read_text(encoding="utf-8"))
+        for track in old_payload.get("tracks", []):
+            identifier = str(track.get("song_id") or "")
+            if not re.fullmatch(r"[0-9a-f]{16}", identifier):
+                continue
+            artist = clean(track.get("artist"))
+            title = clean(track.get("name"))
+            if artist and title:
+                registry["by_key"][artist.casefold() + chr(0) + title.casefold()] = identifier
+            rel = track.get("relative_path")
+            if isinstance(rel, str) and rel:
+                registry["by_path"][rel] = identifier
+    return registry
+
+
+def preserve_song_id(key: str, variants: list[dict[str, Any]], registry: dict[str, Any], used: set[str]) -> str:
+    by_key = registry["by_key"]
+    by_path = registry["by_path"]
+    candidates = [by_key.get(key)]
+    candidates += [by_path.get(str(t.get("relative_path") or "")) for t in variants]
+    for candidate in candidates:
+        if isinstance(candidate, str) and re.fullmatch(r"[0-9a-f]{16}", candidate) and candidate not in used:
+            return candidate
+    initial = hashlib.sha1(key.encode("utf-8")).hexdigest()[:16]
+    if initial not in used:
+        return initial
+    # Collision guard; never merge two distinct groups merely because IDs match.
+    serial = 1
+    while True:
+        candidate = hashlib.sha1((key + chr(0) + str(serial)).encode("utf-8")).hexdigest()[:16]
+        if candidate not in used:
+            return candidate
+        serial += 1
+
+
+def save_song_identity_registry(path: Path, registry: dict[str, Any]) -> None:
+    temp = path.with_name(path.name + ".tmp")
+    temp.write_text(json.dumps(registry, ensure_ascii=False, indent=2), encoding="utf-8")
+    os.replace(temp, path)
+
+
 def main() -> int:
     config = load_config()
     site_cfg = config.get("site_export", {})
@@ -261,20 +312,31 @@ def main() -> int:
         "errors": errors,
     }
 
-    # Public catalogue: one song per Artist + MVNM. Local JSON retains every version.
-    grouped = defaultdict(list)
+    # Keep historical song_id for existing saved customer selections.
+    registry_path = output.with_name("song_identity_registry.json")
+    registry = load_song_identity_registry(registry_path, output)
+    grouped_by_key = defaultdict(list)
     warnings = []
     for track in tracks:
-        artist = clean(track["artist"])
-        name = clean(track["name"])
+        artist, name = clean(track["artist"]), clean(track["name"])
         if artist and name:
-            stable = artist.casefold() + chr(0) + name.casefold()
-            song_id = hashlib.sha1(stable.encode("utf-8")).hexdigest()[:16]
+            key = artist.casefold() + chr(0) + name.casefold()
         else:
-            song_id = track["id"]
+            key = "unverified" + chr(0) + track["id"]
             warnings.append({"track_id": track["id"], "reason": "missing_artist_or_name"})
-        track["song_id"] = song_id
-        grouped[song_id].append(track)
+        grouped_by_key[key].append(track)
+
+    grouped = {}
+    used_ids: set[str] = set()
+    for key, variants in grouped_by_key.items():
+        song_id = preserve_song_id(key, variants, registry, used_ids)
+        used_ids.add(song_id)
+        # Keep previous keys as aliases; an ID survives clean-name changes.
+        registry["by_key"][key] = song_id
+        for track in variants:
+            track["song_id"] = song_id
+            registry["by_path"][track["relative_path"]] = song_id
+        grouped[song_id] = variants
 
     facets = public_facets(config)
     songs = []
@@ -349,6 +411,8 @@ def main() -> int:
         "learning_songs": learning_songs,
     }, ensure_ascii=False, indent=2), encoding="utf-8")
 
+    save_song_identity_registry(registry_path, registry)
+
     output.write_text(
         json.dumps(
             payload,
@@ -366,6 +430,7 @@ def main() -> int:
     print(f"Ошибок: {len(errors)}")
     print(f"Внутренний JSON: {output}")
     print(f"Публичный JSON: {public_output}")
+    print(f"Реестр постоянных ID: {registry_path}")
     if errors:
         print()
         print("Ошибки:")
