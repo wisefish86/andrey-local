@@ -2,11 +2,11 @@
 ' Модуль: FitNamedObjects
 ' Запуск: Main_FitNamedObjects
 ' Назначение: Ищет все объекты с заданным именем на всех страницах
-' и вписывает каждый в максимальные ширину/высоту без искажений.
+' в два режима: 1 = заполнить вписыванием, 2 = только уменьшить превышающие предел.
 ' Использование:
 '   1. Назначьте имена объектам в диспетчере объектов.
 '   2. Запустите Main_FitNamedObjects.
-'   3. Введите имя и пределы в мм (0 = не ограничивать).
+'   3. Выберите режим и введите пределы в мм (0 = не ограничивать).
 ' Условия: имя должно совпадать точно; группы просматриваются рекурсивно.
 ' Изменяет размеры и сохраняет центры. Поддерживает отмену одним действием.
 Option Explicit
@@ -17,6 +17,7 @@ Private mSkipped As Long
 Private mTargetName As String
 Private mMaxW As Double
 Private mMaxH As Double
+Private mMode As Long
 
 Public Sub Main_FitNamedObjects()
     Dim d As Document
@@ -38,6 +39,17 @@ Public Sub Main_FitNamedObjects()
                       "Вписать объекты по имени")
     If Len(answer) = 0 Then Exit Sub
     mTargetName = answer
+
+    answer = InputBox("Режим:" & vbCrLf & _
+                      "1 — вписать в рамку (увеличить или уменьшить)" & vbCrLf & _
+                      "2 — только ограничить (уменьшить превышающие, остальные оставить)", _
+                      "Режим изменения размеров", "2")
+    If Len(answer) = 0 Then Exit Sub
+    If answer <> "1" And answer <> "2" Then
+        MsgBox "Введите 1 или 2.", vbExclamation
+        Exit Sub
+    End If
+    mMode = CLng(answer)
 
     answer = InputBox("Максимальная ширина в мм (0 = без ограничения):", _
                       "Вписать объекты по имени", "50")
@@ -106,8 +118,11 @@ Private Sub VisitShapes(ByVal shapes As Shapes)
             mFound = mFound + 1
             FitOneShape s
         End If
+        ' Не менять именованную группу и вложенные элементы одновременно.
         If s.Type = cdrGroupShape Then
-            VisitShapes s.Shapes
+            If StrComp(s.Name, mTargetName, vbBinaryCompare) <> 0 Then
+                VisitShapes s.Shapes
+            End If
         End If
     Next s
 End Sub
@@ -130,6 +145,9 @@ Private Sub FitOneShape(ByVal s As Shape)
     If mMaxH > 0 Then
         If mMaxH / h < factor Then factor = mMaxH / h
     End If
+
+    ' Режим ограничения не увеличивает маленькие объекты.
+    If mMode = 2 And factor >= 1# Then factor = 1#
 
     If Abs(factor - 1#) < 0.0000001 Then
         mSkipped = mSkipped + 1
