@@ -1,0 +1,169 @@
+' Название: Вписать именованные объекты в заданные размеры
+' Модуль: FitNamedObjects
+' Запуск: Main_FitNamedObjects
+' Назначение: Ищет все объекты с заданным именем на всех страницах
+' и вписывает каждый в максимальные ширину/высоту без искажений.
+' Использование:
+'   1. Назначьте имена объектам в диспетчере объектов.
+'   2. Запустите Main_FitNamedObjects.
+'   3. Введите имя и пределы в мм (0 = не ограничивать).
+' Условия: имя должно совпадать точно; группы просматриваются рекурсивно.
+' Изменяет размеры и сохраняет центры. Поддерживает отмену одним действием.
+Option Explicit
+
+Private mFound As Long
+Private mChanged As Long
+Private mSkipped As Long
+Private mTargetName As String
+Private mMaxW As Double
+Private mMaxH As Double
+
+Public Sub Main_FitNamedObjects()
+    Dim d As Document
+    Dim p As Page
+    Dim lyr As Layer
+    Dim answer As String
+    Dim oldUnit As cdrUnit
+    Dim oldReference As cdrReferencePoint
+    Dim commandStarted As Boolean
+    Dim errText As String
+
+    If Application.Documents.Count = 0 Then
+        MsgBox "Нет открытого документа.", vbExclamation
+        Exit Sub
+    End If
+    Set d = ActiveDocument
+
+    answer = InputBox("Точное имя объекта (на всех страницах, включая группы):", _
+                      "Вписать объекты по имени")
+    If Len(answer) = 0 Then Exit Sub
+    mTargetName = answer
+
+    answer = InputBox("Максимальная ширина в мм (0 = без ограничения):", _
+                      "Вписать объекты по имени", "50")
+    If Len(answer) = 0 Then Exit Sub
+    If Not ParseNonnegativeMm(answer, mMaxW) Then
+        MsgBox "Некорректная ширина. Введите число от 0.", vbExclamation
+        Exit Sub
+    End If
+
+    answer = InputBox("Максимальная высота в мм (0 = без ограничения):", _
+                      "Вписать объекты по имени", "50")
+    If Len(answer) = 0 Then Exit Sub
+    If Not ParseNonnegativeMm(answer, mMaxH) Then
+        MsgBox "Некорректная высота. Введите число от 0.", vbExclamation
+        Exit Sub
+    End If
+    If mMaxW = 0 And mMaxH = 0 Then
+        MsgBox "Укажите хотя бы один ненулевой размер.", vbExclamation
+        Exit Sub
+    End If
+
+    oldUnit = d.Unit
+    oldReference = d.ReferencePoint
+    On Error GoTo Failed
+
+    d.Unit = cdrMillimeter
+    d.ReferencePoint = cdrCenter
+    mFound = 0
+    mChanged = 0
+    mSkipped = 0
+
+    d.BeginCommandGroup "Вписать объекты по имени"
+    commandStarted = True
+
+    For Each p In d.Pages
+        For Each lyr In p.Layers
+            VisitShapes lyr.Shapes
+        Next lyr
+    Next p
+
+Finish:
+    On Error Resume Next
+    If commandStarted Then d.EndCommandGroup
+    d.ReferencePoint = oldReference
+    d.Unit = oldUnit
+    On Error GoTo 0
+
+    If Len(errText) > 0 Then
+        MsgBox "Операция прервана: " & errText & vbCrLf & _
+               "Изменено до ошибки: " & mChanged & ".", vbExclamation
+    Else
+        MsgBox "Найдено: " & mFound & vbCrLf & _
+               "Изменено: " & mChanged & vbCrLf & _
+               "Пропущено: " & mSkipped, vbInformation
+    End If
+    Exit Sub
+Failed:
+    errText = Err.Description
+    Resume Finish
+End Sub
+
+Private Sub VisitShapes(ByVal shapes As Shapes)
+    Dim s As Shape
+    For Each s In shapes
+        If StrComp(s.Name, mTargetName, vbBinaryCompare) = 0 Then
+            mFound = mFound + 1
+            FitOneShape s
+        End If
+        If s.Type = cdrGroupShape Then
+            VisitShapes s.Shapes
+        End If
+    Next s
+End Sub
+
+Private Sub FitOneShape(ByVal s As Shape)
+    Dim w As Double, h As Double, factor As Double
+    Dim cx As Double, cy As Double
+    On Error GoTo SkipShape
+
+    w = s.SizeWidth
+    h = s.SizeHeight
+    If w <= 0 Or h <= 0 Then GoTo SkipShape
+
+    ' Одна заданная сторона определяет размер, две — берём меньший коэффициент.
+    If mMaxW > 0 Then
+        factor = mMaxW / w
+    Else
+        factor = mMaxH / h
+    End If
+    If mMaxH > 0 Then
+        If mMaxH / h < factor Then factor = mMaxH / h
+    End If
+
+    If Abs(factor - 1#) < 0.0000001 Then
+        mSkipped = mSkipped + 1
+        Exit Sub
+    End If
+
+    cx = s.CenterX
+    cy = s.CenterY
+    s.SetSizeEx cx, cy, w * factor, h * factor
+    mChanged = mChanged + 1
+    Exit Sub
+SkipShape:
+    mSkipped = mSkipped + 1
+    Err.Clear
+End Sub
+
+Private Function ParseNonnegativeMm(ByVal inputText As String, ByRef result As Double) As Boolean
+    Dim t As String, i As Long, ch As String, dots As Long
+    t = Trim$(Replace(inputText, ",", "."))
+    If Len(t) = 0 Then Exit Function
+    For i = 1 To Len(t)
+        ch = Mid$(t, i, 1)
+        If ch = "." Then
+            dots = dots + 1
+            If dots > 1 Then Exit Function
+        ElseIf ch < "0" Or ch > "9" Then
+            Exit Function
+        End If
+    Next i
+    If t = "." Then Exit Function
+    On Error GoTo Invalid
+    result = Val(t)
+    ParseNonnegativeMm = (result >= 0 And result < 100000000#)
+    Exit Function
+Invalid:
+    ParseNonnegativeMm = False
+End Function
