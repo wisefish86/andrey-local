@@ -77,6 +77,17 @@ if not _ftp_log.handlers:
 
 CONFIG_PATH = APP_ROOT / "config.json"
 INVALID_WIN_CHARS = re.compile(r'[<>:"/\\|?*]')
+_LRC_TIMESTAMP_LINE = re.compile(
+    r"^\\s*(?:\\[(?:\\d{1,2}:)?\\d{1,2}:\\d{2}(?:[.,]\\d{1,3})?\\])+"
+)
+
+
+def extract_lrc_lines(text: str) -> list[str]:
+    """Recognize timed LRC lyrics stored as text in an ID3 USLT frame."""
+    rows = [line.strip() for line in text.splitlines() if _LRC_TIMESTAMP_LINE.match(line)]
+    # Avoid treating a stray timestamp in ordinary lyrics as synchronized lyrics.
+    return rows if len(rows) >= 2 else []
+
 
 
 class MultiSelectButton(QToolButton):
@@ -409,7 +420,7 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.config = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
         self.current_path: Path | None = None
-        self._has_sylt = False
+        self._has_synced_lyrics = False
         self.filename_manual = False
         self.folder_manual = False
         self.title_manual = False
@@ -690,7 +701,7 @@ class MainWindow(QMainWindow):
         self.lyrics_edit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         self.lyrics_edit.textChanged.connect(self._lyrics_changed)
 
-        lyrics_hint = QLabel("Обычная лирика USLT — редактируется и сохраняется.")
+        lyrics_hint = QLabel("Текст USLT (включая LRC с временными метками) — редактируется и сохраняется.")
         lyrics_hint.setObjectName("muted")
 
         self.sylt_status_label = QLabel("Синхронная лирика: не загружена")
@@ -702,7 +713,7 @@ class MainWindow(QMainWindow):
         self.sylt_edit.setMaximumHeight(int(lyrics_cfg.get("synced_max_height", 340)))
         self.sylt_edit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
 
-        sylt_hint = QLabel("SYLT показывается отдельно только для просмотра; программа его не изменяет.")
+        sylt_hint = QLabel("SYLT или USLT/LRC показывается отдельно только для просмотра; оригинал не изменяется.")
         sylt_hint.setObjectName("muted")
 
         lyrics_layout.addLayout(lyrics_top)
@@ -1701,7 +1712,7 @@ class MainWindow(QMainWindow):
         if language_symbol:
             parts.append(language_symbol)
         prefix = " ".join(parts)
-        marker = "`" if self._has_sylt else ""
+        marker = "`" if self._has_synced_lyrics else ""
         return f"{prefix} {marker}{name}{self._tone_suffix()}{self._length_suffix()}".strip()
 
     def _trim_changed(self, _checked: bool):
@@ -1744,15 +1755,15 @@ class MainWindow(QMainWindow):
             self.reset_folder_btn, self.folder_name.text(), self.generated_folder_name(),
             "Папка песни"
         )
-        mismatch = bool(self.current_path) and (self._sylt_marker_present(current) != self._has_sylt)
+        mismatch = bool(self.current_path) and (self._sylt_marker_present(current) != self._has_synced_lyrics)
         self.sylt_fix_btn.setVisible(mismatch)
         if mismatch:
-            self.sylt_fix_btn.setText("⚠ Добавить `" if self._has_sylt else "⚠ Убрать `")
+            self.sylt_fix_btn.setText("⚠ Добавить `" if self._has_synced_lyrics else "⚠ Убрать `")
             self.sylt_fix_btn.setStyleSheet("background-color: #a56b16; color: white; font-weight: bold;")
 
     def fix_sylt_marker(self):
         value = self.display_title.text()
-        if self._has_sylt:
+        if self._has_synced_lyrics:
             value = re.sub(r"^((?:.*?[⚪🔴])\s*)(?!`)", r"\1`", value, count=1)
         else:
             value = re.sub(r"^((?:.*?[⚪🔴])\s*)`", r"\1", value, count=1)
@@ -2297,11 +2308,26 @@ class MainWindow(QMainWindow):
 
     def _load_sylt_view(self, tags):
         frames = list(tags.getall("SYLT")) if hasattr(tags, "getall") else []
-        self._has_sylt = bool(frames)
+        lrc_lines = []
+        if not frames and hasattr(tags, "getall"):
+            # MusicBee also supports synchronized LRC timestamps stored in USLT.
+            # Prefer the most complete timed lyric of the available languages.
+            for frame in tags.getall("USLT"):
+                candidate = extract_lrc_lines(str(getattr(frame, "text", "") or ""))
+                if len(candidate) > len(lrc_lines):
+                    lrc_lines = candidate
+
+        self._has_synced_lyrics = bool(frames or lrc_lines)
 
         if not frames:
-            self.sylt_status_label.setText("Синхронная лирика: отсутствует")
-            self.sylt_edit.setPlainText("Синхронная лирика отсутствует.")
+            if lrc_lines:
+                self.sylt_status_label.setText(
+                    f"Синхронная лирика: USLT/LRC · {len(lrc_lines)} строк"
+                )
+                self.sylt_edit.setPlainText("\n".join(lrc_lines))
+            else:
+                self.sylt_status_label.setText("Синхронная лирика: отсутствует")
+                self.sylt_edit.setPlainText("Синхронная лирика отсутствует.")
             self._refresh_title_indicators()
             return
 
@@ -2357,7 +2383,7 @@ class MainWindow(QMainWindow):
         self.lyrics_count_label.setText(f"{lines} строк · {chars} символов")
         self._set_section_status(
             "lyrics",
-            "ok" if stripped or bool(getattr(self, "_has_sylt", False)) else "none",
+            "ok" if stripped or bool(getattr(self, "_has_synced_lyrics", False)) else "none",
         )
 
     def _application_state_changed(self, state):
@@ -3111,7 +3137,7 @@ class MainWindow(QMainWindow):
         for edit in (self.artist, self.clean_title, self.display_title, self.year, self.source_url, self.version_info, self.filename, self.folder_name):
             edit.clear()
         self.lyrics_edit.clear()
-        self._has_sylt = False
+        self._has_synced_lyrics = False
         self.sylt_status_label.setText("Синхронная лирика: не загружена")
         self.sylt_fix_btn.setVisible(False)
         self.sylt_edit.clear()
