@@ -953,22 +953,31 @@ class MainWindow(QMainWindow):
         )
 
         tools_layout.addWidget(
-            tool_button("📤 Экспорт ID3 в JSON",
-                        "Компактный ID3 JSON без лирики", 
-                        lambda: self.launch_repertoire_tool("id3_json_export")),
+            tool_button("📤 Экспорт тегов для GPT",
+                        "Только теги, редактируемые программой, без ReplayGain/BPM", 
+                        lambda: self.launch_repertoire_tool("id3_gpt_export")),
             6, 0,
         )
         tools_layout.addWidget(
-            tool_button("🔎 Импорт JSON — проверка",
+            tool_button("🔎 Импорт GPT — проверка",
                         "Проверить изменения без записи MP3",
-                        lambda: self.launch_repertoire_tool("id3_json_import_preview")),
+                        lambda: self.launch_repertoire_tool("id3_gpt_import_preview")),
             6, 1,
         )
         tools_layout.addWidget(
-            tool_button("⬆ Импорт JSON — применить",
+            tool_button("⬆ Импорт GPT — применить",
                         "Записать изменённые теги с резервными копиями",
-                        lambda: self.launch_repertoire_tool("id3_json_import_apply")),
+                        lambda: self.launch_repertoire_tool("id3_gpt_import_apply")),
             7, 0,
+        )
+
+        tools_layout.addWidget(
+            tool_button(
+                "🗂 Полный аудит всех ID3",
+                "Подробный диагностический JSON без лирики/обложек, не для импорта GPT",
+                lambda: self.launch_repertoire_tool("id3_full_audit"),
+            ),
+            7, 1,
         )
 
         tools_hint = QLabel(
