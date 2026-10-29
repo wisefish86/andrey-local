@@ -19,7 +19,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 APP_ROOT = ROOT.parents[1]
 sys.path.insert(0, str(APP_ROOT.parent))
-from _common.id3_io import clean, load_tags, read_txxx
+from _common.id3_io import clean, load_tags, read_text, read_txxx
 
 CONFIG_FILE = ROOT / "config.json"
 LEGACY_STATE_FILE = ROOT / "data" / "syncthing_manifest.json"
@@ -70,6 +70,20 @@ def load_settings(file: Path) -> dict:
     excluded_statuses = {x.strip().casefold() for x in skip}
     if set(status_dirs) & excluded_statuses:
         raise ValueError("Один статус не может одновременно копироваться и исключаться")
+    special = cfg.get("thematic_routing", {"enabled": False})
+    if not isinstance(special, dict) or not isinstance(special.get("enabled"), bool):
+        raise ValueError("thematic_routing.enabled должен быть true или false")
+    if special["enabled"]:
+        folder = special.get("folder")
+        tag_value = special.get("tag_value")
+        if not isinstance(folder, str) or not safe_folder_name(folder):
+            raise ValueError("thematic_routing.folder — имя одной папки без слешей")
+        if folder.casefold() in {v.casefold() for v in status_dirs.values()}:
+            raise ValueError("Папка Тематические совпадает с папкой статуса")
+        if not isinstance(tag_value, str) or not tag_value.strip():
+            raise ValueError("thematic_routing.tag_value — непустая строка TIT1")
+        if special.get("mode") != "instead_of_status":
+            raise ValueError("Поддерживается только thematic_routing.mode=instead_of_status")
     return {
         "source": Path(cfg["source_root"]).resolve(),
         "target": Path(cfg["target_root"]).resolve(),
@@ -77,6 +91,7 @@ def load_settings(file: Path) -> dict:
         "excluded_folders": {x.casefold() for x in folders},
         "status_directories": status_dirs,
         "excluded_statuses": excluded_statuses,
+        "thematic_routing": special,
     }
 
 
@@ -138,13 +153,30 @@ def load_state(target: Path, file: Path) -> dict:
     return data["files"]
 
 
-def status_of(path: Path) -> str:
-    values = read_txxx(load_tags(path), "TXXX:OCCASION")
-    return (clean(values[0]) if values else "").casefold()
+def status_and_thematic(path: Path, tag_value: str) -> tuple[str, bool]:
+    """Read MP3 tags once; thematic is an independent TIT1 attribute."""
+    tags = load_tags(path)
+    values = read_txxx(tags, "TXXX:OCCASION")
+    status = (clean(values[0]) if values else "").casefold()
+    thematic = bool(tag_value) and any(
+        part.strip().casefold() == tag_value.casefold()
+        for raw in read_text(tags, "TIT1") for part in raw.split(";")
+    )
+    return status, thematic
+
+
+def category_for(status: str, thematic: bool, status_dirs: dict[str, str],
+                 special: dict) -> str:
+    """Only ready/active statuses may be copied; thematic routes outside status folder."""
+    standard = status_dirs.get(status, "")
+    if standard and thematic and special.get("enabled", False):
+        return special["folder"]
+    return standard
 
 
 def build_plan(source: Path, excluded: set[str], marker: str,
-               status_dirs: dict[str, str], excluded_statuses: set[str]):
+               status_dirs: dict[str, str], excluded_statuses: set[str],
+               special: dict):
     plan: dict[str, Path] = {}
     origins: dict[str, str] = {}
     errors: list[str] = []
@@ -160,20 +192,26 @@ def build_plan(source: Path, excluded: set[str], marker: str,
         if not tagged:
             continue
         statuses: dict[Path, str] = {}
+        thematic: dict[Path, bool] = {}
+        tag_value = special.get("tag_value", "") if special.get("enabled") else ""
         try:
             for p in paths:
                 if p.suffix.casefold() == ".mp3":
-                    statuses[p] = status_of(p)
+                    statuses[p], thematic[p] = status_and_thematic(p, tag_value)
         except Exception as exc:
             errors.append(f"Ошибка чтения ID3 в {folder}: {exc}")
             continue
-        allowed = {statuses[p] for p in tagged if statuses[p] in status_dirs}
+        assignments = {
+            p: category_for(statuses[p], thematic[p], status_dirs, special)
+            for p in tagged if statuses[p] not in excluded_statuses
+        }
         for p in tagged:
             if statuses[p] not in status_dirs and statuses[p] not in excluded_statuses:
                 stats["unknown_status_mp3"] += 1
-        for status in sorted(allowed):
-            category = status_dirs[status]
+        for category in sorted(set(assignments.values()) - {""}):
             stats["song_folders"] += 1
+            if special.get("enabled") and category == special["folder"]:
+                stats["thematic_folders"] += 1
             for path in paths:
                 if not path.is_file():
                     continue
@@ -181,11 +219,10 @@ def build_plan(source: Path, excluded: set[str], marker: str,
                     st = statuses[path]
                     if st in excluded_statuses:
                         continue
-                    if marker in path.name:
-                        if st != status:
-                            continue
-                    elif st in status_dirs and st != status:
+                    if marker in path.name and assignments.get(path) != category:
                         continue
+                    # Other MP3 files without the main marker are companion files
+                    # (for example, pluses) and belong alongside this song.
                 rel = (Path(category) / folder.name / path.name).as_posix()
                 folded = rel.casefold()
                 if folded in origins and origins[folded] != str(path):
@@ -305,7 +342,8 @@ def main() -> int:
     state_file = manifest_path(target)
     previous = load_state(target, state_file)
     plan, errors, counts = build_plan(
-        source, excluded, marker, settings["status_directories"], settings["excluded_statuses"]
+        source, excluded, marker, settings["status_directories"], settings["excluded_statuses"],
+        settings["thematic_routing"]
     )
     if not plan:
         errors.append("Не найдено ни одного подходящего файла: синхронизация отменена.")
@@ -353,7 +391,8 @@ def main() -> int:
     print("Настройки:", args.config.resolve())
     print("Реестр этой папки назначения:", state_file)
     print("Режим:", "КОПИРОВАНИЕ" if args.apply else "ПРЕДПРОСМОТР")
-    print("Папок с песнями по статусам:", counts["song_folders"])
+    print("Папок песен по всем категориям:", counts["song_folders"])
+    print("Из них в тематической категории:", counts["thematic_folders"])
     print("Файлов для раскладки:", len(plan))
     for kind, count in sorted(Counter(a[0] for a in actions).items()):
         print(kind, count)
