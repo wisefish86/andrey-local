@@ -1961,15 +1961,20 @@ class MainWindow(QMainWindow):
         with path.open("a", encoding="utf-8") as f:
             f.write(json.dumps(payload, ensure_ascii=False, default=str) + "\n")
 
-    def _offer_phone_sync_after_save(self, old_path: Path, new_path: Path, old_tags, summary: str):
-        """Ask to sync only when this save changes the phone's category catalogue."""
+    def _offer_repertoire_updates_after_save(self, old_path: Path, new_path: Path, old_tags, summary: str):
+        """After relevant saves, offer one confirmation for phone and Singer Andrey."""
         try:
             tools = self.config.get("tools", {})
             apply_rel = clean(tools.get("phone_sync_apply"))
-            preview_rel = clean(tools.get("phone_sync_preview"))
-            if not apply_rel or not preview_rel:
-                raise ValueError("В config.json отсутствуют phone_sync_apply / phone_sync_preview.")
-            phone_cfg_path = (APP_ROOT / apply_rel).parent / "config.json"
+            site_rel = clean(tools.get("site_rescan"))
+            if not apply_rel or not site_rel:
+                raise ValueError("В главном config.json нужны tools.phone_sync_apply и tools.site_rescan.")
+            # Validate both launchers before offering the combined action.
+            launchers = [APP_ROOT / Path(apply_rel), APP_ROOT / Path(site_rel)]
+            for launcher in launchers:
+                if not launcher.is_file():
+                    raise FileNotFoundError(f"Не найден запускатель: {launcher}")
+            phone_cfg_path = launchers[0].parent / "config.json"
             settings = json.loads(phone_cfg_path.read_text(encoding="utf-8-sig"))
             prompt = settings.get("post_save_prompt", {})
             if not prompt.get("enabled", False):
@@ -2022,31 +2027,31 @@ class MainWindow(QMainWindow):
 
             dialog = QMessageBox(self)
             dialog.setIcon(QMessageBox.Question)
-            dialog.setWindowTitle("Минус сохранён — обновить телефон?")
+            dialog.setWindowTitle("Минус сохранён — обновить репертуар?")
             dialog.setText(summary)
             dialog.setInformativeText(
-                reason + "\n\nОбновить копии минусов в папке Syncthing? "
-                "Изменения и удаление старых управляемых копий затем синхронизируются с телефоном."
+                reason + "\n\nЗапустить сразу два обновления?\n"
+                "• Папки минусов для телефона (Syncthing).\n"
+                "• Каталог Singer Andrey на сайте (экспорт JSON и WinSCP).\n\n"
+                "Скрипты выполняются в отдельных окнах; удаление старых управляемых "
+                "копий Syncthing распространится на телефон."
             )
-            apply_button = dialog.addButton("Обновить телефон", QMessageBox.AcceptRole)
-            preview_button = dialog.addButton("Сначала проверить", QMessageBox.ActionRole)
+            run_both_button = dialog.addButton("Запустить оба", QMessageBox.AcceptRole)
             later_button = dialog.addButton("Позже", QMessageBox.RejectRole)
             dialog.setDefaultButton(later_button)
             dialog.exec()
-            clicked = dialog.clickedButton()
-            if clicked is apply_button:
+            if dialog.clickedButton() is run_both_button:
                 self.launch_repertoire_tool("phone_sync_apply")
-            elif clicked is preview_button:
-                self.launch_repertoire_tool("phone_sync_preview")
+                self.launch_repertoire_tool("site_rescan")
         except Exception as exc:
             # Saving the MP3 already succeeded; a follow-up action must never roll it back.
-            logging.getLogger("repertoire.phone_sync").exception(
+            logging.getLogger("repertoire.post_save_updates").exception(
                 "Post-save phone sync suggestion failed"
             )
             QMessageBox.warning(
                 self,
                 "Минус сохранён",
-                summary + "\n\nНе удалось предложить обновление телефона: " + str(exc)
+                summary + "\n\nНе удалось предложить обновление репертуара: " + str(exc)
             )
 
     def save_all(self):
@@ -2139,7 +2144,7 @@ class MainWindow(QMainWindow):
             summary = f"Теги сохранены и проверены.{cleanup_text}\n\n{working_path}"
             self.status.setText("Готово. Файл сохранён, проверен и очищен.")
             self.load_file(str(working_path))
-            self._offer_phone_sync_after_save(
+            self._offer_repertoire_updates_after_save(
                 original_path, working_path, original_tags_snapshot, summary
             )
 
