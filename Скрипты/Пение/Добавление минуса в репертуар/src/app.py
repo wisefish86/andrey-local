@@ -34,6 +34,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
+    QLayout,
     QMainWindow,
     QMessageBox,
     QPushButton,
@@ -236,6 +237,27 @@ class CollapsibleSection(QWidget):
     def _toggle(self, expanded: bool):
         self.header.setArrowType(Qt.DownArrow if expanded else Qt.RightArrow)
         self.body.setVisible(expanded)
+        # The first open of a section inside QScrollArea may use the cached
+        # size hint from its hidden body, compressing QPlainTextEdit to one line.
+        # Invalidate the real ancestor layout, not an unrelated section.
+        QTimer.singleShot(0, self._reflow_after_toggle)
+
+    def _reflow_after_toggle(self):
+        parent = self
+        while parent is not None:
+            layout = parent.layout()
+            if layout is not None:
+                layout.invalidate()
+                layout.activate()
+            parent.updateGeometry()
+            if isinstance(parent, QScrollArea):
+                # Recalculate the scroll area's contents, including both
+                # lyric text editors, immediately after opening this section.
+                content = parent.widget()
+                if content is not None:
+                    content.adjustSize()
+                break
+            parent = parent.parentWidget()
 
     def set_status(self, status: str):
         self.status = status
@@ -491,6 +513,9 @@ class MainWindow(QMainWindow):
         scroll.setWidgetResizable(True)
         body = QWidget()
         body_layout = QVBoxLayout(body)
+        # Dynamic collapsible sections must update their min/max geometry so
+        # QScrollArea does not keep the pre-expansion one-line editor layout.
+        body_layout.setSizeConstraint(QLayout.SizeConstraint.SetMinAndMaxSize)
         body_layout.setContentsMargins(0, 0, 0, 0)
         body_layout.setSpacing(7)
 
