@@ -43,7 +43,9 @@ def main():
             errors.append({'file': str(path), 'error': repr(e)})
             if args.apply:
                 break
-    output = Path(__file__).resolve().parent / ('cleanup_apply_' if args.apply else 'cleanup_preview_')
+    output_dir = Path(__file__).resolve().parent / "data"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    output = output_dir / ('cleanup_apply_' if args.apply else 'cleanup_preview_')
     output = Path(str(output)+datetime.now().strftime('%Y%m%d_%H%M%S')+'.json')
     output.write_text(json.dumps({'mode': 'apply' if args.apply else 'preview', 'files': rows, 'counts': totals, 'errors': errors}, ensure_ascii=False, indent=2), encoding='utf-8')
     print('Files:',len(rows), 'Errors:',len(errors), 'Report:',output)
