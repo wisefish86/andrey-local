@@ -820,6 +820,10 @@ class MainWindow(QMainWindow):
         self.additions_btn.setToolTip("Создать/открыть подпапку Additi0ns для дополнительных версий минуса")
         self.additions_btn.clicked.connect(self.create_additions_folder)
         file_tools_layout.addWidget(self.additions_btn)
+        self.learn_btn = QPushButton("📁 Learn")
+        self.learn_btn.setToolTip("Создать или открыть подпапку Learn для материалов разучивания песни")
+        self.learn_btn.clicked.connect(self.create_learn_folder)
+        file_tools_layout.addWidget(self.learn_btn)
         self.files_copy_btn = QPushButton("✂ Копия в Files")
         self.files_copy_btn.setToolTip("Создать подпапку Files и скопировать туда текущий MP3, убрав из имени символ ֎")
         self.files_copy_btn.clicked.connect(self.copy_to_files_folder)
@@ -1021,6 +1025,7 @@ class MainWindow(QMainWindow):
         self._set_tone(self.config["filename"].get("tone_default", ""))
         self._set_length(self.config["filename"].get("length_default", ""))
         self.additions_btn.setEnabled(False)
+        self.learn_btn.setEnabled(False)
         self.files_copy_btn.setEnabled(False)
         self.upload_plus_btn.setEnabled(False)
 
@@ -1238,6 +1243,7 @@ class MainWindow(QMainWindow):
         self.save_btn.setEnabled(True)
         self.open_folder_btn.setEnabled(True)
         self.additions_btn.setEnabled(True)
+        self.learn_btn.setEnabled(True)
         self.files_copy_btn.setEnabled(True)
         self.foobar_btn.setEnabled(True)
         self.refresh_analysis_btn.setEnabled(True)
@@ -2994,18 +3000,32 @@ class MainWindow(QMainWindow):
                 f"Не удалось открыть файл:\n{exc}",
             )
 
-    def create_additions_folder(self):
+    def _create_song_subfolder(self, setting: str, default_name: str):
         if not self.current_path:
             return
-        name = self.config.get("file_tools", {}).get("additions_folder", "Additi0ns")
-        target = self.current_path.parent / name
+        name = self.config.get("file_tools", {}).get(setting, default_name)
         try:
+            if (
+                not isinstance(name, str)
+                or not name.strip()
+                or name in (".", "..")
+                or name.rstrip(" .") != name
+                or re.search(r'[<>:"/\\|?*\x00-\x1f]', name)
+            ):
+                raise ValueError("Неверное имя подпапки в config.json")
+            target = self.current_path.parent / name
             target.mkdir(exist_ok=True)
             self.status.setText(f"Папка {name} готова.")
             if self.config.get("file_tools", {}).get("open_after_create", True):
                 QDesktopServices.openUrl(QUrl.fromLocalFile(str(target)))
         except Exception as exc:
             QMessageBox.critical(self, "Ошибка", f"Не удалось создать {name}:\n{exc}")
+
+    def create_additions_folder(self):
+        self._create_song_subfolder("additions_folder", "Additi0ns")
+
+    def create_learn_folder(self):
+        self._create_song_subfolder("learn_folder", "Learn")
 
     def copy_to_files_folder(self):
         if not self.current_path:
@@ -3090,6 +3110,7 @@ class MainWindow(QMainWindow):
         self.save_btn.setEnabled(False)
         self.open_folder_btn.setEnabled(False)
         self.additions_btn.setEnabled(False)
+        self.learn_btn.setEnabled(False)
         self.files_copy_btn.setEnabled(False)
         self.foobar_btn.setEnabled(False)
         self.refresh_analysis_btn.setEnabled(False)
