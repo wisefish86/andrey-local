@@ -428,7 +428,7 @@ def main() -> int:
         "facets": facets,
         "songs": songs,
         "learning_songs": learning_songs,
-    }, ensure_ascii=False, indent=2), encoding="utf-8")
+    }, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
 
     save_song_identity_registry(registry_path, registry)
 
