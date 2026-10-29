@@ -535,7 +535,10 @@ class MainWindow(QMainWindow):
         grid.addWidget(self.version, 0, 4, 1, 2)
 
         grid.addWidget(QLabel("Название"), 1, 0)
-        grid.addWidget(self.clean_title, 1, 1, 1, 5)
+        grid.addWidget(self.clean_title, 1, 1, 1, 4)
+        self.reset_clean_title_btn = QPushButton("По шаблону")
+        self.reset_clean_title_btn.clicked.connect(self.reset_clean_title_template)
+        grid.addWidget(self.reset_clean_title_btn, 1, 5)
 
         grid.addWidget(QLabel("Название (Title)"), 2, 0)
         grid.addWidget(self.display_title, 2, 1, 1, 4)
@@ -593,15 +596,15 @@ class MainWindow(QMainWindow):
 
         grid.addWidget(QLabel("Файл минуса"), 7, 0)
         grid.addWidget(self.filename, 7, 1, 1, 4)
-        reset_name = QPushButton("По шаблону")
-        reset_name.clicked.connect(self.reset_filename_template)
-        grid.addWidget(reset_name, 7, 5)
+        self.reset_filename_btn = QPushButton("По шаблону")
+        self.reset_filename_btn.clicked.connect(self.reset_filename_template)
+        grid.addWidget(self.reset_filename_btn, 7, 5)
 
         grid.addWidget(QLabel("Папка песни"), 8, 0)
         grid.addWidget(self.folder_name, 8, 1, 1, 4)
-        reset_folder = QPushButton("По шаблону")
-        reset_folder.clicked.connect(self.reset_folder_template)
-        grid.addWidget(reset_folder, 8, 5)
+        self.reset_folder_btn = QPushButton("По шаблону")
+        self.reset_folder_btn.clicked.connect(self.reset_folder_template)
+        grid.addWidget(self.reset_folder_btn, 8, 5)
 
         self.rename_folder = QCheckBox("Переименовать папку песни по шаблону")
         self.move_folder = QCheckBox("Перенести папку песни в основной репертуар")
@@ -994,6 +997,13 @@ class MainWindow(QMainWindow):
         self.display_title.textChanged.connect(self._refresh_title_indicators)
         self.filename.textEdited.connect(lambda _t: setattr(self, "filename_manual", True))
         self.folder_name.textEdited.connect(lambda _t: setattr(self, "folder_manual", True))
+        # The expected values can change even when Title is manually edited.
+        for edit in (self.artist, self.clean_title, self.version_info, self.filename, self.folder_name):
+            edit.textChanged.connect(self._refresh_title_indicators)
+        self.version.currentTextChanged.connect(self._refresh_title_indicators)
+        self.tone.currentIndexChanged.connect(self._refresh_title_indicators)
+        self.length_version.currentIndexChanged.connect(self._refresh_title_indicators)
+        self.trim_needed.toggled.connect(self._refresh_title_indicators)
         self.folder_name.textEdited.connect(lambda _t: self._update_target_preview())
         self.year.editingFinished.connect(self._suggest_era)
         self.move_folder.toggled.connect(self._update_target_preview)
@@ -1049,6 +1059,13 @@ class MainWindow(QMainWindow):
             QCheckBox::indicator:disabled { border-color: #46515d; background: #171b20; }
             QPushButton { background: #272d35; border: 1px solid #414a56; border-radius: 6px; padding: 8px 12px; }
             QPushButton:hover, QToolButton:hover { background: #313945; }
+            QPushButton[templateMismatch="true"] {
+                background: #8057c8; border: 1px solid #bca4ee;
+                color: white; font-weight: 700;
+            }
+            QPushButton[templateMismatch="true"]:hover {
+                background: #956de0; border-color: #d0bfff;
+            }
             QPushButton#primary { background: #276749; border-color: #3c8a68; font-weight: 700; padding: 10px 18px; }
             QPushButton#primary:hover { background: #32805c; }
             QFrame#dropFrame, QFrame#plusDropFrame { border: 2px dashed #536170; border-radius: 10px; padding: 8px; background: #1b2026; }
@@ -1660,13 +1677,39 @@ class MainWindow(QMainWindow):
     def _sylt_marker_present(self, value: str) -> bool:
         return bool(re.match(r"^.*?[⚪🔴][^\w]*`", value))
 
+    def _set_template_button_state(self, button: QPushButton, current: str, expected: str, field: str):
+        """Refresh appearance from current values, not the manually edited flag."""
+        different = bool(self.current_path) and current != expected
+        if button.property("templateMismatch") != different:
+            button.setProperty("templateMismatch", different)
+            button.style().unpolish(button)
+            button.style().polish(button)
+            button.update()
+        button.setEnabled(bool(self.current_path))
+        button.setToolTip(
+            f"{field}: отличается от шаблона — нажми для исправления."
+            if different else f"{field}: соответствует шаблону."
+        )
+
     def _refresh_title_indicators(self, *_args):
-        if not hasattr(self, "reset_title_btn"):
+        if not hasattr(self, "reset_folder_btn"):
             return
         current = self.display_title.text()
-        different = current != self.generated_title()
-        self.reset_title_btn.setStyleSheet("background-color: #8057c8; color: white; font-weight: bold;" if different else "")
-        self.reset_title_btn.setToolTip("Название отличается от шаблона" if different else "Название соответствует шаблону")
+        self._set_template_button_state(
+            self.reset_clean_title_btn, self.clean_title.text(), self.generated_clean_title(),
+            "Название (обозначение версии)"
+        )
+        self._set_template_button_state(
+            self.reset_title_btn, current, self.generated_title(), "Title"
+        )
+        self._set_template_button_state(
+            self.reset_filename_btn, self.filename.text(), self.generated_filename(),
+            "Файл минуса"
+        )
+        self._set_template_button_state(
+            self.reset_folder_btn, self.folder_name.text(), self.generated_folder_name(),
+            "Папка песни"
+        )
         mismatch = bool(self.current_path) and (self._sylt_marker_present(current) != self._has_sylt)
         self.sylt_fix_btn.setVisible(mismatch)
         if mismatch:
@@ -1685,10 +1728,24 @@ class MainWindow(QMainWindow):
     def reset_title_template(self):
         self.title_manual = False
         self.display_title.setText(self.generated_title())
+        self._refresh_title_indicators()
+
+    def generated_clean_title(self) -> str:
+        """Song title is free text; only the selected version has a template."""
+        base = self._strip_version_suffix(self.clean_title.text())
+        version = self._version_value()
+        if not self.config.get("filename", {}).get("version_in_name_field", True):
+            return self.clean_title.text()
+        return f"{base} ({version})" if base and version else base
+
+    def reset_clean_title_template(self):
+        self.clean_title.setText(self.generated_clean_title())
+        self._auto_names_changed()
 
     def _language_changed(self):
         if not self.title_manual:
             self.display_title.setText(self.generated_title())
+        self._refresh_title_indicators()
 
     def generated_filename(self) -> str:
         title = self.clean_title.text().strip()
@@ -1705,10 +1762,12 @@ class MainWindow(QMainWindow):
     def reset_filename_template(self):
         self.filename_manual = False
         self.filename.setText(self.generated_filename())
+        self._refresh_title_indicators()
 
     def reset_folder_template(self):
         self.folder_manual = False
         self.folder_name.setText(self.generated_folder_name())
+        self._refresh_title_indicators()
 
     def _auto_names_changed(self):
         if not self.title_manual:
@@ -1718,6 +1777,7 @@ class MainWindow(QMainWindow):
         if not self.folder_manual:
             self.folder_name.setText(self.generated_folder_name())
         self._update_target_preview()
+        self._refresh_title_indicators()
 
     def _suggest_era(self):
         year = self.year.text().strip()
@@ -3034,6 +3094,7 @@ class MainWindow(QMainWindow):
         self.upload_plus_btn.setEnabled(False)
         self.delete_plus_btn.setEnabled(False)
         self._set_plus_link_status("idle", "— ссылка не проверена")
+        self._refresh_title_indicators()
         self.status.setText("Готов к загрузке MP3")
 
 
