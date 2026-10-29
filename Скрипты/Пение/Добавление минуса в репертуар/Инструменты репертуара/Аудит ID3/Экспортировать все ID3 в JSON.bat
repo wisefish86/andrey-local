@@ -30,19 +30,19 @@ if errorlevel 1 (
 
 echo.
 echo ============================================================
-echo   ПОЛНЫЙ ЭКСПОРТ ID3 В JSON
+echo   КОМПАКТНЫЙ ЭКСПОРТ ID3 В JSON
 echo   MP3 не изменяются
 echo ============================================================
 echo.
 
-%PY% "export_all_id3.py"
+%PY% "id3_json_roundtrip.py" export
 set "EXITCODE=%ERRORLEVEL%"
 
 echo.
 if "%EXITCODE%"=="0" (
     echo Экспорт завершён без ошибок.
 ) else (
-    echo Экспорт создан, но были ошибки чтения. Проверь вывод и JSON.
+    echo Проверь сообщения об ошибках; при ошибках импорт заблокирован.
 )
 echo.
 pause
