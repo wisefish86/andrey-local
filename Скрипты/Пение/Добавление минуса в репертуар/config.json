@@ -992,7 +992,9 @@
     "normalize_media": "Инструменты репертуара/Нормализация аудио видео/Нормализация аудио видео.bat",
     "program_help": "СПРАВКА.md",
     "tools_help": "Инструменты репертуара/README.md",
-    "migration_problems": "data/migration_plus_links/ПРОБЛЕМНЫЕ ПАПКИ.txt"
+    "migration_problems": "data/migration_plus_links/ПРОБЛЕМНЫЕ ПАПКИ.txt",
+    "phone_sync_preview": "Инструменты репертуара/Распределение минусов/Разложить для телефона — ПРОВЕРКА.bat",
+    "phone_sync_apply": "Инструменты репертуара/Распределение минусов/Разложить для телефона — ОБНОВИТЬ.bat"
   },
   "search": {
     "year_google_query": "{artist} {name} дата выхода песни год релиза"
