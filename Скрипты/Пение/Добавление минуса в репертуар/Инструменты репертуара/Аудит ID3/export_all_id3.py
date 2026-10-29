@@ -30,7 +30,7 @@ if str(PENIE_ROOT) not in sys.path:
 from _common.id3_io import clean, read_rating, read_text, read_txxx, read_url
 
 CONFIG_PATH = APP_ROOT / "config.json"
-DEFAULT_OUTPUT_DIR = APP_ROOT / "data" / "id3_audit"
+DEFAULT_OUTPUT_DIR = Path(__file__).resolve().parent / "data"
 EXCLUDED_FRAME_IDS = {"USLT", "SYLT", "APIC", "GEOB", "PRIV"}  # Лирика, обложки, бинарные вложения, служебные данные
 
 
