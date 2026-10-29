@@ -1016,13 +1016,22 @@ class MainWindow(QMainWindow):
             7, 1,
         )
 
+        tools_layout.addWidget(
+            tool_button(
+                "🎼 Конструктор плейлистов",
+                "Перетаскивать песни, менять порядок и сохранять M3U8; исходные MP3 не изменяются",
+                self.launch_setlist_constructor,
+            ),
+            8, 0, 1, 2,
+        )
+
         tools_hint = QLabel(
             "Все редкие операции над минусами собраны здесь и физически лежат "
             "в подпапках «Инструменты репертуара»."
         )
         tools_hint.setWordWrap(True)
         tools_hint.setObjectName("muted")
-        tools_layout.addWidget(tools_hint, 8, 0, 1, 2)
+        tools_layout.addWidget(tools_hint, 9, 0, 1, 2)
         tools_section.add_widget(tools_widget)
         body_layout.addWidget(tools_section)
 
@@ -2978,6 +2987,23 @@ class MainWindow(QMainWindow):
             return
         if not QDesktopServices.openUrl(QUrl(url)):
             QMessageBox.warning(self, "Ссылка на плюс", f"Не удалось открыть:\n{url}")
+
+    def launch_setlist_constructor(self):
+        relative = clean(self.config.get("tools", {}).get("setlist_constructor")) or (
+            "Инструменты репертуара/Конструктор плейлистов/Конструктор плейлистов.pyw"
+        )
+        path = APP_ROOT / relative
+        if not path.is_file():
+            QMessageBox.critical(self, "Конструктор плейлистов", f"Не найден инструмент:\\n{path}")
+            return
+        try:
+            if os.name == "nt":
+                os.startfile(str(path))
+            else:
+                subprocess.Popen([sys.executable, str(path)])
+            self.status.setText("Конструктор плейлистов запущен.")
+        except Exception as exc:
+            QMessageBox.critical(self, "Конструктор плейлистов", str(exc))
 
     def launch_repertoire_tool(self, tool_id: str, pass_current_file: bool = False):
         rel = clean(self.config.get("tools", {}).get(tool_id))
