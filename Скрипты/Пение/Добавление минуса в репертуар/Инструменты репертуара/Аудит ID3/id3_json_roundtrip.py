@@ -327,7 +327,7 @@ def run_import(root: Path, marker: str, cfg: dict, json_path: Path, apply: bool)
                 check = load_tags(path)
                 for key, value in changes:
                     actual = value_of(check, key)
-                    expected = "0" if key == "POPM:rating" and value == "" else value
+                    expected = value
                     if digest(actual) != digest(expected):
                         raise RuntimeError("Failed verification for " + rel + " / " + key)
                 result["changed_files"].append(rel)
