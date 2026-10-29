@@ -97,6 +97,8 @@ def allowed_fields(cfg: dict, main: dict) -> set[str]:
 def field_is_safe(key: str) -> bool:
     if not isinstance(key, str) or len(key) > 160:
         return False
+    if key == "MVNM":
+        return True  # Movement name: GUI song title, a text frame not starting with T.
     if key.startswith("TXXX:") or key.startswith("WXXX:"):
         return bool(key[5:]) and not any(ord(c) < 32 for c in key[5:])
     if len(key) != 4 or key in EXCLUDED or key in UNSAFE_TEXT or key in BINARY_KEYS:
@@ -110,6 +112,8 @@ def field_is_safe(key: str) -> bool:
 
 
 def value_of(tags, key: str):
+    if key == "MVNM":
+        return read_text(tags, "MVNM")
     if key.startswith("TXXX:"):
         return read_txxx(tags, key)
     if key.startswith("WXXX:"):
@@ -126,7 +130,9 @@ def blank_of(key: str):
 
 
 def write_value(tags, key: str, value):
-    if key.startswith("TXXX:"):
+    if key == "MVNM":
+        write_text(tags, "MVNM", value)
+    elif key.startswith("TXXX:"):
         write_txxx(tags, key, value)
     elif key.startswith("WXXX:"):
         write_wxxx(tags, key[5:], value)
@@ -137,7 +143,7 @@ def write_value(tags, key: str, value):
 
 
 def validate_value(key: str, value, maximum: int):
-    if key.startswith("T"):
+    if key.startswith("T") or key == "MVNM":
         if not isinstance(value, list) or not all(isinstance(v, str) for v in value):
             raise ValueError(key + ": expected array of strings (e.g. [\"с-Кавказ\"])")
         if len(value) > 64 or any(len(v) > maximum for v in value):
