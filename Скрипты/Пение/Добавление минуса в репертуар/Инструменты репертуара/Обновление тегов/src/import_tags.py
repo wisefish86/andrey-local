@@ -206,7 +206,7 @@ def rollback(path: Path, planned):
 
 
 def backup_current(csv_path, headers, rows, paths, resolved, path_column):
-    backup_dir = csv_path.parent / "data"
+    backup_dir = TOOL_ROOT / "data" / "backups"
     backup_dir.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     backup_path = backup_dir / f"{csv_path.stem}_backup_before_import_{stamp}.csv"
