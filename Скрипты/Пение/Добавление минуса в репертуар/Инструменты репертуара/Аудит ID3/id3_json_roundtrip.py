@@ -1,7 +1,7 @@
 """Compact editable ID3 export and guarded batch import.
 
-Only selected textual frames/URLs/rating are ever writable. Lyrics, covers and
-unsupported frames are omitted from the exchange and never deliberately changed.
+Only the metadata fields edited by the repertoire app are writable.
+Lyrics, ReplayGain, BPM, ratings, covers and other frames remain untouched.
 """
 from __future__ import annotations
 
@@ -22,15 +22,18 @@ TOOL_ROOT = Path(__file__).resolve().parent
 APP_ROOT = TOOL_ROOT.parents[1]
 sys.path.insert(0, str(APP_ROOT.parent))
 from _common.id3_io import (
-    clean, load_tags, read_rating, read_text, read_txxx, read_url, read_wxxx,
-    write_rating, write_text, write_txxx, write_url, write_wxxx,
+    clean, load_tags, read_text, read_txxx, read_url, read_wxxx,
+    write_text, write_txxx, write_url, write_wxxx,
 )
 
 CONFIG_PATH = TOOL_ROOT / "config.json"
 MAIN_CONFIG_PATH = APP_ROOT / "config.json"
 DATA = TOOL_ROOT / "data"
-FORMAT = "andrey_id3_editable"
-VERSION = 1
+FORMAT = "andrey_repertoire_gpt"
+VERSION = 2
+# The main editor hard-codes these five manually editable text/url fields.
+# The rest of its fields are dynamically derived from its config.json.
+GUI_SIMPLE_FIELDS = frozenset({"TPE1", "MVNM", "TIT2", "TDRC", "WOAS"})
 EXCLUDED = {"USLT", "SYLT", "APIC", "GEOB", "PRIV", "COMM"}
 UNSAFE_TEXT = {"TIPL", "TMCL", "IPLS"}  # Structured text frames, not plain lists.
 BINARY_KEYS = {"MCDI", "ETCO", "MLLT", "SYTC", "RVA2", "EQU2", "UFID", "POPM"}
@@ -49,25 +52,51 @@ def settings() -> tuple[dict, dict]:
         for v in cfg["excluded_folders"]
     ):
         raise ValueError("config.json: excluded_folders must be folder names")
-    if not isinstance(cfg.get("default_fields"), list):
-        raise ValueError("config.json: default_fields must be an array")
+    if not isinstance(cfg.get("gpt_simple_fields"), list):
+        raise ValueError("config.json: gpt_simple_fields must be an array")
     limit = cfg.get("max_text_chars")
     if type(limit) is not int or not 1 <= limit <= 100000:
         raise ValueError("config.json: invalid max_text_chars")
     cap = cfg.get("max_changed_tracks")
     if type(cap) is not int or not 1 <= cap <= 100000:
         raise ValueError("config.json: invalid max_changed_tracks")
-    for field in cfg["default_fields"]:
-        if not isinstance(field, str) or not field_is_safe(field):
-            raise ValueError("Unsafe default_field: " + repr(field))
+    cfg["_allowed_fields"] = allowed_fields(cfg, main)
     return cfg, main
+
+def allowed_fields(cfg: dict, main: dict) -> set[str]:
+    """The GUI's editable fields are the sole whitelist for GPT exchange."""
+    simple = cfg.get("gpt_simple_fields")
+    if not isinstance(simple, list) or not all(isinstance(x, str) for x in simple):
+        raise ValueError("gpt_simple_fields must be a list of frame names")
+    if len(simple) != len(set(simple)) or not set(simple).issubset(GUI_SIMPLE_FIELDS):
+        raise ValueError("gpt_simple_fields contains duplicate or non-GUI fields")
+    names = set(simple)
+    if not isinstance(main.get("fields"), list):
+        raise ValueError("Main app config has no managed fields")
+    for field in main["fields"]:
+        if not isinstance(field, dict) or not isinstance(field.get("storage"), dict):
+            raise ValueError("Invalid managed field in main app config")
+        storage = field["storage"]
+        kind = storage.get("kind")
+        frame = storage.get("frame")
+        if kind == "tit1_group":
+            if frame != "TIT1":
+                raise ValueError("Unexpected grouped ID3 frame in GUI: " + str(frame))
+            names.add("TIT1")
+        elif kind in ("text", "txxx", "url", "wxxx"):
+            if not field_is_safe(frame):
+                raise ValueError("Unsupported GUI-managed ID3 frame: " + str(frame))
+            names.add(frame)
+        else:
+            raise ValueError("Unexpected field storage in GUI: " + str(kind))
+    if not names:
+        raise ValueError("GPT field whitelist is empty")
+    return names
 
 
 def field_is_safe(key: str) -> bool:
     if not isinstance(key, str) or len(key) > 160:
         return False
-    if key == "POPM:rating":
-        return True
     if key.startswith("TXXX:") or key.startswith("WXXX:"):
         return bool(key[5:]) and not any(ord(c) < 32 for c in key[5:])
     if len(key) != 4 or key in EXCLUDED or key in UNSAFE_TEXT or key in BINARY_KEYS:
@@ -81,8 +110,6 @@ def field_is_safe(key: str) -> bool:
 
 
 def value_of(tags, key: str):
-    if key == "POPM:rating":
-        return read_rating(tags)
     if key.startswith("TXXX:"):
         return read_txxx(tags, key)
     if key.startswith("WXXX:"):
@@ -99,15 +126,7 @@ def blank_of(key: str):
 
 
 def write_value(tags, key: str, value):
-    if key == "POPM:rating":
-        if value == "":
-            # Preserve the owner/count, but clear the rating (0).
-            current = read_rating(tags)
-            if current:
-                write_rating(tags, "0")
-        else:
-            write_rating(tags, value)
-    elif key.startswith("TXXX:"):
+    if key.startswith("TXXX:"):
         write_txxx(tags, key, value)
     elif key.startswith("WXXX:"):
         write_wxxx(tags, key[5:], value)
@@ -126,40 +145,18 @@ def validate_value(key: str, value, maximum: int):
     else:
         if not isinstance(value, str) or len(value) > maximum:
             raise ValueError(key + ": expected a short string")
-    if key == "POPM:rating" and value and (not value.isdigit() or not 0 <= int(value) <= 255):
-        raise ValueError("POPM rating must be an integer 0-255")
 
 
 def safe_export_tags(tags, cfg) -> tuple[dict, dict]:
-    keys = set(cfg["default_fields"])
-    skipped = Counter()
-    for frame in tags.values():
-        frame_id = getattr(frame, "FrameID", "")
-        key = frame_id
-        if frame_id == "TXXX":
-            key = frame_id + ":" + clean(getattr(frame, "desc", ""))
-        elif frame_id == "WXXX":
-            key = frame_id + ":" + clean(getattr(frame, "desc", ""))
-        elif frame_id == "POPM":
-            if cfg.get("include_rating", True):
-                keys.add("POPM:rating")
-            continue
-        if not field_is_safe(key):
-            skipped[frame_id] += 1
-            continue
-        keys.add(key)
-    if cfg.get("include_rating", True):
-        keys.add("POPM:rating")
+    """Export ONLY managed GUI fields (including currently unset fields)."""
+    allowed = cfg["_allowed_fields"]
     values = {}
-    for key in sorted(keys, key=str.casefold):
+    for key in sorted(allowed, key=str.casefold):
         value = value_of(tags, key)
-        try:
-            validate_value(key, value, cfg["max_text_chars"])
-        except ValueError:
-            skipped[key] += 1
-            continue
+        # Never silently omit an editable field; fail the affected track instead.
+        validate_value(key, value, cfg["max_text_chars"])
         values[key] = value
-    return values, dict(skipped)
+    return values, {}
 
 
 def path_in_root(root: Path, relative: str) -> Path:
@@ -216,9 +213,8 @@ def export_json(root: Path, marker: str, cfg: dict, output: Path) -> int:
         "generated_at": datetime.now().isoformat(timespec="seconds"),
         "library_root": str(root), "marker": marker,
         "excluded_folders": cfg["excluded_folders"],
-        "excluded_frame_ids": sorted(EXCLUDED | UNSAFE_TEXT),
+        "managed_fields": sorted(cfg["_allowed_fields"], key=str.casefold),
         "track_count": len(tracks), "error_count": len(errors),
-        "omitted_frames": dict(skipped_total.most_common()),
         "tracks": tracks, "errors": errors,
     }
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -239,6 +235,9 @@ def preflight(root: Path, payload: dict, cfg: dict, marker: str):
         raise ValueError("Library root differs from exported snapshot")
     if marker != payload.get("marker"):
         raise ValueError("MP3 marker changed; re-export")
+    allowed = cfg["_allowed_fields"]
+    if payload.get("managed_fields") != sorted(allowed, key=str.casefold):
+        raise ValueError("GUI field schema has changed; re-export for GPT")
     seen, planned, errors = set(), [], []
     exclusions = {v.casefold() for v in cfg["excluded_folders"]}
     for track in payload["tracks"]:
@@ -258,8 +257,8 @@ def preflight(root: Path, payload: dict, cfg: dict, marker: str):
             baselines = track["baseline_hashes"]
             if not isinstance(desired, dict) or not isinstance(baselines, dict):
                 raise ValueError("tags/baseline_hashes must be objects")
-            if set(desired) != set(baselines):
-                raise ValueError("Tag keys changed; only edit values in tags")
+            if set(desired) != allowed or set(baselines) != allowed:
+                raise ValueError("GPT tag keys changed or contain forbidden frames; re-export")
             if not path.is_file():
                 raise ValueError("Source MP3 missing")
             stat = path.stat()
@@ -268,8 +267,8 @@ def preflight(root: Path, payload: dict, cfg: dict, marker: str):
             tags = load_tags(path)
             changes = []
             for key, desired_value in desired.items():
-                if not field_is_safe(key):
-                    raise ValueError("Unsafe or unsupported tag: " + key)
+                if key not in allowed or not field_is_safe(key):
+                    raise ValueError("Tag is not managed by the repertoire editor: " + key)
                 validate_value(key, desired_value, cfg["max_text_chars"])
                 old_hash = baselines[key]
                 if not isinstance(old_hash, str) or len(old_hash) != 64:
@@ -357,7 +356,7 @@ def run_import(root: Path, marker: str, cfg: dict, json_path: Path, apply: bool)
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Editable ID3 JSON interchange (no lyrics/artwork)")
+    parser = argparse.ArgumentParser(description="GPT JSON exchange for GUI-managed repertoire tags only")
     sub = parser.add_subparsers(dest="command", required=True)
     export = sub.add_parser("export", help="Compact JSON of editable text tags")
     export.add_argument("--output", type=Path, help="Where to write JSON")
@@ -377,7 +376,7 @@ def main() -> int:
             raise ValueError("MP3 marker missing in main config")
         if args.command == "export":
             output = args.output or (DATA / "exports" / (
-                "id3_editable_" + datetime.now().strftime("%Y%m%d_%H%M%S") + ".json"))
+                "repertoire_for_gpt_" + datetime.now().strftime("%Y%m%d_%H%M%S") + ".json"))
             return export_json(root, marker, cfg, output.resolve())
         if not args.json.is_file():
             raise ValueError("Edited JSON not found: " + str(args.json))
