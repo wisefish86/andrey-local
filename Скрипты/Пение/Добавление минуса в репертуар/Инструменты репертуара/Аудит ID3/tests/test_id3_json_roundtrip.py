@@ -47,7 +47,7 @@ class Id3JsonRoundtripTests(unittest.TestCase):
         api.DATA = self.data
         self.addCleanup(lambda: setattr(api, "DATA", self.orig_data))
         self.file = self.data / "exports" / "edit.json"
-        self.assertEqual(api.export_json(self.root, "֎", self.config, self.file), 0)
+        self.assertEqual(api.export_json(self.root, "֎", self.config, self.file), 0, self.file.read_text(encoding="utf-8"))
         self.original = json.loads(self.file.read_text(encoding="utf-8"))
 
     def edited(self, **new_values):
