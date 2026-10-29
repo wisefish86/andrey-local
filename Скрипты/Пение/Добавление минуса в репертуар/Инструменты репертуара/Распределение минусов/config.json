@@ -22,5 +22,11 @@
     "on_new_song": true,
     "on_status_change": true,
     "status_field_id": "status"
+  },
+  "thematic_routing": {
+    "enabled": true,
+    "folder": "06 Тематические",
+    "tag_value": "а-Ситуац",
+    "mode": "instead_of_status"
   }
 }
