@@ -2066,8 +2066,21 @@ class MainWindow(QMainWindow):
             spec = dict(field["storage"])
             old_value = clean(read_field(old_tags, spec)).casefold()
             new_value = clean(read_field(load_tags(new_path), spec)).casefold()
-            old_group = categories.get(old_value)
-            new_group = categories.get(new_value)
+            thematic_cfg = settings.get("thematic_routing", {})
+            def effective_group(tags, status: str) -> str | None:
+                group = categories.get(status)
+                if not group or not thematic_cfg.get("enabled", False):
+                    return group
+                marker = clean(thematic_cfg.get("tag_value")).casefold()
+                is_thematic = marker and any(
+                    piece.strip().casefold() == marker
+                    for value in read_text(tags, "TIT1")
+                    for piece in value.split(";")
+                )
+                return clean(thematic_cfg.get("folder")) if is_thematic else group
+
+            old_group = effective_group(old_tags, old_value)
+            new_group = effective_group(load_tags(new_path), new_value)
             was_in = is_phone_song(old_path)
             now_in = is_phone_song(new_path)
 
