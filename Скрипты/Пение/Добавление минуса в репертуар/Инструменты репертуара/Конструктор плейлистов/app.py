@@ -4,7 +4,7 @@ from __future__ import annotations
 from pathlib import Path
 import sys
 
-from PySide6.QtCore import QMimeData, QPoint, Qt, QThread, QUrl, Signal
+from PySide6.QtCore import QItemSelectionModel, QMimeData, Qt, QThread, QUrl, Signal
 from PySide6.QtGui import QColor, QDrag, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QApplication, QAbstractItemView, QFileDialog, QHeaderView, QLabel, QMainWindow,
@@ -95,9 +95,12 @@ class TrackTable(QTableWidget):
                 self.setItem(row, col, item)
             self.setRowHeight(row, 30)
         self.clearSelection()
+        selection_model = self.selectionModel()
         for i, track in enumerate(self.tracks):
             if str(track.path).casefold() in wanted:
-                self.selectRow(i)
+                selection_model.select(self.model().index(i, 0),
+                                       QItemSelectionModel.SelectionFlag.Select |
+                                       QItemSelectionModel.SelectionFlag.Rows)
         self.owner.refresh_summary()
 
     def dragEnterEvent(self, event):
@@ -259,6 +262,7 @@ class MainWindow(QMainWindow):
             return
         self.worker = ReadWorker(destination, paths, self)
         self.worker.loaded.connect(self.finish_import)
+        self.worker.finished.connect(self.finish_worker)
         self.worker.start()
         self.statusBar().showMessage("Чтение тегов…")
 
@@ -268,7 +272,11 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage(f"Прочитано {len(tracks)} MP3, ошибок/пропусков: {len(warnings)}", 10000)
         if warnings:
             QMessageBox.warning(self, "Частично загружено", "\n".join(warnings[:15]))
+    def finish_worker(self):
+        worker = self.worker
         self.worker = None
+        if worker is not None:
+            worker.deleteLater()
 
     def remove_selected(self, table: TrackTable):
         indexes = set(table.selected_rows())
