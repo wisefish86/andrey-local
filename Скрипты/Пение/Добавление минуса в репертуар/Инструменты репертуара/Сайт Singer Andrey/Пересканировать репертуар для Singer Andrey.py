@@ -394,6 +394,14 @@ def main() -> int:
             "is_hit": is_hit,
             "preview_url": public_preview_url(visible_variants),
             "version_count": len(visible_variants),
+            "playlist_variants": [
+                {
+                    "relative_path": v["relative_path"],
+                    "title": v["title"],
+                    "duration_seconds": v["duration_seconds"],
+                }
+                for v in variants
+            ],
         }
         (songs if regular else learning_songs).append(record)
     # Ranking: higher POPM first; for equal ratings, recognized hits come first.
@@ -413,7 +421,7 @@ def main() -> int:
 
     public_output = output.with_name("repertoire.public.json")
     public_output.write_text(json.dumps({
-        "schema_version": 5,
+        "schema_version": 6,
         "generated_at": payload["generated_at"],
         "song_count": len(songs),
         "learning_song_count": len(learning_songs),
