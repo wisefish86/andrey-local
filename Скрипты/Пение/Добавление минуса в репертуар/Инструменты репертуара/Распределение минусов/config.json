@@ -16,5 +16,11 @@
   "excluded_statuses": [
     "г-6-Запас",
     "г-7-Версии"
-  ]
+  ],
+  "post_save_prompt": {
+    "enabled": true,
+    "on_new_song": true,
+    "on_status_change": true,
+    "status_field_id": "status"
+  }
 }
