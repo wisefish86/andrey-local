@@ -976,7 +976,7 @@
       "Editions",
       "- - Добавляю в репертуар"
     ],
-    "output_file": "data/site/repertoire.json",
+    "output_file": "Инструменты репертуара/Сайт Singer Andrey/data/repertoire.json",
     "include_lyrics": false,
     "pretty_json": true,
     "schema_version": 1
