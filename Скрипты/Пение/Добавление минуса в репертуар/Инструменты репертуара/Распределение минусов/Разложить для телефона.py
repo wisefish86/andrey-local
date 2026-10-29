@@ -21,17 +21,62 @@ APP_ROOT = ROOT.parents[1]
 sys.path.insert(0, str(APP_ROOT.parent))
 from _common.id3_io import clean, load_tags, read_txxx
 
-DEFAULT_TARGET = Path(r"D:\Sync\Syncthing\С ПК на телефон\Минусы по категориям")
+CONFIG_FILE = ROOT / "config.json"
 STATE_FILE = ROOT / "data" / "syncthing_manifest.json"
-STATUS_DIRS = {
-    "г-1-база": "01 База",
-    "г-2-рабочие": "02 Рабочие",
-    "г-3-тестирую": "03 Тестирую",
-    "г-4-повторить": "04 Повторить",
-    "г-5-выучить": "05 Выучить",
-}
-EXCLUDED_STATUSES = {"г-6-запас", "г-7-версии"}
-EXCLUDED_FOLDERS = {"files", "additi0ns"}  # Additi0ns contains digit zero
+# Historical root is only used to safely adopt manifests created before v2.
+LEGACY_V1_TARGET = Path(r"D:\Sync\Syncthing\С ПК на телефон\Минусы по категориям")
+
+
+def safe_folder_name(value: str) -> bool:
+    """One Windows directory component; no path traversal or special devices."""
+    reserved = {"CON", "PRN", "AUX", "NUL"}
+    reserved.update(f"COM{i}" for i in range(1, 10))
+    reserved.update(f"LPT{i}" for i in range(1, 10))
+    if not value or value in (".", "..") or value.rstrip(" .") != value:
+        return False
+    if any(c in value for c in '<>:"/\\|?*') or any(ord(c) < 32 for c in value):
+        return False
+    return value.split(".")[0].upper() not in reserved
+
+
+def load_settings(file: Path) -> dict:
+    if not file.is_file():
+        raise ValueError("Не найден конфиг инструмента: " + str(file))
+    cfg = json.loads(file.read_text(encoding="utf-8-sig"))
+    if not isinstance(cfg, dict):
+        raise ValueError("Корень config.json должен быть объектом")
+    for key in ("source_root", "target_root"):
+        value = cfg.get(key)
+        if not isinstance(value, str) or not value.strip() or not Path(value).is_absolute():
+            raise ValueError(f"Поле {key} должно содержать абсолютный путь к папке")
+    marker = cfg.get("filename_marker")
+    if not isinstance(marker, str) or not marker.strip() or len(marker) > 16:
+        raise ValueError("filename_marker должен быть непустой короткой строкой")
+    folders = cfg.get("excluded_folders")
+    if not isinstance(folders, list) or not all(isinstance(x, str) and safe_folder_name(x) for x in folders):
+        raise ValueError("excluded_folders должен быть массивом имён папок без путей")
+    mapping = cfg.get("status_directories")
+    if not isinstance(mapping, dict) or not mapping:
+        raise ValueError("status_directories должен быть непустым объектом")
+    if not all(isinstance(k, str) and k.strip() and isinstance(v, str) and safe_folder_name(v) for k, v in mapping.items()):
+        raise ValueError("Некорректные статусы или имена папок в status_directories")
+    status_dirs = {k.strip().casefold(): v for k, v in mapping.items()}
+    if len(status_dirs) != len(mapping) or len({x.casefold() for x in status_dirs.values()}) != len(status_dirs):
+        raise ValueError("Дублирующиеся статусы или названия выходных папок")
+    skip = cfg.get("excluded_statuses")
+    if not isinstance(skip, list) or not all(isinstance(x, str) and x.strip() for x in skip):
+        raise ValueError("excluded_statuses должен быть массивом названий статусов")
+    excluded_statuses = {x.strip().casefold() for x in skip}
+    if set(status_dirs) & excluded_statuses:
+        raise ValueError("Один статус не может одновременно копироваться и исключаться")
+    return {
+        "source": Path(cfg["source_root"]).resolve(),
+        "target": Path(cfg["target_root"]).resolve(),
+        "marker": marker,
+        "excluded_folders": {x.casefold() for x in folders},
+        "status_directories": status_dirs,
+        "excluded_statuses": excluded_statuses,
+    }
 
 
 def metadata(path: Path) -> dict[str, int]:
@@ -61,12 +106,23 @@ def identical(a: Path, b: Path) -> bool:
     return sha256(a) == sha256(b)
 
 
-def load_state() -> dict:
+def load_state(target: Path) -> dict:
     if not STATE_FILE.exists():
         return {}
     data = json.loads(STATE_FILE.read_text(encoding="utf-8"))
     if not isinstance(data, dict) or not isinstance(data.get("files"), dict):
         raise RuntimeError("Неверный формат реестра Syncthing: " + str(STATE_FILE))
+    bound = data.get("target_root")
+    if isinstance(bound, str) and bound:
+        if os.path.normcase(str(Path(bound).resolve())) != os.path.normcase(str(target)):
+            raise RuntimeError("Целевая папка изменилась, но реестр привязан к другой папке: " + bound +
+                               ". Нельзя использовать старый реестр для удаления в новой папке.")
+    elif data.get("version") == 1:
+        if os.path.normcase(str(target)) != os.path.normcase(str(LEGACY_V1_TARGET.resolve())):
+            raise RuntimeError("Старый реестр без пути назначения: сначала обновите его на исходной папке Syncthing, " +
+                               "затем изменяйте target_root в config.json.")
+    else:
+        raise RuntimeError("Реестр без привязки к папке назначения. Операция отменена.")
     return data["files"]
 
 
@@ -75,7 +131,8 @@ def status_of(path: Path) -> str:
     return (clean(values[0]) if values else "").casefold()
 
 
-def build_plan(source: Path, excluded: set[str], marker: str):
+def build_plan(source: Path, excluded: set[str], marker: str,
+               status_dirs: dict[str, str], excluded_statuses: set[str]):
     plan: dict[str, Path] = {}
     origins: dict[str, str] = {}
     errors: list[str] = []
@@ -98,24 +155,24 @@ def build_plan(source: Path, excluded: set[str], marker: str):
         except Exception as exc:
             errors.append(f"Ошибка чтения ID3 в {folder}: {exc}")
             continue
-        allowed = {statuses[p] for p in tagged if statuses[p] in STATUS_DIRS}
+        allowed = {statuses[p] for p in tagged if statuses[p] in status_dirs}
         for p in tagged:
-            if statuses[p] not in STATUS_DIRS and statuses[p] not in EXCLUDED_STATUSES:
+            if statuses[p] not in status_dirs and statuses[p] not in excluded_statuses:
                 stats["unknown_status_mp3"] += 1
         for status in sorted(allowed):
-            category = STATUS_DIRS[status]
+            category = status_dirs[status]
             stats["song_folders"] += 1
             for path in paths:
                 if not path.is_file():
                     continue
                 if path.suffix.casefold() == ".mp3":
                     st = statuses[path]
-                    if st in EXCLUDED_STATUSES:
+                    if st in excluded_statuses:
                         continue
                     if marker in path.name:
                         if st != status:
                             continue
-                    elif st in STATUS_DIRS and st != status:
+                    elif st in status_dirs and st != status:
                         continue
                 rel = (Path(category) / folder.name / path.name).as_posix()
                 folded = rel.casefold()
@@ -212,25 +269,31 @@ def atomic_copy(source: Path, dest: Path) -> None:
 def main() -> int:
     parser = argparse.ArgumentParser(description="Распределить копии песен по категориям для телефона")
     parser.add_argument("--apply", action="store_true", help="Копировать и убирать устаревшие управляемые копии")
-    parser.add_argument("--target", type=Path, default=DEFAULT_TARGET)
-    parser.add_argument("--source", type=Path, help="Для теста: другой корень фонотеки")
+    parser.add_argument("--config", type=Path, default=CONFIG_FILE, help="JSON настроек этого инструмента")
+    parser.add_argument("--target", type=Path, help="Переопределить target_root из JSON")
+    parser.add_argument("--source", type=Path, help="Переопределить source_root из JSON")
     args = parser.parse_args()
 
-    config = json.loads((APP_ROOT / "config.json").read_text(encoding="utf-8"))
-    source = (args.source or Path(config["paths"]["library_root"])).resolve()
-    target = args.target.resolve()
+    try:
+        settings = load_settings(args.config.resolve())
+    except (ValueError, OSError, json.JSONDecodeError) as exc:
+        parser.error("Ошибка config.json: " + str(exc))
+    if args.apply and ((args.source is None) != (args.target is None)):
+        parser.error("Для тестового --apply указывайте одновременно --source и --target")
+    source = (args.source or settings["source"]).resolve()
+    target = (args.target or settings["target"]).resolve()
     if not source.is_dir():
         parser.error("Источник не найден: " + str(source))
     if source == target or source.is_relative_to(target) or target.is_relative_to(source):
         parser.error("Источник и назначение не должны пересекаться")
     if target.exists() and not target.is_dir():
         parser.error("Назначение не является папкой")
-    # Phone export has its own explicit exclusion policy.
-    # Do not inherit unrelated site-export exclusions.
-    excluded = EXCLUDED_FOLDERS
-    marker = clean(config.get("site_export", {}).get("marker")) or "֎"
-    previous = load_state()
-    plan, errors, counts = build_plan(source, excluded, marker)
+    excluded = settings["excluded_folders"]
+    marker = settings["marker"]
+    previous = load_state(target)
+    plan, errors, counts = build_plan(
+        source, excluded, marker, settings["status_directories"], settings["excluded_statuses"]
+    )
     if not plan:
         errors.append("Не найдено ни одного подходящего файла: синхронизация отменена.")
     actions, conflicts = examine(target, plan, previous)
@@ -264,7 +327,7 @@ def main() -> int:
             report["nonempty_folders_kept"] = kept_folders
             STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
             temp = STATE_FILE.with_suffix(".tmp")
-            temp.write_text(json.dumps({"version": 1, "files": state},
+            temp.write_text(json.dumps({"version": 2, "target_root": str(target), "files": state},
                                        ensure_ascii=False, indent=2), encoding="utf-8")
             os.replace(temp, STATE_FILE)
         except Exception as exc:
@@ -274,6 +337,7 @@ def main() -> int:
     report_dir.mkdir(parents=True, exist_ok=True)
     report_file = report_dir / ("sync_" + datetime.now().strftime("%Y%m%d_%H%M%S") + ".json")
     report_file.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+    print("Настройки:", args.config.resolve())
     print("Режим:", "КОПИРОВАНИЕ" if args.apply else "ПРЕДПРОСМОТР")
     print("Папок с песнями по статусам:", counts["song_folders"])
     print("Файлов для раскладки:", len(plan))
