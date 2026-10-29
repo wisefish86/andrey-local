@@ -5,22 +5,12 @@
     "- - Добавляю в репертуар"
   ],
   "max_text_chars": 2000,
-  "include_rating": true,
-  "default_fields": [
+  "max_changed_tracks": 500,
+  "gpt_simple_fields": [
     "TPE1",
     "MVNM",
     "TIT2",
-    "TALB",
-    "TPE2",
     "TDRC",
-    "TCON",
-    "TMOO",
-    "TIT1",
-    "TXXX:OCCASION",
-    "TBPM",
-    "WOAS",
-    "TXXX:replaygain_track_gain",
-    "TXXX:replaygain_track_peak"
-  ],
-  "max_changed_tracks": 500
+    "WOAS"
+  ]
 }
