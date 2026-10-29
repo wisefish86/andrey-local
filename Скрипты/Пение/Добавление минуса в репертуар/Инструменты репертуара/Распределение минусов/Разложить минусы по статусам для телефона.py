@@ -31,9 +31,7 @@ STATUS_DIRS = {
     "г-5-выучить": "05 Выучить",
 }
 EXCLUDED_STATUSES = {"г-6-запас", "г-7-версии"}
-EXCLUDED_FOLDERS = {
-    "files", "additi0ns", "additions", "editions", "- - добавляю в репертуар"
-}
+EXCLUDED_FOLDERS = {"files", "additi0ns"}  # Additi0ns contains digit zero
 
 
 def metadata(path: Path) -> dict[str, int]:
@@ -227,9 +225,9 @@ def main() -> int:
         parser.error("Источник и назначение не должны пересекаться")
     if target.exists() and not target.is_dir():
         parser.error("Назначение не является папкой")
-    excluded = EXCLUDED_FOLDERS | {
-        str(x).casefold() for x in config.get("site_export", {}).get("exclude_dirs", [])
-    }
+    # Phone export has its own explicit exclusion policy.
+    # Do not inherit unrelated site-export exclusions.
+    excluded = EXCLUDED_FOLDERS
     marker = clean(config.get("site_export", {}).get("marker")) or "֎"
     previous = load_state()
     plan, errors, counts = build_plan(source, excluded, marker)
