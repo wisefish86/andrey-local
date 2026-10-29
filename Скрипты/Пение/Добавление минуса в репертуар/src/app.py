@@ -897,8 +897,8 @@ class MainWindow(QMainWindow):
         )
         tools_layout.addWidget(
             tool_button(
-                "📂 Распределение минусов",
-                "Запустить распределение минусов по папкам для Syncthing",
+                "📂 Перенос папок (MusicBee)",
+                "Старый инструмент: ПЕРЕМЕЩАЕТ оригиналы по плейлистам MusicBee, не предназначен для копий на телефон",
                 lambda: self.launch_repertoire_tool("distribute_minuses"),
             ),
             3, 1,
