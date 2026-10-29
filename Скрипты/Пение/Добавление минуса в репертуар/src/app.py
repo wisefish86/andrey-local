@@ -897,14 +897,6 @@ class MainWindow(QMainWindow):
         )
         tools_layout.addWidget(
             tool_button(
-                "📂 Перенос папок (MusicBee)",
-                "Старый инструмент: ПЕРЕМЕЩАЕТ оригиналы по плейлистам MusicBee, не предназначен для копий на телефон",
-                lambda: self.launch_repertoire_tool("distribute_minuses"),
-            ),
-            3, 1,
-        )
-        tools_layout.addWidget(
-            tool_button(
                 "🎵 Подготовить текущий MP3 для фонотеки",
                 "Передать текущий MP3 в старый инструмент подготовки фонотеки",
                 lambda: self.launch_repertoire_tool("prepare_phonotheque", pass_current_file=True),
@@ -942,7 +934,7 @@ class MainWindow(QMainWindow):
                 "Показать план копирования песен по ID3-статусам без изменений на диске",
                 lambda: self.launch_repertoire_tool("phone_sync_preview"),
             ),
-            6, 0,
+            3, 1,
         )
         tools_layout.addWidget(
             tool_button(
@@ -950,7 +942,7 @@ class MainWindow(QMainWindow):
                 "Скопировать плоские папки песен в Syncthing; убрать лишь старые управляемые копии",
                 lambda: self.launch_repertoire_tool("phone_sync_apply"),
             ),
-            6, 1,
+            4, 1,
         )
 
         tools_hint = QLabel(
@@ -959,7 +951,7 @@ class MainWindow(QMainWindow):
         )
         tools_hint.setWordWrap(True)
         tools_hint.setObjectName("muted")
-        tools_layout.addWidget(tools_hint, 7, 0, 1, 2)
+        tools_layout.addWidget(tools_hint, 6, 0, 1, 2)
         tools_section.add_widget(tools_widget)
         body_layout.addWidget(tools_section)
 
