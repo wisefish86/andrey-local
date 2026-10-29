@@ -952,13 +952,32 @@ class MainWindow(QMainWindow):
             4, 1,
         )
 
+        tools_layout.addWidget(
+            tool_button("📤 Экспорт ID3 в JSON",
+                        "Компактный ID3 JSON без лирики", 
+                        lambda: self.launch_repertoire_tool("id3_json_export")),
+            6, 0,
+        )
+        tools_layout.addWidget(
+            tool_button("🔎 Импорт JSON — проверка",
+                        "Проверить изменения без записи MP3",
+                        lambda: self.launch_repertoire_tool("id3_json_import_preview")),
+            6, 1,
+        )
+        tools_layout.addWidget(
+            tool_button("⬆ Импорт JSON — применить",
+                        "Записать изменённые теги с резервными копиями",
+                        lambda: self.launch_repertoire_tool("id3_json_import_apply")),
+            7, 0,
+        )
+
         tools_hint = QLabel(
             "Все редкие операции над минусами собраны здесь и физически лежат "
             "в подпапках «Инструменты репертуара»."
         )
         tools_hint.setWordWrap(True)
         tools_hint.setObjectName("muted")
-        tools_layout.addWidget(tools_hint, 6, 0, 1, 2)
+        tools_layout.addWidget(tools_hint, 8, 0, 1, 2)
         tools_section.add_widget(tools_widget)
         body_layout.addWidget(tools_section)
 
