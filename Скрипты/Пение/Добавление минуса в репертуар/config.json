@@ -662,6 +662,10 @@
           "Патриотическая"
         ],
         [
+          "с-Кавказ",
+          "Кавказ"
+        ],
+        [
           "с-Родителям",
           "Родителям"
         ]
@@ -718,7 +722,8 @@
     "additions_folder": "Additi0ns",
     "files_folder": "Files",
     "open_after_create": true,
-    "files_copy_remove_marker_only": true
+    "files_copy_remove_marker_only": true,
+    "learn_folder": "Learn"
   },
   "ui": {
     "sections": [
@@ -811,6 +816,14 @@
     [
       "мБ",
       "Мой бэк"
+    ],
+    [
+      "BL",
+      "Мастеринг в BandLab"
+    ],
+    [
+      "нар.",
+      "Нарезка"
     ]
   ],
   "plus_upload": {
