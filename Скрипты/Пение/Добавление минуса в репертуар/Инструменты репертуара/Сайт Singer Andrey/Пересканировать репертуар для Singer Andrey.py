@@ -298,7 +298,7 @@ def main() -> int:
     site_cfg = config.get("site_export", {})
     tracks, errors = scan(config)
 
-    output = APP_ROOT / Path(site_cfg.get("output_file", "data/site/repertoire.json"))
+    output = APP_ROOT / Path(site_cfg.get("output_file", "Инструменты репертуара/Сайт Singer Andrey/data/repertoire.json"))
     output.parent.mkdir(parents=True, exist_ok=True)
 
     payload = {
@@ -314,7 +314,18 @@ def main() -> int:
 
     # Keep historical song_id for existing saved customer selections.
     registry_path = output.with_name("song_identity_registry.json")
-    registry = load_song_identity_registry(registry_path, output)
+    # One-time migration of existing private state without deleting legacy files.
+    legacy_dir = APP_ROOT / "data" / "site"
+    legacy_registry = legacy_dir / "song_identity_registry.json"
+    legacy_catalog = legacy_dir / "repertoire.json"
+    if not registry_path.is_file() and legacy_registry.is_file():
+        import shutil
+        shutil.copy2(legacy_registry, registry_path)
+        print(f"Перенесён реестр постоянных ID: {legacy_registry} -> {registry_path}")
+    registry = load_song_identity_registry(
+        registry_path,
+        legacy_catalog if legacy_catalog.is_file() else output,
+    )
     grouped_by_key = defaultdict(list)
     warnings = []
     for track in tracks:
