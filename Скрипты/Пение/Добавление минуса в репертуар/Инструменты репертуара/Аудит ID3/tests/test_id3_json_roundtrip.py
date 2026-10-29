@@ -6,7 +6,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from mutagen.id3 import APIC, ID3, TPE1, TIT1, TXXX, USLT
+from mutagen.id3 import APIC, ID3, POPM, TBPM, TPE1, TIT1, TXXX, USLT
 
 TOOL = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(TOOL))
@@ -27,16 +27,21 @@ class Id3JsonRoundtripTests(unittest.TestCase):
         tag.add(TPE1(encoding=3, text=["Artist"]))
         tag.add(TIT1(encoding=3, text=["а-Унив", "с-23Фев"]))
         tag.add(TXXX(encoding=3, desc="OCCASION", text=["г-2-Рабочие"]))
+        tag.add(TXXX(encoding=3, desc="replaygain_track_gain", text=["-4.2 dB"]))
+        tag.add(TXXX(encoding=3, desc="replaygain_track_peak", text=["0.93"]))
+        tag.add(TBPM(encoding=3, text=["123"]))
+        tag.add(POPM(email="Windows Media Player 9 Series", rating=200, count=1))
         tag.add(USLT(encoding=3, lang="eng", desc="", text="Important full lyrics"))
         tag.add(APIC(encoding=3, mime="image/jpeg", type=3, desc="", data=b"binary-art"))
         tag.save(self.mp3)
         self.config = {
-            "default_fields": ["TPE1", "TIT1", "TXXX:OCCASION", "TIT2", "WOAS"],
+            "gpt_simple_fields": ["TPE1", "MVNM", "TIT2", "TDRC", "WOAS"],
             "excluded_folders": ["Files", "Additi0ns"],
             "max_text_chars": 2000,
             "max_changed_tracks": 500,
-            "include_rating": True,
         }
+        main_cfg = json.loads(api.MAIN_CONFIG_PATH.read_text(encoding="utf-8"))
+        self.config["_allowed_fields"] = api.allowed_fields(self.config, main_cfg)
         self.data = Path(self.tmp.name) / "data"
         self.orig_data = api.DATA
         api.DATA = self.data
@@ -57,6 +62,12 @@ class Id3JsonRoundtripTests(unittest.TestCase):
         self.assertEqual(values["TXXX:OCCASION"], ["г-2-Рабочие"])
         self.assertNotIn("USLT", values)
         self.assertNotIn("APIC", values)
+        self.assertNotIn("TBPM", values)
+        self.assertNotIn("POPM:rating", values)
+        self.assertNotIn("TXXX:replaygain_track_gain", values)
+        self.assertNotIn("TXXX:replaygain_track_peak", values)
+        self.assertEqual(set(values), self.config["_allowed_fields"])
+        self.assertEqual(payload["format"], api.FORMAT)
         self.assertNotIn("Important full lyrics", self.file.read_text(encoding="utf-8"))
         self.assertNotIn("binary-art", self.file.read_text(encoding="utf-8"))
 
@@ -70,6 +81,10 @@ class Id3JsonRoundtripTests(unittest.TestCase):
         self.assertEqual(api.read_text(tags, "TIT1"), ["а-Ситуац", "с-Кавказ"])
         self.assertEqual(tags.getall("USLT")[0].text, "Important full lyrics")
         self.assertEqual(tags.getall("APIC")[0].data, b"binary-art")
+        self.assertEqual(api.read_txxx(tags, "TXXX:replaygain_track_gain"), ["-4.2 dB"])
+        self.assertEqual(api.read_txxx(tags, "TXXX:replaygain_track_peak"), ["0.93"])
+        self.assertEqual(api.read_text(tags, "TBPM"), ["123"])
+        self.assertEqual(tags.getall("POPM")[0].rating, 200)
         self.assertTrue(list((self.data / "backups").rglob("*.mp3")))
 
     def test_changed_source_rejected_with_no_write(self):
@@ -89,6 +104,15 @@ class Id3JsonRoundtripTests(unittest.TestCase):
         self.assertEqual(api.run_import(self.root, "֎", self.config, self.file, True), 1)
         self.edited(TIT1=["с-Кавказ"], **{"TXXX:new_without_baseline": ["x"]})
         self.assertEqual(api.run_import(self.root, "֎", self.config, self.file, True), 1)
+
+    def test_rejects_forbidden_technical_field_even_with_matching_baseline(self):
+        payload = copy.deepcopy(self.original)
+        entry = payload["tracks"][0]
+        entry["tags"]["TXXX:replaygain_track_gain"] = ["9 dB"]
+        entry["baseline_hashes"]["TXXX:replaygain_track_gain"] = api.digest(["-4.2 dB"])
+        self.file.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+        self.assertEqual(api.run_import(self.root, "֎", self.config, self.file, True), 1)
+        self.assertEqual(api.read_txxx(ID3(self.mp3), "TXXX:replaygain_track_gain"), ["-4.2 dB"])
 
     def test_no_edits_causes_no_backup_and_no_save(self):
         before = self.mp3.stat().st_mtime_ns
