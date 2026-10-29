@@ -78,7 +78,7 @@ if not _ftp_log.handlers:
 CONFIG_PATH = APP_ROOT / "config.json"
 INVALID_WIN_CHARS = re.compile(r'[<>:"/\\|?*]')
 _LRC_TIMESTAMP_LINE = re.compile(
-    r"^\\s*(?:\\[(?:\\d{1,2}:)?\\d{1,2}:\\d{2}(?:[.,]\\d{1,3})?\\])+"
+    r"^\s*(?:\[(?:\d{1,2}:)?\d{1,2}:\d{2}(?:[.,]\d{1,3})?\])+"
 )
 
 
