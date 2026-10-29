@@ -73,8 +73,8 @@ def load_state() -> dict:
 
 
 def status_of(path: Path) -> str:
-    return (clean(read_txxx(load_tags(path), "TXXX:OCCASION")[0])
-            if read_txxx(load_tags(path), "TXXX:OCCASION") else "").casefold()
+    values = read_txxx(load_tags(path), "TXXX:OCCASION")
+    return (clean(values[0]) if values else "").casefold()
 
 
 def build_plan(source: Path, excluded: set[str], marker: str):
@@ -217,6 +217,9 @@ def main() -> int:
         "source": str(source), "target": str(target),
         "counts": dict(counts),
         "actions": dict(Counter(a[0] for a in actions)),
+        "details": [{"action": action, "target": rel,
+                     "source": str(path.relative_to(source)) if path else ""}
+                    for action, rel, path in actions],
         "errors": errors,
     }
     if args.apply and not errors:
