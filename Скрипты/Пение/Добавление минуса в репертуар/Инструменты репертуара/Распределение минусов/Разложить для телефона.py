@@ -22,7 +22,8 @@ sys.path.insert(0, str(APP_ROOT.parent))
 from _common.id3_io import clean, load_tags, read_txxx
 
 CONFIG_FILE = ROOT / "config.json"
-STATE_FILE = ROOT / "data" / "syncthing_manifest.json"
+LEGACY_STATE_FILE = ROOT / "data" / "syncthing_manifest.json"
+MANIFEST_DIR = ROOT / "data" / "manifests"
 # Historical root is only used to safely adopt manifests created before v2.
 LEGACY_V1_TARGET = Path(r"D:\Sync\Syncthing\С ПК на телефон\Минусы по категориям")
 
@@ -106,12 +107,23 @@ def identical(a: Path, b: Path) -> bool:
     return sha256(a) == sha256(b)
 
 
-def load_state(target: Path) -> dict:
-    if not STATE_FILE.exists():
+def manifest_path(target: Path) -> Path:
+    """Each destination owns an independent manifest; new paths cannot delete old ones."""
+    key = os.path.normcase(str(target.resolve())).casefold()
+    name = hashlib.sha256(key.encode("utf-8")).hexdigest()[:20] + ".json"
+    return MANIFEST_DIR / name
+
+
+def load_state(target: Path, file: Path) -> dict:
+    if file.exists():
+        origin = file
+    elif LEGACY_STATE_FILE.exists() and os.path.normcase(str(target)) == os.path.normcase(str(LEGACY_V1_TARGET.resolve())):
+        origin = LEGACY_STATE_FILE
+    else:
         return {}
-    data = json.loads(STATE_FILE.read_text(encoding="utf-8"))
+    data = json.loads(origin.read_text(encoding="utf-8"))
     if not isinstance(data, dict) or not isinstance(data.get("files"), dict):
-        raise RuntimeError("Неверный формат реестра Syncthing: " + str(STATE_FILE))
+        raise RuntimeError("Неверный формат реестра Syncthing: " + str(origin))
     bound = data.get("target_root")
     if isinstance(bound, str) and bound:
         if os.path.normcase(str(Path(bound).resolve())) != os.path.normcase(str(target)):
@@ -290,7 +302,8 @@ def main() -> int:
         parser.error("Назначение не является папкой")
     excluded = settings["excluded_folders"]
     marker = settings["marker"]
-    previous = load_state(target)
+    state_file = manifest_path(target)
+    previous = load_state(target, state_file)
     plan, errors, counts = build_plan(
         source, excluded, marker, settings["status_directories"], settings["excluded_statuses"]
     )
@@ -325,11 +338,11 @@ def main() -> int:
             removed_folders, kept_folders = cleanup_empty_folders(target, folders)
             report["removed_folders"] = removed_folders
             report["nonempty_folders_kept"] = kept_folders
-            STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
-            temp = STATE_FILE.with_suffix(".tmp")
+            state_file.parent.mkdir(parents=True, exist_ok=True)
+            temp = state_file.with_suffix(".tmp")
             temp.write_text(json.dumps({"version": 2, "target_root": str(target), "files": state},
                                        ensure_ascii=False, indent=2), encoding="utf-8")
-            os.replace(temp, STATE_FILE)
+            os.replace(temp, state_file)
         except Exception as exc:
             errors.append("Ошибка копирования; повторите запуск: " + repr(exc))
         report["errors"] = errors
@@ -338,6 +351,7 @@ def main() -> int:
     report_file = report_dir / ("sync_" + datetime.now().strftime("%Y%m%d_%H%M%S") + ".json")
     report_file.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     print("Настройки:", args.config.resolve())
+    print("Реестр этой папки назначения:", state_file)
     print("Режим:", "КОПИРОВАНИЕ" if args.apply else "ПРЕДПРОСМОТР")
     print("Папок с песнями по статусам:", counts["song_folders"])
     print("Файлов для раскладки:", len(plan))
