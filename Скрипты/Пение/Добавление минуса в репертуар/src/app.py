@@ -2807,7 +2807,7 @@ class MainWindow(QMainWindow):
         rel = clean(
             self.config.get("site_export", {}).get(
                 "output_file",
-                "data/site/repertoire.json",
+                "Инструменты репертуара/Сайт Singer Andrey/data/repertoire.json",
             )
         )
         path = APP_ROOT / Path(rel)
