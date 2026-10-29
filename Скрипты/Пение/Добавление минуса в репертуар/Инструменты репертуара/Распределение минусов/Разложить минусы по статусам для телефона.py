@@ -175,6 +175,31 @@ def examine(target: Path, plan: dict[str, Path], previous: dict):
     return actions, problems
 
 
+def folders_to_cleanup(previous: dict, plan: dict[str, Path]) -> list[str]:
+    """Only song folders previously owned by this tool, no category roots."""
+    old = {Path(rel).parent.as_posix() for rel in previous}
+    active = {Path(rel).parent.as_posix() for rel in plan}
+    return sorted(old - active, key=lambda name: (-name.count("/"), name.casefold()))
+
+
+def cleanup_empty_folders(target: Path, candidates: list[str]) -> tuple[list[str], list[str]]:
+    removed: list[str] = []
+    kept: list[str] = []
+    for rel in candidates:
+        folder = safe_destination(target, rel)
+        if not folder.exists():
+            continue
+        if not folder.is_dir():
+            raise RuntimeError("Ожидалась папка песни: " + rel)
+        try:
+            folder.rmdir()  # Only succeeds if all contents have gone.
+            removed.append(rel)
+        except OSError:
+            # Never delete a non-empty directory or manually added files.
+            kept.append(rel)
+    return removed, kept
+
+
 def atomic_copy(source: Path, dest: Path) -> None:
     dest.parent.mkdir(parents=True, exist_ok=True)
     temp = dest.with_name(dest.name + ".sync-" + uuid.uuid4().hex + ".tmp")
@@ -212,6 +237,7 @@ def main() -> int:
         errors.append("Не найдено ни одного подходящего файла: синхронизация отменена.")
     actions, conflicts = examine(target, plan, previous)
     errors.extend(conflicts)
+    folders = folders_to_cleanup(previous, plan)
     report = {
         "mode": "apply" if args.apply else "preview",
         "source": str(source), "target": str(target),
@@ -220,6 +246,7 @@ def main() -> int:
         "details": [{"action": action, "target": rel,
                      "source": str(path.relative_to(source)) if path else ""}
                     for action, rel, path in actions],
+        "folders_to_cleanup_if_empty": folders,
         "errors": errors,
     }
     if args.apply and not errors:
@@ -234,15 +261,9 @@ def main() -> int:
                         dest.unlink()
                     continue
                 state[rel] = {"source": str(path.relative_to(source)), "dest": metadata(dest)}
-            for category in STATUS_DIRS.values():
-                group = target / category
-                if group.is_dir():
-                    for child in group.iterdir():
-                        if child.is_dir() and not child.is_symlink():
-                            try:
-                                child.rmdir()
-                            except OSError:
-                                pass
+            removed_folders, kept_folders = cleanup_empty_folders(target, folders)
+            report["removed_folders"] = removed_folders
+            report["nonempty_folders_kept"] = kept_folders
             STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
             temp = STATE_FILE.with_suffix(".tmp")
             temp.write_text(json.dumps({"version": 1, "files": state},
@@ -260,6 +281,10 @@ def main() -> int:
     print("Файлов для раскладки:", len(plan))
     for kind, count in sorted(Counter(a[0] for a in actions).items()):
         print(kind, count)
+    print("Папок старых категорий для проверки на пустоту:", len(folders))
+    if args.apply and not errors:
+        print("Удалено пустых папок песен:", len(report.get("removed_folders", [])))
+        print("Оставлено непустых папок:", len(report.get("nonempty_folders_kept", [])))
     print("MP3 с неопределённым статусом:", counts["unknown_status_mp3"])
     print("Ошибок:", len(errors))
     for message in errors[:10]:
