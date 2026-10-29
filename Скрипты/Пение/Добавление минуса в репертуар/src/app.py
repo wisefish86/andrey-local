@@ -936,13 +936,30 @@ class MainWindow(QMainWindow):
             5, 1,
         )
 
+        tools_layout.addWidget(
+            tool_button(
+                "🔎 Для телефона — проверка",
+                "Показать план копирования песен по ID3-статусам без изменений на диске",
+                lambda: self.launch_repertoire_tool("phone_sync_preview"),
+            ),
+            6, 0,
+        )
+        tools_layout.addWidget(
+            tool_button(
+                "📱 Для телефона — обновить",
+                "Скопировать плоские папки песен в Syncthing; убрать лишь старые управляемые копии",
+                lambda: self.launch_repertoire_tool("phone_sync_apply"),
+            ),
+            6, 1,
+        )
+
         tools_hint = QLabel(
             "Все редкие операции над минусами собраны здесь и физически лежат "
             "в подпапках «Инструменты репертуара»."
         )
         tools_hint.setWordWrap(True)
         tools_hint.setObjectName("muted")
-        tools_layout.addWidget(tools_hint, 6, 0, 1, 2)
+        tools_layout.addWidget(tools_hint, 7, 0, 1, 2)
         tools_section.add_widget(tools_widget)
         body_layout.addWidget(tools_section)
 
