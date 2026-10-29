@@ -1961,6 +1961,94 @@ class MainWindow(QMainWindow):
         with path.open("a", encoding="utf-8") as f:
             f.write(json.dumps(payload, ensure_ascii=False, default=str) + "\n")
 
+    def _offer_phone_sync_after_save(self, old_path: Path, new_path: Path, old_tags, summary: str):
+        """Ask to sync only when this save changes the phone's category catalogue."""
+        try:
+            tools = self.config.get("tools", {})
+            apply_rel = clean(tools.get("phone_sync_apply"))
+            preview_rel = clean(tools.get("phone_sync_preview"))
+            if not apply_rel or not preview_rel:
+                raise ValueError("В config.json отсутствуют phone_sync_apply / phone_sync_preview.")
+            phone_cfg_path = (APP_ROOT / apply_rel).parent / "config.json"
+            settings = json.loads(phone_cfg_path.read_text(encoding="utf-8-sig"))
+            prompt = settings.get("post_save_prompt", {})
+            if not prompt.get("enabled", False):
+                QMessageBox.information(self, "Готово", summary)
+                return
+
+            source = Path(settings["source_root"]).resolve()
+            staging_raw = clean(self.config.get("paths", {}).get("staging_root"))
+            staging = Path(staging_raw).resolve() if staging_raw else None
+            excluded = {str(x).casefold() for x in settings.get("excluded_folders", [])}
+            categories = {
+                str(key).strip().casefold(): str(value)
+                for key, value in settings["status_directories"].items()
+            }
+
+            def is_phone_song(path: Path) -> bool:
+                try:
+                    relative = path.resolve().relative_to(source)
+                except ValueError:
+                    return False
+                if len(relative.parts) < 2 or any(
+                    part.casefold() in excluded for part in relative.parts[:-1]
+                ):
+                    return False
+                return not (staging and self._is_under(path, staging))
+
+            field_id = prompt.get("status_field_id", "status")
+            field = self.field_defs[field_id]
+            spec = dict(field["storage"])
+            old_value = clean(read_field(old_tags, spec)).casefold()
+            new_value = clean(read_field(load_tags(new_path), spec)).casefold()
+            old_group = categories.get(old_value)
+            new_group = categories.get(new_value)
+            was_in = is_phone_song(old_path)
+            now_in = is_phone_song(new_path)
+
+            reason = ""
+            if (now_in and not was_in and new_group and
+                    prompt.get("on_new_song", True)):
+                reason = "Новый минус добавлен в репертуар."
+            elif (now_in and was_in and old_group != new_group and
+                  prompt.get("on_status_change", True)):
+                before = old_group or "без категории для телефона"
+                after = new_group or "не копировать на телефон"
+                reason = f"Категория для телефона изменилась: {before} → {after}."
+
+            if not reason:
+                QMessageBox.information(self, "Готово", summary)
+                return
+
+            dialog = QMessageBox(self)
+            dialog.setIcon(QMessageBox.Question)
+            dialog.setWindowTitle("Минус сохранён — обновить телефон?")
+            dialog.setText(summary)
+            dialog.setInformativeText(
+                reason + "\n\nОбновить копии минусов в папке Syncthing? "
+                "Изменения и удаление старых управляемых копий затем синхронизируются с телефоном."
+            )
+            apply_button = dialog.addButton("Обновить телефон", QMessageBox.AcceptRole)
+            preview_button = dialog.addButton("Сначала проверить", QMessageBox.ActionRole)
+            later_button = dialog.addButton("Позже", QMessageBox.RejectRole)
+            dialog.setDefaultButton(later_button)
+            dialog.exec()
+            clicked = dialog.clickedButton()
+            if clicked is apply_button:
+                self.launch_repertoire_tool("phone_sync_apply")
+            elif clicked is preview_button:
+                self.launch_repertoire_tool("phone_sync_preview")
+        except Exception as exc:
+            # Saving the MP3 already succeeded; a follow-up action must never roll it back.
+            logging.getLogger("repertoire.phone_sync").exception(
+                "Post-save phone sync suggestion failed"
+            )
+            QMessageBox.warning(
+                self,
+                "Минус сохранён",
+                summary + "\n\nНе удалось предложить обновление телефона: " + str(exc)
+            )
+
     def save_all(self):
         if not self.current_path:
             return
@@ -2048,13 +2136,12 @@ class MainWindow(QMainWindow):
                 if removed_frames
                 else ""
             )
-            QMessageBox.information(
-                self,
-                "Готово",
-                f"Теги сохранены и проверены.{cleanup_text}\n\n{working_path}",
-            )
+            summary = f"Теги сохранены и проверены.{cleanup_text}\n\n{working_path}"
             self.status.setText("Готово. Файл сохранён, проверен и очищен.")
             self.load_file(str(working_path))
+            self._offer_phone_sync_after_save(
+                original_path, working_path, original_tags_snapshot, summary
+            )
 
         except Exception as exc:
             rollback_note = ""
