@@ -28,3 +28,18 @@ jobs:
               print('Syntax OK:', path)
           print('Checked:', len(files))
           PY
+
+  id3_json_roundtrip:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install ID3 dependency
+        run: python -m pip install 'mutagen>=1.47,<2'
+      - name: Run isolated ID3 JSON roundtrip tests
+        run: |
+          python -m unittest discover -v \
+            -s 'Скрипты/Пение/Добавление минуса в репертуар/Инструменты репертуара/Аудит ID3/tests' \
+            -p 'test_id3_json_roundtrip.py'
