@@ -278,19 +278,42 @@ def export_block_playlist(path: Path, blocks: list[tuple[list[Track], list[Track
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text("\n".join(lines) + "\n", encoding="utf-8-sig")
 
+
+def track_minutes(song: Track) -> float | None:
+    """Actual MP3 running time; unknown values remain unknown."""
+    from mutagen import File as AudioFile
+    try:
+        audio = AudioFile(str(song.path))
+        value = float(audio.info.length) / 60 if audio and audio.info else 0
+        return value if value > 0 else None
+    except (OSError, ValueError, AttributeError):
+        return None
+
+
+def block_duration(songs: list[Track]) -> tuple[float, int]:
+    times = [track_minutes(song) for song in songs]
+    return sum(v for v in times if v is not None), sum(v is None for v in times)
+
+
+def vocal_warnings(songs: list[Track]) -> list[str]:
+    """Warnings, not forced reordering: the singer retains editorial control."""
+    alerts = []
+    for i, song in enumerate(songs):
+        level = next((n for n in (1, 2, 3, 4) if f"сл-{n}" in song.difficulty), 0)
+        previous = next((n for n in (1, 2, 3, 4)
+                         if i and f"сл-{n}" in songs[i - 1].difficulty), 0)
+        if level >= 3 and previous >= 3:
+            alerts.append(f"Песни {i}–{i + 1}: две сложные подряд")
+        if level == 4:
+            alerts.append(f"Песня {i + 1}: пиковая нагрузка")
+    return alerts
+
 def distribute_blocks(tracks: list[Track], number: int, target_minutes: int,
                       reserve_count: int = 2) -> list[tuple[list[Track], list[Track]]]:
     """Keep manual song order, partition by real runtime, add distinct easy reserves."""
     if not 3 <= number <= 6 or not 10 <= target_minutes <= 60:
         raise ValueError("Неверные параметры блоков")
-    from mutagen import File as AudioFile
-    def duration(song: Track) -> float:
-        try:
-            audio = AudioFile(str(song.path))
-            return float(audio.info.length) / 60 if audio and audio.info else 0.0
-        except (OSError, ValueError, AttributeError):
-            return 0.0
-    lengths = [duration(t) for t in tracks]
+    lengths = [track_minutes(t) or 0.0 for t in tracks]
     # Missing duration is not fabricated; assign tracks evenly as a fallback.
     blocks: list[list[Track]] = [[] for _ in range(number)]
     if all(v > 0 for v in lengths):
