@@ -13,7 +13,7 @@ from PySide6.QtWidgets import (
 )
 
 from core import Track, append_unique, expand_inputs, move_rows, parse_dropped_text
-from core import read_track, repeated_from_history, replace_rows, save_playlist
+from core import read_track, repeated_from_history, replace_rows, save_playlist, load_config, scan_library
 
 
 class ReadWorker(QThread):
@@ -25,7 +25,14 @@ class ReadWorker(QThread):
         self.paths = paths
 
     def run(self):
-        expanded, warnings = expand_inputs(self.paths)
+        if self.destination == "catalog":
+            try:
+                expanded, warnings = scan_library(load_config()), []
+            except (OSError, ValueError, KeyError, TypeError) as exc:
+                self.loaded.emit(self.destination, [], [str(exc)])
+                return
+        else:
+            expanded, warnings = expand_inputs(self.paths)
         tracks = []
         for path in expanded:
             try:
@@ -161,7 +168,7 @@ class TrackTable(QTableWidget):
         drag.exec(Qt.DropAction.CopyAction)
 
     def keyPressEvent(self, event):
-        if event.key() == Qt.Key.Key_Delete:
+        if event.key() == Qt.Key.Key_Delete and self.name != "catalog":
             self.owner.remove_selected(self)
             event.accept()
             return
@@ -190,16 +197,17 @@ class MainWindow(QMainWindow):
         outer = QVBoxLayout(root)
         outer.setContentsMargins(15, 14, 15, 10)
         outer.setSpacing(10)
-        intro = QLabel("Перетащи MP3 или M3U8 из MusicBee / Проводника. "
-                       "Внутри программы хранятся только ссылки; исходные файлы не изменяются.")
+        intro = QLabel("Каталог минусов загружается автоматически. "
+                       "Перетащи песни в плейлист и сохрани M3U8; исходные MP3 не изменяются.")
         intro.setWordWrap(True)
         outer.addWidget(intro)
 
         splitter = QSplitter(Qt.Orientation.Horizontal)
         outer.addWidget(splitter, 1)
+        self.catalog = self.make_panel(splitter, "Каталог минусов", "catalog")
         self.current = self.make_panel(splitter, "Текущий плейлист", "current")
         self.history = self.make_panel(splitter, "История прошлого выступления", "history")
-        splitter.setSizes([860, 420])
+        splitter.setSizes([450, 550, 350])
         self.summary = QLabel("Перетащи файлы или используй «Добавить MP3/M3U8»")
         self.summary.setWordWrap(True)
         outer.addWidget(self.summary)
@@ -208,6 +216,11 @@ class MainWindow(QMainWindow):
         QShortcut(QKeySequence("Ctrl+S"), self, activated=lambda: self.export_list(self.current))
         QShortcut(QKeySequence("Ctrl+O"), self, activated=lambda: self.pick_files("current"))
         self.refresh_summary()
+        try:
+            if load_config().get("library", {}).get("auto_load", True):
+                self.reload_catalog()
+        except (OSError, ValueError) as exc:
+            self.statusBar().showMessage(f"Конфигурация: {exc}", 15000)
 
     def make_panel(self, splitter, title: str, name: str) -> TrackTable:
         panel = QWidget()
@@ -225,13 +238,18 @@ class MainWindow(QMainWindow):
             b.clicked.connect(callback)
             row.addWidget(b)
             return b
-        button("+ MP3/M3U8", lambda n=name: self.pick_files(n))
-        button("Убрать", lambda t=table: self.remove_selected(t))
+        if name == "catalog":
+            button("↻ Обновить", self.reload_catalog)
+            button("→ В плейлист", self.add_catalog_selection)
+        else:
+            button("+ MP3/M3U8", lambda n=name: self.pick_files(n))
+            button("Убрать", lambda t=table: self.remove_selected(t))
         if name == "current":
             button("↑", lambda: self.shift_selected(table, -1))
             button("↓", lambda: self.shift_selected(table, 1))
             button("Заменить…", self.replace_selected)
-        button("Сохранить M3U8", lambda t=table: self.export_list(t))
+        if name != "catalog":
+            button("Сохранить M3U8", lambda t=table: self.export_list(t))
         splitter.addWidget(panel)
         return table
 
@@ -240,12 +258,29 @@ class MainWindow(QMainWindow):
         if not hasattr(self, "current") or not hasattr(self, "history"):
             return
         count, percentage = repeated_from_history(self.current.tracks, self.history.tracks)
-        message = (f"Текущий: {len(self.current.tracks)} файлов · "
+        message = (f"Каталог: {len(self.catalog.tracks)} файлов · "
+                   f"Текущий: {len(self.current.tracks)} файлов · "
                    f"История: {len(self.history.tracks)} файлов · "
                    f"Повторы песен с прошлого выступления: {count} ({percentage:.0f}%)")
         if self.current.tracks and self.history.tracks and percentage > 20:
             message += "  ⚠ Выше ориентира 10–20%."
         self.summary.setText(message)
+
+    def reload_catalog(self):
+        if self.worker and self.worker.isRunning():
+            self.statusBar().showMessage("Сканирование уже выполняется.", 5000)
+            return
+        self.worker = ReadWorker("catalog", [], self)
+        self.worker.loaded.connect(self.finish_import)
+        self.worker.finished.connect(self.finish_worker)
+        self.worker.start()
+        self.statusBar().showMessage("Сканирование основного репертуара…")
+
+    def add_catalog_selection(self):
+        chosen = self.catalog.selected_tracks()
+        if chosen:
+            self.current.set_tracks(append_unique(self.current.tracks, chosen),
+                                    [t.path for t in chosen])
 
     def pick_files(self, destination: str):
         paths, _ = QFileDialog.getOpenFileNames(
@@ -267,10 +302,15 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage("Чтение тегов…")
 
     def finish_import(self, destination: str, tracks: list[Track], warnings: list[str]):
-        table = self.current if destination == "current" else self.history
-        table.set_tracks(append_unique(table.tracks, tracks), (t.path for t in tracks))
+        table = {"current": self.current, "history": self.history, "catalog": self.catalog}[destination]
+        if destination == "catalog":
+            table.set_tracks(tracks)
+        else:
+            table.set_tracks(append_unique(table.tracks, tracks), (t.path for t in tracks))
         self.statusBar().showMessage(f"Прочитано {len(tracks)} MP3, ошибок/пропусков: {len(warnings)}", 10000)
-        if warnings:
+        if warnings and destination == "catalog":
+            self.statusBar().showMessage("Каталог: " + "; ".join(warnings[:3]), 15000)
+        elif warnings:
             QMessageBox.warning(self, "Частично загружено", "\n".join(warnings[:15]))
     def finish_worker(self):
         worker = self.worker
@@ -280,7 +320,7 @@ class MainWindow(QMainWindow):
 
     def remove_selected(self, table: TrackTable):
         indexes = set(table.selected_rows())
-        if not indexes:
+        if not indexes or table.name == "catalog":
             return
         table.set_tracks([track for index, track in enumerate(table.tracks) if index not in indexes])
         self.statusBar().showMessage(
