@@ -149,6 +149,17 @@ class SetlistCoreTests(unittest.TestCase):
         self.assertEqual(replacement_candidates([a], 0, [a, b, c],
                          {str(c.path).casefold()}), [])
 
+    def test_shared_work_id_blocks_cover_even_from_other_artist(self):
+        from dataclasses import replace
+        original = replace(read_track(self.a), work_id="V-burito-mama", status="г-1-База")
+        cover = replace(read_track(self.c), artist="Кавер-группа",
+                        clean_title="Мама (ремикс)", work_id="V-burito-mama",
+                        status="г-2-Рабочие")
+        self.assertEqual(song_key(original), song_key(cover))
+        self.assertEqual(unique_songs([original, cover]), [original])
+        self.assertEqual(add_unique_songs([original], [cover]), [original])
+        self.assertEqual(replacement_candidates([original], 0, [cover]), [])
+
     def test_no_inadvertent_source_deletion_or_overwrite(self):
         a=read_track(self.a)
         before=self.a.read_bytes()
