@@ -13,7 +13,7 @@ from PySide6.QtWidgets import (
 )
 
 from core import Track, append_unique, expand_inputs, move_rows, parse_dropped_text
-from core import read_track, repeated_from_history, replace_rows, save_playlist, load_config, scan_library, distribute_blocks, export_block_playlist
+from core import read_track, repeated_from_history, replace_rows, save_playlist, load_config, scan_library, distribute_blocks, export_block_playlist, block_duration, vocal_warnings
 
 
 class ReadWorker(QThread):
