@@ -9,7 +9,7 @@ from PySide6.QtGui import QColor, QDrag, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QApplication, QAbstractItemView, QFileDialog, QHeaderView, QLabel, QMainWindow,
     QMessageBox, QPushButton, QSplitter, QTableWidget, QTableWidgetItem,
-    QVBoxLayout, QWidget, QHBoxLayout, QSpinBox,
+    QVBoxLayout, QWidget, QHBoxLayout, QSpinBox, QDialog,
 )
 
 from core import Track, append_unique, expand_inputs, move_rows, parse_dropped_text
