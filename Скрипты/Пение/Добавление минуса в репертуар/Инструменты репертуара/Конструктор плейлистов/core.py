@@ -415,3 +415,22 @@ def eligible_for_restaurant(track: Track, preset: dict) -> bool:
 
 def filtered_restaurant_catalog(tracks: list[Track], preset: dict) -> list[Track]:
     return unique_songs([song for song in tracks if eligible_for_restaurant(song, preset)])
+
+PRESETS_FILE = Path(__file__).with_name("restaurant_presets.json")
+
+def load_restaurant_presets(path: Path = PRESETS_FILE) -> dict:
+    if not path.exists():
+        return {}
+    data = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(data, dict):
+        raise ValueError("Неверный формат пресетов")
+    return data
+
+def save_restaurant_presets(presets: dict, path: Path = PRESETS_FILE) -> None:
+    """Save editable local presets; MP3 files are never modified."""
+    if not isinstance(presets, dict):
+        raise ValueError("Неверный формат пресетов")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_suffix(".tmp")
+    temporary.write_text(json.dumps(presets, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    temporary.replace(path)
