@@ -50,13 +50,16 @@ class TrackTable(QTableWidget):
     selectionChanged = Signal()
 
     HEADERS = ("№", "Исполнитель", "Песня / версия", "Сложность", "Язык", "Энергия", "Рейтинг", "BPM")
+    PLAYLIST_HEADERS = ("№", "Сложность · Песня", "Исполнитель")
+    DIFFICULTY_SIGNS = {"сл-1": "🠒", "сл-2": "⇉", "сл-3": "⇶", "сл-4": "^"}
 
     def __init__(self, name: str, owner):
-        super().__init__(0, len(self.HEADERS), owner)
+        headers = self.PLAYLIST_HEADERS if name == "current" else self.HEADERS
+        super().__init__(0, len(headers), owner)
         self.name = name
         self.owner = owner
         self.tracks: list[Track] = []
-        self.setHorizontalHeaderLabels(self.HEADERS)
+        self.setHorizontalHeaderLabels(headers)
         self.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
         self.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
@@ -70,7 +73,7 @@ class TrackTable(QTableWidget):
         self.setDefaultDropAction(Qt.DropAction.CopyAction)
         self.setMouseTracking(True)
         self.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
-        self.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
+        self.horizontalHeader().setSectionResizeMode(1 if name == "current" else 2, QHeaderView.ResizeMode.Stretch)
         self.verticalHeader().setVisible(False)
         self.itemSelectionChanged.connect(self.selectionChanged)
 
@@ -85,19 +88,23 @@ class TrackTable(QTableWidget):
         wanted = {str(path).casefold() for path in selected_paths}
         self.setRowCount(len(self.tracks))
         for row, track in enumerate(self.tracks):
-            values = (str(row + 1), track.artist, track.title, track.difficulty,
-                      track.language, track.energy, track.rating, track.bpm)
+            sign = next((symbol for key, symbol in self.DIFFICULTY_SIGNS.items()
+                         if key in track.difficulty), "")
+            values = ((str(row + 1), f"{sign}{track.title}" if sign else track.title, track.artist)
+                      if self.name == "current" else
+                      (str(row + 1), track.artist, track.title, track.difficulty,
+                       track.language, track.energy, track.rating, track.bpm))
             for col, value in enumerate(values):
                 item = QTableWidgetItem(value)
                 item.setFlags(Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled)
-                if col in (0, 3, 6, 7):
+                if col == 0 or (self.name != "current" and col in (3, 6, 7)):
                     item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
                 item.setToolTip(
                     str(track.path) + "\nСтатус: " + track.status +
                     "\nРоль в блоке: " + track.role +
                     ("\n" + track.error if track.error else "")
                 )
-                if track.difficulty.startswith("сл-4"):
+                if track.difficulty.startswith("сл-4") and (self.name != "current" or col == 1):
                     item.setForeground(QColor("#ffad9f"))
                 self.setItem(row, col, item)
             self.setRowHeight(row, 30)
