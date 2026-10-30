@@ -7,5 +7,15 @@
     "exclude_directories": [
       "- - Добавляю в репертуар"
     ]
+  },
+  "blocks": {
+    "default_count": 4,
+    "min_count": 3,
+    "max_count": 6,
+    "target_minutes": 25,
+    "min_target_minutes": 10,
+    "max_target_minutes": 60,
+    "reserve_per_block": 2,
+    "divider_folder": "deviders"
   }
 }
