@@ -153,15 +153,15 @@ class SetlistCoreTests(unittest.TestCase):
         from mutagen.id3 import ID3
         tags = ID3(self.a)
         tags.delall("TIT1")
-        tags.add(TIT1(encoding=3, text=["Я-рус; а-Унив; V-burito-mama"]))
+        tags.add(TIT1(encoding=3, text=["Я-рус; а-Унив; в-мамабурито"]))
         tags.save(self.a)
-        self.assertEqual(read_track(self.a).work_id, "V-burito-mama")
+        self.assertEqual(read_track(self.a).work_id, "в-мамабурито")
 
     def test_shared_work_id_blocks_cover_even_from_other_artist(self):
         from dataclasses import replace
-        original = replace(read_track(self.a), work_id="V-burito-mama", status="г-1-База")
+        original = replace(read_track(self.a), work_id="в-мамабурито", status="г-1-База")
         cover = replace(read_track(self.c), artist="Кавер-группа",
-                        clean_title="Мама (ремикс)", work_id="V-burito-mama",
+                        clean_title="Мама (ремикс)", work_id="в-мамабурито",
                         status="г-2-Рабочие")
         self.assertEqual(song_key(original), song_key(cover))
         self.assertEqual(unique_songs([original, cover]), [original])
