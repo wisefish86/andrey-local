@@ -398,3 +398,20 @@ def replacement_candidates(current: list[Track], selected_index: int,
             t.title.casefold(),
         )
     return sorted(eligible, key=lambda t: (-score(t)[0], -score(t)[1], -score(t)[2], score(t)[3]))
+
+def eligible_for_restaurant(track: Track, preset: dict) -> bool:
+    """Hard exclusions precede every selection or replacement."""
+    if not track.status.startswith(("г-1-", "г-2-", "г-3-")):
+        return False
+    banned = {str(v).casefold() for v in preset.get("exclude_tags", [])}
+    required = {str(v).casefold() for v in preset.get("include_tags", [])}
+    tags = {v.casefold() for v in track.tags}
+    if banned & tags:
+        return False
+    if required and not (required & tags):
+        return False
+    return True
+
+
+def filtered_restaurant_catalog(tracks: list[Track], preset: dict) -> list[Track]:
+    return unique_songs([song for song in tracks if eligible_for_restaurant(song, preset)])
