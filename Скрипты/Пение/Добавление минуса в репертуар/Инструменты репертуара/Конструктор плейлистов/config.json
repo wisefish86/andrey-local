@@ -1,7 +1,7 @@
 {
   "library": {
     "path": "D:\\YandexDisk\\Проекты\\Пение\\Минусы\\1. Основной репертуар",
-    "filename_contains": "_____",
+    "filename_contains": "֎",
     "recursive": true,
     "auto_load": true,
     "exclude_directories": [
