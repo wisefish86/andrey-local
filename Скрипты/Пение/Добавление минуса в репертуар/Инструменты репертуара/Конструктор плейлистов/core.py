@@ -436,3 +436,35 @@ def save_restaurant_presets(presets: dict, path: Path = PRESETS_FILE) -> None:
     temporary = path.with_suffix(".tmp")
     temporary.write_text(json.dumps(presets, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     temporary.replace(path)
+
+def link_versions(paths: list[Path], code: str, backup_dir: Path) -> int:
+    """Apply one shared Cyrillic work tag, preserving other TIT1 groups with backups."""
+    import re
+    import shutil
+    from mutagen.id3 import ID3, TIT1
+    code = code.strip()
+    if not re.fullmatch(r"в-[а-яё0-9]+", code):
+        raise ValueError("Нужен тег вида в-мамабурито: кириллица, без пробелов")
+    files = list(dict.fromkeys(Path(p).resolve() for p in paths))
+    if len(files) < 2:
+        raise ValueError("Для связывания выбери не менее двух MP3")
+    if any(not p.is_file() or p.suffix.casefold() != ".mp3" for p in files):
+        raise ValueError("Каждый выбранный файл должен быть существующим MP3")
+    planned = []
+    for path in files:
+        tags = ID3(path)
+        values = [part for text in read_text(tags, "TIT1") for part in split_multi(text)]
+        existing = [value for value in values if value.casefold().startswith("в-")]
+        if any(value.casefold() != code.casefold() for value in existing):
+            raise ValueError(f"Конфликт группы произведения: {path.name} — {existing}")
+        cleaned = [value for value in values if not value.casefold().startswith("в-")]
+        planned.append((path, tags, cleaned + [code]))
+    backup_dir = Path(backup_dir)
+    backup_dir.mkdir(parents=True, exist_ok=True)
+    for index, (path, _, _) in enumerate(planned):
+        shutil.copy2(path, backup_dir / f"{index + 1:03d}_{path.name}")
+    for path, tags, values in planned:
+        tags.delall("TIT1")
+        tags.add(TIT1(encoding=3, text=["; ".join(values)]))
+        tags.save(path)
+    return len(planned)
