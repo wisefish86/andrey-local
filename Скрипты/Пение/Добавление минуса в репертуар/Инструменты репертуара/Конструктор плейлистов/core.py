@@ -406,6 +406,8 @@ def eligible_for_restaurant(track: Track, preset: dict) -> bool:
     banned = {str(v).casefold() for v in preset.get("exclude_tags", [])}
     required = {str(v).casefold() for v in preset.get("include_tags", [])}
     tags = {v.casefold() for v in track.tags}
+    tags.update(v.strip().casefold() for v in track.status.split(";") if v.strip())
+    tags.update(v.casefold() for v in (track.role, track.difficulty, track.energy, track.work_id) if v)
     if banned & tags:
         return False
     if required and not (required & tags):
