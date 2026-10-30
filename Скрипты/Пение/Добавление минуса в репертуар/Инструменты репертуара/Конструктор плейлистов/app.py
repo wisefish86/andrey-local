@@ -4,7 +4,7 @@ from __future__ import annotations
 from pathlib import Path
 import sys
 
-from PySide6.QtCore import QItemSelectionModel, QMimeData, Qt, QThread, QUrl, Signal
+from PySide6.QtCore import QItemSelectionModel, QMimeData, Qt, QThread, QUrl, Signal, QTimer
 from PySide6.QtGui import QColor, QDrag, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QApplication, QAbstractItemView, QFileDialog, QHeaderView, QLabel, QMainWindow,
@@ -86,7 +86,7 @@ class TrackTable(QTableWidget):
     def set_tracks(self, tracks: list[Track], selected_paths=()):
         self.tracks = list(tracks)
         if self.name == "current" and hasattr(self.owner, "block_plan"):
-            self.owner.block_plan = None
+            self.owner.invalidate_plan()
         wanted = {str(path).casefold() for path in selected_paths}
         self.setRowCount(len(self.tracks))
         for row, track in enumerate(self.tracks):
@@ -566,6 +566,9 @@ class MainWindow(QMainWindow):
 
     def invalidate_plan(self, *_):
         self.block_plan = None
+        if hasattr(self, "block_area"):
+            self.block_area.hide()
+            self.current.show()
 
     def generate_blocks(self):
         if self.block_plan is not None:
@@ -654,7 +657,7 @@ class MainWindow(QMainWindow):
         insert = max(0, min(insert, len(destination)))
         destination[insert:insert] = moving
         self.current.tracks = [song for main, reserve in self.block_plan for song in main]
-        self.render_block_editor()
+        QTimer.singleShot(0, self.render_block_editor)
         event.setDropAction(Qt.DropAction.CopyAction)
         event.accept()
         self.statusBar().showMessage("Перенесено в блок; длительность пересчитана.", 5000)
