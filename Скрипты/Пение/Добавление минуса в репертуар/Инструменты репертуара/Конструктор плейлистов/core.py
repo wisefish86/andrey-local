@@ -66,6 +66,7 @@ class Track:
     bpm: str
     tags: tuple[str, ...]
     error: str = ""
+    canonical_name_present: bool = True
 
     @property
     def identity(self) -> str:
@@ -116,6 +117,7 @@ def read_track(path: Path) -> Track:
         rating=fields.get("rating") or "",
         bpm=fields.get("bpm") or "",
         tags=tags, error=problem,
+        canonical_name_present=bool(fields.get("clean_title")),
     )
 
 
@@ -338,8 +340,8 @@ def song_key(track: Track) -> tuple[str, str]:
     from unicodedata import normalize
     def norm(value: str) -> str:
         return " ".join(normalize("NFKC", value).casefold().split())
-    # The existing read_track falls back to TIT2 when MVNM is empty; avoid
-    # conflating that fallback by using the exact file path for untagged cases.
+    if not track.canonical_name_present:
+        return "__path__", norm(str(track.path))
     return norm(track.artist), norm(track.clean_title)
 
 
