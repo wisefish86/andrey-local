@@ -85,6 +85,8 @@ class TrackTable(QTableWidget):
 
     def set_tracks(self, tracks: list[Track], selected_paths=()):
         self.tracks = list(tracks)
+        if self.name == "current" and hasattr(self.owner, "block_plan"):
+            self.owner.block_plan = None
         wanted = {str(path).casefold() for path in selected_paths}
         self.setRowCount(len(self.tracks))
         for row, track in enumerate(self.tracks):
