@@ -6,6 +6,7 @@ The only saved output is a playlist file explicitly chosen by the user.
 from __future__ import annotations
 
 from dataclasses import dataclass
+import json
 from pathlib import Path
 import sys
 
@@ -19,6 +20,36 @@ from id3_io import load_tags, read_text, read_txxx, read_rating, split_multi
 SUPPORTED = {".mp3"}
 PLAYLISTS = {".m3u", ".m3u8"}
 
+
+
+CONFIG_FILE = Path(__file__).with_name("config.json")
+
+def load_config(path: Path = CONFIG_FILE) -> dict:
+    with Path(path).open(encoding="utf-8") as stream:
+        config = json.load(stream)
+    if not isinstance(config, dict) or not isinstance(config.get("library"), dict):
+        raise ValueError("Некорректный config.json: отсутствует раздел library")
+    return config
+
+def scan_library(config: dict) -> list[Path]:
+    """Find matching MP3 files without modifying the library."""
+    settings = config["library"]
+    root = Path(settings["path"])
+    if not root.is_dir():
+        raise FileNotFoundError(f"Папка репертуара не найдена: {root}")
+    token = settings.get("filename_contains", "_____")
+    if not isinstance(token, str) or not token:
+        raise ValueError("library.filename_contains должен быть непустой строкой")
+    recursive = bool(settings.get("recursive", True))
+    skip = {str(x).casefold() for x in settings.get("exclude_directories", [])}
+    paths = root.rglob("*") if recursive else root.iterdir()
+    result = [
+        p for p in paths
+        if p.is_file() and p.suffix.casefold() == ".mp3"
+        and token.casefold() in p.name.casefold()
+        and not any(part.casefold() in skip for part in p.relative_to(root).parts[:-1])
+    ]
+    return sorted(result, key=lambda p: str(p).casefold())
 
 @dataclass(frozen=True)
 class Track:
