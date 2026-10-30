@@ -471,6 +471,18 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage("Чтение тегов…")
 
     def finish_import(self, destination: str, tracks: list[Track], warnings: list[str]):
+        if destination.startswith(("block:", "reserve:")) and self.block_plan is not None:
+            kind, index = destination.split(":")
+            target = self.block_plan[int(index)][0 if kind == "block" else 1]
+            from core import song_key
+            used = {song_key(t) for main, reserve in self.block_plan for t in main + reserve}
+            for track in tracks:
+                if song_key(track) not in used:
+                    target.append(track)
+                    used.add(song_key(track))
+            self.current.tracks = [song for main, reserve in self.block_plan for song in main]
+            self.render_block_editor()
+            return
         table = {"current": self.current, "history": self.history, "catalog": self.catalog}[destination]
         if destination == "catalog":
             self.catalog_all = tracks
@@ -556,6 +568,11 @@ class MainWindow(QMainWindow):
         self.block_plan = None
 
     def generate_blocks(self):
+        if self.block_plan is not None:
+            response = QMessageBox.question(self, "Пересоздать блоки?",
+                "Блоки уже редактировались. Пересоздание изменит их распределение и резервы. Продолжить?")
+            if response != QMessageBox.StandardButton.Yes:
+                return
         if not self.current.tracks:
             QMessageBox.information(self, "Блоки", "Сначала добавь песни в текущий плейлист.")
             return
@@ -636,6 +653,7 @@ class MainWindow(QMainWindow):
             insert -= sum(i < insert for i in source.selected_rows())
         insert = max(0, min(insert, len(destination)))
         destination[insert:insert] = moving
+        self.current.tracks = [song for main, reserve in self.block_plan for song in main]
         self.render_block_editor()
         event.setDropAction(Qt.DropAction.CopyAction)
         event.accept()
