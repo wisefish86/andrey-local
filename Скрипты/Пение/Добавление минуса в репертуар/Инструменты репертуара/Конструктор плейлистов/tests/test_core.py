@@ -5,7 +5,8 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from core import (read_track, append_unique, save_playlist, read_playlist, move_rows,
-                  replace_rows, repeated_from_history, expand_inputs, parse_dropped_text, scan_library, load_config, divider_path, export_block_playlist, distribute_blocks)
+                  replace_rows, repeated_from_history, expand_inputs, parse_dropped_text, scan_library, load_config, divider_path, export_block_playlist, distribute_blocks,
+                  song_key, unique_songs, add_unique_songs, replacement_candidates)
 from mutagen.id3 import ID3, TPE1, TIT2, MVNM, TMOO, TCON, TIT1, TPE2, TXXX, TBPM
 
 
@@ -127,6 +128,26 @@ class SetlistCoreTests(unittest.TestCase):
         self.assertEqual(out.read_bytes()[:3], bytes([0xEF, 0xBB, 0xBF]))
         self.assertEqual(self.a.read_bytes(), songs[0].path.read_bytes())
         self.assertEqual(len(distribute_blocks(songs, 3, 25)), 3)
+
+    def test_versions_collapse_but_different_artists_do_not(self):
+        from dataclasses import replace
+        a, b, c = (read_track(p) for p in (self.a, self.b, self.c))
+        self.assertEqual(song_key(a), song_key(b))
+        self.assertEqual(len(unique_songs([a, b, c])), 2)
+        self.assertEqual(add_unique_songs([a], [b, c]), [a, c])
+        another = replace(a, artist="Другой исполнитель")
+        self.assertNotEqual(song_key(a), song_key(another))
+
+    def test_replacements_skip_existing_songs_and_rejected(self):
+        from dataclasses import replace
+        a, b, c = (read_track(p) for p in (self.a, self.b, self.c))
+        a = replace(a, status="г-1-База")
+        b = replace(b, status="г-2-Рабочие")
+        c = replace(c, status="г-3-Тестирую")
+        found = replacement_candidates([a], 0, [a, b, c])
+        self.assertEqual(found, [c])
+        self.assertEqual(replacement_candidates([a], 0, [a, b, c],
+                         {str(c.path).casefold()}), [])
 
     def test_no_inadvertent_source_deletion_or_overwrite(self):
         a=read_track(self.a)
