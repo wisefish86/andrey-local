@@ -9,11 +9,11 @@ from PySide6.QtGui import QColor, QDrag, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QApplication, QAbstractItemView, QFileDialog, QHeaderView, QLabel, QMainWindow,
     QMessageBox, QPushButton, QSplitter, QTableWidget, QTableWidgetItem,
-    QVBoxLayout, QWidget, QHBoxLayout, QSpinBox, QDialog,
+    QVBoxLayout, QWidget, QHBoxLayout, QSpinBox, QDialog, QComboBox, QLineEdit, QPlainTextEdit, QFormLayout,
 )
 
 from core import Track, append_unique, expand_inputs, move_rows, parse_dropped_text
-from core import read_track, repeated_from_history, replace_rows, save_playlist, load_config, scan_library, distribute_blocks, export_block_playlist, block_duration, vocal_warnings, unique_songs, add_unique_songs, replacement_candidates
+from core import read_track, repeated_from_history, replace_rows, save_playlist, load_config, scan_library, distribute_blocks, export_block_playlist, block_duration, vocal_warnings, unique_songs, add_unique_songs, replacement_candidates, filtered_restaurant_catalog, load_restaurant_presets, save_restaurant_presets
 
 
 class ReadWorker(QThread):
@@ -201,6 +201,8 @@ class MainWindow(QMainWindow):
         self.worker = None
         self.block_plan = None
         self.replacement_history = {}
+        self.catalog_all = []
+        self.presets = load_restaurant_presets()
         self.setStyleSheet("""
             QMainWindow, QWidget { background:#111922; color:#e6edf5; font-size:12px; }
             QTableWidget { background:#172333; alternate-background-color:#1b2938;
@@ -228,6 +230,17 @@ class MainWindow(QMainWindow):
         self.current = self.make_panel(splitter, "Текущий плейлист", "current")
         self.history = self.make_panel(splitter, "История прошлого выступления", "history")
         splitter.setSizes([450, 550, 350])
+        venue_controls = QHBoxLayout()
+        outer.addLayout(venue_controls)
+        venue_controls.addWidget(QLabel("Пресет ресторана:"))
+        self.venue = QComboBox()
+        self.venue.currentTextChanged.connect(self.apply_restaurant_preset)
+        venue_controls.addWidget(self.venue)
+        edit_venue = QPushButton("Настроить фильтры…")
+        edit_venue.clicked.connect(self.edit_restaurant_preset)
+        venue_controls.addWidget(edit_venue)
+        venue_controls.addStretch(1)
+        self.reload_venue_names()
         options = load_config().get("blocks", {})
         controls = QHBoxLayout()
         outer.addLayout(controls)
@@ -313,6 +326,66 @@ class MainWindow(QMainWindow):
             message += "  ⚠ Выше ориентира 10–20%."
         self.summary.setText(message)
 
+    def reload_venue_names(self, selected=None):
+        chosen = selected or self.venue.currentText() or "Все песни"
+        self.venue.blockSignals(True)
+        self.venue.clear()
+        self.venue.addItems(["Все песни"] + sorted(self.presets))
+        self.venue.setCurrentText(chosen if chosen in self.presets or chosen == "Все песни" else "Все песни")
+        self.venue.blockSignals(False)
+        self.apply_restaurant_preset()
+
+    def apply_restaurant_preset(self, *_):
+        if not hasattr(self, "catalog"):
+            return
+        preset = self.presets.get(self.venue.currentText(), {})
+        self.catalog.set_tracks(filtered_restaurant_catalog(self.catalog_all, preset))
+
+    def edit_restaurant_preset(self):
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Пресет ресторана")
+        dialog.resize(510, 430)
+        layout = QVBoxLayout(dialog)
+        form = QFormLayout()
+        layout.addLayout(form)
+        name = QLineEdit(dialog)
+        current = self.venue.currentText()
+        name.setText("" if current == "Все песни" else current)
+        form.addRow("Ресторан / название пресета:", name)
+        existing = self.presets.get(current, {})
+        included = QPlainTextEdit(dialog)
+        included.setPlainText("\\n".join(existing.get("include_tags", [])))
+        excluded = QPlainTextEdit(dialog)
+        excluded.setPlainText("\\n".join(existing.get("exclude_tags", [])))
+        form.addRow("Допустить по тегам (один на строку):", included)
+        form.addRow("Исключить по тегам (один на строку):", excluded)
+        explanation = QLabel("Пустое поле «Допустить» — без дополнительных ограничений. "
+                             "Если оно заполнено, подходит песня с любым из перечисленных тегов. "
+                             "Исключения всегда имеют приоритет.")
+        explanation.setWordWrap(True)
+        layout.addWidget(explanation)
+        save = QPushButton("Сохранить пресет")
+        layout.addWidget(save)
+        def commit():
+            title = name.text().strip()
+            if not title or title == "Все песни":
+                QMessageBox.warning(dialog, "Пресет", "Укажи уникальное название ресторана.")
+                return
+            def lines(widget):
+                return list(dict.fromkeys(x.strip() for x in widget.toPlainText().splitlines() if x.strip()))
+            if current not in ("Все песни", title) and current in self.presets:
+                QMessageBox.information(dialog, "Пресет", "Создан новый пресет; прежний сохранён.")
+            self.presets[title] = {"include_tags": lines(included), "exclude_tags": lines(excluded)}
+            try:
+                save_restaurant_presets(self.presets)
+            except OSError as exc:
+                QMessageBox.warning(dialog, "Ошибка сохранения", str(exc))
+                return
+            self.reload_venue_names(title)
+            dialog.accept()
+        save.clicked.connect(commit)
+        dialog.exec()
+
     def reload_catalog(self):
         if self.worker and self.worker.isRunning():
             self.statusBar().showMessage("Сканирование уже выполняется.", 5000)
@@ -351,7 +424,8 @@ class MainWindow(QMainWindow):
     def finish_import(self, destination: str, tracks: list[Track], warnings: list[str]):
         table = {"current": self.current, "history": self.history, "catalog": self.catalog}[destination]
         if destination == "catalog":
-            table.set_tracks(unique_songs(tracks))
+            self.catalog_all = tracks
+            self.apply_restaurant_preset()
         else:
             combine = add_unique_songs if destination == "current" else append_unique
             table.set_tracks(combine(table.tracks, tracks), (t.path for t in tracks))
