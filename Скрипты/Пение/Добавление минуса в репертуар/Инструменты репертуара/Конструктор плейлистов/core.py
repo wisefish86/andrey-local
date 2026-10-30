@@ -241,3 +241,39 @@ def save_playlist(path: Path, tracks: list[Track]) -> None:
         lines.extend((f"#EXTINF:-1,{display}", str(track.path)))
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text("\n".join(lines) + "\n", encoding="utf-8-sig")
+
+
+def divider_path(number: int, reserve: bool = False, folder: Path | None = None) -> Path:
+    """Resolve one of the shipped divider MP3 files without guessing its glyphs."""
+    if not 1 <= number <= 6:
+        raise ValueError("Номер блока должен быть от 1 до 6")
+    folder = Path(folder) if folder is not None else Path(__file__).with_name("deviders")
+    marker = "(запас.)" if reserve else "блок"
+    matches = [p for p in folder.glob("*.mp3")
+               if p.name.find(f"{number} {marker}") >= 0]
+    if len(matches) != 1:
+        raise FileNotFoundError(f"Не найден единственный разделитель: {number} {marker}")
+    return matches[0].resolve()
+
+
+def export_block_playlist(path: Path, blocks: list[tuple[list[Track], list[Track]]],
+                          folder: Path | None = None) -> None:
+    """Export original divider MP3 references and ordered main/reserve tracks."""
+    if not 3 <= len(blocks) <= 6:
+        raise ValueError("Количество блоков должно быть от 3 до 6")
+    entries: list[tuple[str, Path]] = []
+    for n, (main, reserve) in enumerate(blocks, start=1):
+        entries.append((f"{n} блок", divider_path(n, False, folder)))
+        entries.extend((f"{song.artist} - {song.title}", song.path) for song in main)
+        entries.append((f"{n} (запас.)", divider_path(n, True, folder)))
+        entries.extend((f"{song.artist} - {song.title}", song.path) for song in reserve)
+    if not any(main for main, _ in blocks):
+        raise ValueError("Нет песен для экспорта")
+    lines = ["#EXTM3U"]
+    for title, target in entries:
+        lines.extend((f"#EXTINF:-1,{title}", str(target)))
+    out = Path(path)
+    if out.suffix.casefold() not in PLAYLISTS:
+        raise ValueError("Нужен .m3u или .m3u8")
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text("\n".join(lines) + "\n", encoding="utf-8-sig")
