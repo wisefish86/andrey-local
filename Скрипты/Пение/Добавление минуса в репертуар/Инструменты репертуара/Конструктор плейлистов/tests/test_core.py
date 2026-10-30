@@ -7,7 +7,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from core import (read_track, append_unique, save_playlist, read_playlist, move_rows,
                   replace_rows, repeated_from_history, expand_inputs, parse_dropped_text, scan_library, load_config, divider_path, export_block_playlist, distribute_blocks,
                   song_key, unique_songs, add_unique_songs, replacement_candidates,
-                  eligible_for_restaurant, filtered_restaurant_catalog)
+                  eligible_for_restaurant, filtered_restaurant_catalog, link_versions)
 from mutagen.id3 import ID3, TPE1, TIT2, MVNM, TMOO, TCON, TIT1, TPE2, TXXX, TBPM
 
 
@@ -176,6 +176,23 @@ class SetlistCoreTests(unittest.TestCase):
         preset = {"exclude_tags": ["и-ГБ"], "include_tags": []}
         self.assertFalse(eligible_for_restaurant(a, preset))
         self.assertEqual(filtered_restaurant_catalog([a, b], preset), [b])
+
+    def test_link_versions_preserves_tags_and_backs_up(self):
+        from mutagen.id3 import ID3, TIT1
+        for path in (self.a, self.b):
+            tags = ID3(path)
+            tags.add(TIT1(encoding=3, text=["а-Универсальная; Я-рус"]))
+            tags.save(path)
+        backups = self.root / "backups"
+        count = link_versions([self.a, self.b], "в-мамабурито", backups)
+        self.assertEqual(count, 2)
+        for path in (self.a, self.b):
+            self.assertEqual(read_track(path).work_id, "в-мамабурито")
+            self.assertIn("а-Универсальная", read_track(path).tags)
+        self.assertEqual(len(list(backups.glob("*.mp3"))), 2)
+        with self.assertRaises(ValueError):
+            link_versions([self.a, self.c], "в-другаяпесня", self.root / "no_backup")
+        self.assertFalse((self.root / "no_backup").exists())
 
     def test_no_inadvertent_source_deletion_or_overwrite(self):
         a=read_track(self.a)
