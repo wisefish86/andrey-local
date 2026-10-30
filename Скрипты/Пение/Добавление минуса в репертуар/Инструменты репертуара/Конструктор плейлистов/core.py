@@ -67,6 +67,7 @@ class Track:
     tags: tuple[str, ...]
     error: str = ""
     canonical_name_present: bool = True
+    work_id: str = ""
 
     @property
     def identity(self) -> str:
@@ -102,6 +103,7 @@ def read_track(path: Path) -> Track:
             "status": "; ".join(read_txxx(id3, "TXXX:OCCASION")),
             "rating": read_rating(id3),
             "bpm": first("TBPM"),
+            "work_id": with_prefix("V-"),
         }
     except Exception as exc:
         problem = f"Не удалось прочитать ID3: {exc}"
@@ -118,6 +120,7 @@ def read_track(path: Path) -> Track:
         bpm=fields.get("bpm") or "",
         tags=tags, error=problem,
         canonical_name_present=bool(fields.get("clean_title")),
+        work_id=fields.get("work_id", ""),
     )
 
 
@@ -340,6 +343,9 @@ def song_key(track: Track) -> tuple[str, str]:
     from unicodedata import normalize
     def norm(value: str) -> str:
         return " ".join(normalize("NFKC", value).casefold().split())
+    work = norm(track.work_id)
+    if work.startswith("v-") and len(work) > 2:
+        return "__work__", work[2:]
     if not track.canonical_name_present:
         return "__path__", norm(str(track.path))
     return norm(track.artist), norm(track.clean_title)
