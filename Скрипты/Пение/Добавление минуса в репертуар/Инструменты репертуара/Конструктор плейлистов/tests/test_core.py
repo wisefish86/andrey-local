@@ -149,6 +149,14 @@ class SetlistCoreTests(unittest.TestCase):
         self.assertEqual(replacement_candidates([a], 0, [a, b, c],
                          {str(c.path).casefold()}), [])
 
+    def test_shared_work_id_is_read_from_tit1(self):
+        from mutagen.id3 import ID3
+        tags = ID3(self.a)
+        tags.delall("TIT1")
+        tags.add(TIT1(encoding=3, text=["Я-рус; а-Унив; V-burito-mama"]))
+        tags.save(self.a)
+        self.assertEqual(read_track(self.a).work_id, "V-burito-mama")
+
     def test_shared_work_id_blocks_cover_even_from_other_artist(self):
         from dataclasses import replace
         original = replace(read_track(self.a), work_id="V-burito-mama", status="г-1-База")
