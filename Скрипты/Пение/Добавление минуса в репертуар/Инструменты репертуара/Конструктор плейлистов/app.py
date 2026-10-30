@@ -13,7 +13,7 @@ from PySide6.QtWidgets import (
 )
 
 from core import Track, append_unique, expand_inputs, move_rows, parse_dropped_text
-from core import read_track, repeated_from_history, replace_rows, save_playlist, load_config, scan_library, distribute_blocks, export_block_playlist, block_duration, vocal_warnings, unique_songs, add_unique_songs, replacement_candidates, filtered_restaurant_catalog, load_restaurant_presets, save_restaurant_presets
+from core import read_track, repeated_from_history, replace_rows, save_playlist, load_config, scan_library, distribute_blocks, export_block_playlist, block_duration, vocal_warnings, unique_songs, add_unique_songs, replacement_candidates, filtered_restaurant_catalog, load_restaurant_presets, save_restaurant_presets, link_versions
 
 
 class ReadWorker(QThread):
@@ -304,6 +304,7 @@ class MainWindow(QMainWindow):
             layout.insertWidget(1, self.catalog_search)
             button("↻ Обновить", self.reload_catalog)
             button("→ В плейлист", self.add_catalog_selection)
+            button("Связать версии…", self.link_selected_versions)
         else:
             button("+ MP3/M3U8", lambda n=name: self.pick_files(n))
             button("Убрать", lambda t=table: self.remove_selected(t))
@@ -408,6 +409,31 @@ class MainWindow(QMainWindow):
         self.worker.finished.connect(self.finish_worker)
         self.worker.start()
         self.statusBar().showMessage("Сканирование основного репертуара…")
+
+    def link_selected_versions(self):
+        paths, _ = QFileDialog.getOpenFileNames(
+            self, "Выбери все версии одного произведения (2 или больше)",
+            str(Path(load_config()["library"]["path"])), "Минусовки (*.mp3)")
+        if len(paths) < 2:
+            return
+        code, ok = __import__("PySide6.QtWidgets", fromlist=["QInputDialog"]).QInputDialog.getText(
+            self, "Общий тег произведения", "Тег для всех выбранных файлов (например, в-мамабурито):")
+        if not ok:
+            return
+        answer = QMessageBox.question(self, "Подтвердить запись ID3",
+            f"Записать общий тег {code} в {len(paths)} MP3?\\n"
+            "Перед изменением каждого файла будут созданы полные резервные копии.")
+        if answer != QMessageBox.StandardButton.Yes:
+            return
+        from datetime import datetime
+        backup = Path(__file__).with_name("data") / "version_backups" / datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+        try:
+            count = link_versions([Path(p) for p in paths], code, backup)
+        except (OSError, ValueError, Exception) as exc:
+            QMessageBox.critical(self, "Не удалось связать версии", str(exc))
+            return
+        self.statusBar().showMessage(f"Связано файлов: {count}. Резервные копии: {backup}", 14000)
+        self.reload_catalog()
 
     def add_catalog_selection(self):
         chosen = self.catalog.selected_tracks()
