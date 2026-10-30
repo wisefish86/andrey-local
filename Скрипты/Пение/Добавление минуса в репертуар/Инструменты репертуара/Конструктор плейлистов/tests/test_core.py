@@ -171,9 +171,9 @@ class SetlistCoreTests(unittest.TestCase):
 
     def test_venue_exclusion_filter(self):
         from dataclasses import replace
-        a = replace(read_track(self.a), status="г-1-База", tags=("и-GB",))
+        a = replace(read_track(self.a), status="г-1-База", tags=("и-ГБ",))
         b = replace(read_track(self.c), status="г-2-Рабочие", tags=("а-Унив",))
-        preset = {"exclude_tags": ["и-GB"], "include_tags": []}
+        preset = {"exclude_tags": ["и-ГБ"], "include_tags": []}
         self.assertFalse(eligible_for_restaurant(a, preset))
         self.assertEqual(filtered_restaurant_catalog([a, b], preset), [b])
 
