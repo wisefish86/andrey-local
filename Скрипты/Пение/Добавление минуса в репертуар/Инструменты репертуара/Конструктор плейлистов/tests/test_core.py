@@ -5,7 +5,7 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from core import (read_track, append_unique, save_playlist, read_playlist, move_rows,
-                  replace_rows, repeated_from_history, expand_inputs, parse_dropped_text)
+                  replace_rows, repeated_from_history, expand_inputs, parse_dropped_text, scan_library, load_config)
 from mutagen.id3 import ID3, TPE1, TIT2, MVNM, TMOO, TCON, TIT1, TPE2, TXXX, TBPM
 
 
@@ -86,6 +86,28 @@ class SetlistCoreTests(unittest.TestCase):
         self.assertEqual(paths, [self.a.resolve(), self.c.resolve()])
         self.assertEqual(warnings, [])
         self.assertEqual(parse_dropped_text(f'"{self.a}"\n"{self.c}"'), [self.a.resolve(), self.c.resolve()])
+
+    def test_catalog_scan_is_recursive_filtered_and_read_only(self):
+        library = self.root / "Основной репертуар"
+        folder = library / "Исполнитель"
+        folder.mkdir(parents=True)
+        included = folder / "Песня _____ Артист.mp3"
+        included.write_bytes(b"test")
+        (folder / "Песня без маркера.mp3").write_bytes(b"test")
+        (folder / "Песня _____ Артист.wav").write_bytes(b"test")
+        staging = library / "- - Добавляю в репертуар"
+        staging.mkdir()
+        (staging / "Черновик _____ Артист.mp3").write_bytes(b"test")
+        config = {"library": {"path": str(library), "filename_contains": "_____",
+                  "recursive": True, "exclude_directories": ["- - Добавляю в репертуар"]}}
+        self.assertEqual(scan_library(config), [included])
+        self.assertEqual(included.read_bytes(), b"test")
+        config["library"]["recursive"] = False
+        self.assertEqual(scan_library(config), [])
+
+    def test_catalog_missing_path_is_explicit(self):
+        with self.assertRaises(FileNotFoundError):
+            scan_library({"library": {"path": str(self.root / "нет")}})
 
     def test_no_inadvertent_source_deletion_or_overwrite(self):
         a=read_track(self.a)
