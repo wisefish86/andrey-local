@@ -111,6 +111,9 @@ class TrackTable(QTableWidget):
         self.owner.refresh_summary()
 
     def dragEnterEvent(self, event):
+        if self.name == "catalog":
+            event.ignore()
+            return
         mime = event.mimeData()
         if isinstance(event.source(), TrackTable) or mime.hasUrls() or mime.hasText():
             event.setDropAction(Qt.DropAction.CopyAction)
@@ -120,6 +123,9 @@ class TrackTable(QTableWidget):
             event.ignore()
 
     def dragMoveEvent(self, event):
+        if self.name == "catalog":
+            event.ignore()
+            return
         if isinstance(event.source(), TrackTable) or event.mimeData().hasUrls() or event.mimeData().hasText():
             event.setDropAction(Qt.DropAction.CopyAction)
             event.accept()
@@ -127,6 +133,9 @@ class TrackTable(QTableWidget):
             event.ignore()
 
     def dropEvent(self, event):
+        if self.name == "catalog":
+            event.ignore()
+            return
         source = event.source()
         if isinstance(source, TrackTable):
             moving = source.selected_tracks()
