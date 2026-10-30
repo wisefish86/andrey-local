@@ -9,11 +9,11 @@ from PySide6.QtGui import QColor, QDrag, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QApplication, QAbstractItemView, QFileDialog, QHeaderView, QLabel, QMainWindow,
     QMessageBox, QPushButton, QSplitter, QTableWidget, QTableWidgetItem,
-    QVBoxLayout, QWidget, QHBoxLayout,
+    QVBoxLayout, QWidget, QHBoxLayout, QSpinBox,
 )
 
 from core import Track, append_unique, expand_inputs, move_rows, parse_dropped_text
-from core import read_track, repeated_from_history, replace_rows, save_playlist, load_config, scan_library
+from core import read_track, repeated_from_history, replace_rows, save_playlist, load_config, scan_library, distribute_blocks, export_block_playlist
 
 
 class ReadWorker(QThread):
@@ -197,6 +197,7 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Конструктор плейлистов · безопасный редактор")
         self.resize(1350, 780)
         self.worker = None
+        self.block_plan = None
         self.setStyleSheet("""
             QMainWindow, QWidget { background:#111922; color:#e6edf5; font-size:12px; }
             QTableWidget { background:#172333; alternate-background-color:#1b2938;
@@ -224,6 +225,31 @@ class MainWindow(QMainWindow):
         self.current = self.make_panel(splitter, "Текущий плейлист", "current")
         self.history = self.make_panel(splitter, "История прошлого выступления", "history")
         splitter.setSizes([450, 550, 350])
+        options = load_config().get("blocks", {})
+        controls = QHBoxLayout()
+        outer.addLayout(controls)
+        controls.addWidget(QLabel("Блоков:"))
+        self.block_count = QSpinBox()
+        self.block_count.setRange(3, 6)
+        self.block_count.setValue(options.get("default_count", 4))
+        controls.addWidget(self.block_count)
+        controls.addWidget(QLabel("Минут на блок:"))
+        self.block_minutes = QSpinBox()
+        self.block_minutes.setRange(10, 60)
+        self.block_minutes.setValue(options.get("target_minutes", 25))
+        controls.addWidget(self.block_minutes)
+        controls.addWidget(QLabel("Резервов на блок:"))
+        self.reserve_count = QSpinBox()
+        self.reserve_count.setRange(0, 5)
+        self.reserve_count.setValue(options.get("reserve_per_block", 2))
+        controls.addWidget(self.reserve_count)
+        generate = QPushButton("Сформировать блоки")
+        generate.clicked.connect(self.generate_blocks)
+        controls.addWidget(generate)
+        controls.addStretch(1)
+        self.block_count.valueChanged.connect(self.invalidate_plan)
+        self.block_minutes.valueChanged.connect(self.invalidate_plan)
+        self.reserve_count.valueChanged.connect(self.invalidate_plan)
         self.summary = QLabel("Перетащи файлы или используй «Добавить MP3/M3U8»")
         self.summary.setWordWrap(True)
         outer.addWidget(self.summary)
@@ -264,6 +290,7 @@ class MainWindow(QMainWindow):
             button("↑", lambda: self.shift_selected(table, -1))
             button("↓", lambda: self.shift_selected(table, 1))
             button("Заменить…", self.replace_selected)
+            button("Сохранить блоки M3U8", self.export_blocks)
         if name != "catalog":
             button("Сохранить M3U8", lambda t=table: self.export_list(t))
         splitter.addWidget(panel)
@@ -374,6 +401,53 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage(
             "Заменены только записи в списке. Оригинальные MP3 сохранены.", 7000
         )
+
+    def invalidate_plan(self, *_):
+        self.block_plan = None
+
+    def generate_blocks(self):
+        if not self.current.tracks:
+            QMessageBox.information(self, "Блоки", "Сначала добавь песни в текущий плейлист.")
+            return
+        count = self.block_count.value()
+        target = self.block_minutes.value()
+        groups = distribute_blocks(self.current.tracks, count, target)
+        used = {str(t.path).casefold() for t in self.current.tracks}
+        available = [
+            t for t in self.catalog.tracks
+            if str(t.path).casefold() not in used
+            and t.status.startswith(("г-1-", "г-2-", "г-3-"))
+            and t.difficulty.startswith(("сл-1", "сл-2"))
+        ]
+        result = []
+        for main, _ in groups:
+            chosen = available[:self.reserve_count.value()]
+            del available[:len(chosen)]
+            result.append((main, chosen))
+        self.block_plan = result
+        counts = ", ".join(f"{len(main)}+{len(reserve)}" for main, reserve in result)
+        self.statusBar().showMessage(f"Блоки (основные+резерв): {counts}", 15000)
+        QMessageBox.information(self, "Блоки подготовлены",
+            "Созданы блоки с разделителями. Числа основных и резервных песен: "
+            + counts + "\\n"
+            + "Порядок основных песен сохранён. Проверь состав перед экспортом.")
+
+    def export_blocks(self):
+        if self.block_plan is None:
+            self.generate_blocks()
+            if self.block_plan is None:
+                return
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Сохранить блоки с разделителями",
+            str(Path.home() / "Выступление.m3u8"), "M3U8 (*.m3u8)")
+        if not path:
+            return
+        try:
+            export_block_playlist(Path(path), self.block_plan)
+        except (OSError, ValueError) as exc:
+            QMessageBox.critical(self, "Ошибка экспорта", str(exc))
+            return
+        self.statusBar().showMessage(f"Блоки сохранены: {path}", 12000)
 
     def export_list(self, table: TrackTable):
         if not table.tracks:
