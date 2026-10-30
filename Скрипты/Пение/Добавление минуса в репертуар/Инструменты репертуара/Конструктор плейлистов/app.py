@@ -297,6 +297,11 @@ class MainWindow(QMainWindow):
             row.addWidget(b)
             return b
         if name == "catalog":
+            self.catalog_search = QLineEdit()
+            self.catalog_search.setPlaceholderText("Поиск по песне, исполнителю, версии или тегу…")
+            self.catalog_search.setClearButtonEnabled(True)
+            self.catalog_search.textChanged.connect(self.apply_restaurant_preset)
+            layout.insertWidget(1, self.catalog_search)
             button("↻ Обновить", self.reload_catalog)
             button("→ В плейлист", self.add_catalog_selection)
         else:
@@ -339,7 +344,15 @@ class MainWindow(QMainWindow):
         if not hasattr(self, "catalog"):
             return
         preset = self.presets.get(self.venue.currentText(), {})
-        self.catalog.set_tracks(filtered_restaurant_catalog(self.catalog_all, preset))
+        matches = filtered_restaurant_catalog(self.catalog_all, preset)
+        query = self.catalog_search.text().strip().casefold() if hasattr(self, "catalog_search") else ""
+        if query:
+            words = query.split()
+            matches = [t for t in matches if all(word in
+                       " ".join((t.title, t.clean_title, t.artist, t.work_id,
+                                 t.difficulty, t.role, t.energy, " ".join(t.tags))).casefold()
+                       for word in words)]
+        self.catalog.set_tracks(matches)
 
     def edit_restaurant_preset(self):
         dialog = QDialog(self)
