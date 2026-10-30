@@ -37,7 +37,7 @@ def scan_library(config: dict) -> list[Path]:
     root = Path(settings["path"])
     if not root.is_dir():
         raise FileNotFoundError(f"Папка репертуара не найдена: {root}")
-    token = settings.get("filename_contains", "_____")
+    token = settings.get("filename_contains", "֎")
     if not isinstance(token, str) or not token:
         raise ValueError("library.filename_contains должен быть непустой строкой")
     recursive = bool(settings.get("recursive", True))
