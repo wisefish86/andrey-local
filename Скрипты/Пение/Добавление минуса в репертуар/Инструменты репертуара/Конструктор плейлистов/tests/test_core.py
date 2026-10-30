@@ -6,7 +6,8 @@ import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from core import (read_track, append_unique, save_playlist, read_playlist, move_rows,
                   replace_rows, repeated_from_history, expand_inputs, parse_dropped_text, scan_library, load_config, divider_path, export_block_playlist, distribute_blocks,
-                  song_key, unique_songs, add_unique_songs, replacement_candidates)
+                  song_key, unique_songs, add_unique_songs, replacement_candidates,
+                  eligible_for_restaurant, filtered_restaurant_catalog)
 from mutagen.id3 import ID3, TPE1, TIT2, MVNM, TMOO, TCON, TIT1, TPE2, TXXX, TBPM
 
 
@@ -167,6 +168,14 @@ class SetlistCoreTests(unittest.TestCase):
         self.assertEqual(unique_songs([original, cover]), [original])
         self.assertEqual(add_unique_songs([original], [cover]), [original])
         self.assertEqual(replacement_candidates([original], 0, [cover]), [])
+
+    def test_venue_exclusion_filter(self):
+        from dataclasses import replace
+        a = replace(read_track(self.a), status="г-1-База", tags=("и-GB",))
+        b = replace(read_track(self.c), status="г-2-Рабочие", tags=("а-Унив",))
+        preset = {"exclude_tags": ["и-GB"], "include_tags": []}
+        self.assertFalse(eligible_for_restaurant(a, preset))
+        self.assertEqual(filtered_restaurant_catalog([a, b], preset), [b])
 
     def test_no_inadvertent_source_deletion_or_overwrite(self):
         a=read_track(self.a)
