@@ -331,3 +331,62 @@ def distribute_blocks(tracks: list[Track], number: int, target_minutes: int,
     # Reserve songs are drawn from remaining eligible medium/easy catalogue externally;
     # never silently duplicate an already scheduled performance.
     return [(group, []) for group in blocks]
+
+
+def song_key(track: Track) -> tuple[str, str]:
+    """Song identity by artist and canonical MVNM; never guess empty MVNM."""
+    from unicodedata import normalize
+    def norm(value: str) -> str:
+        return " ".join(normalize("NFKC", value).casefold().split())
+    # The existing read_track falls back to TIT2 when MVNM is empty; avoid
+    # conflating that fallback by using the exact file path for untagged cases.
+    return norm(track.artist), norm(track.clean_title)
+
+
+def unique_songs(tracks: list[Track]) -> list[Track]:
+    """Show one representative technical version per song in the catalog."""
+    seen: set[tuple[str, str]] = set()
+    result = []
+    for track in tracks:
+        key = song_key(track)
+        if key not in seen:
+            seen.add(key)
+            result.append(track)
+    return result
+
+
+def add_unique_songs(existing: list[Track], incoming: list[Track]) -> list[Track]:
+    keys = {song_key(t) for t in existing}
+    result = list(existing)
+    for track in incoming:
+        key = song_key(track)
+        if key not in keys:
+            result.append(track)
+            keys.add(key)
+    return result
+
+
+def replacement_candidates(current: list[Track], selected_index: int,
+                           catalog: list[Track], rejected: set[str] | None = None) -> list[Track]:
+    """Stable ranked alternatives; excludes selected and all already-used songs."""
+    if selected_index < 0 or selected_index >= len(current):
+        return []
+    selected = current[selected_index]
+    occupied = {song_key(t) for t in current}
+    rejected = rejected or set()
+    approved = ("г-1-", "г-2-", "г-3-")
+    eligible = [
+        t for t in catalog
+        if t.status.startswith(approved)
+        and song_key(t) not in occupied
+        and str(t.path).casefold() not in rejected
+    ]
+    eligible = unique_songs(eligible)
+    def score(t: Track) -> tuple[int, int, int, str]:
+        return (
+            int(t.role == selected.role),
+            int(t.energy == selected.energy),
+            int(t.difficulty == selected.difficulty),
+            t.title.casefold(),
+        )
+    return sorted(eligible, key=lambda t: (-score(t)[0], -score(t)[1], -score(t)[2], score(t)[3]))
