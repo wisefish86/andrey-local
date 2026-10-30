@@ -5,7 +5,7 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from core import (read_track, append_unique, save_playlist, read_playlist, move_rows,
-                  replace_rows, repeated_from_history, expand_inputs, parse_dropped_text, scan_library, load_config)
+                  replace_rows, repeated_from_history, expand_inputs, parse_dropped_text, scan_library, load_config, divider_path, export_block_playlist, distribute_blocks)
 from mutagen.id3 import ID3, TPE1, TIT2, MVNM, TMOO, TCON, TIT1, TPE2, TXXX, TBPM
 
 
@@ -109,6 +109,24 @@ class SetlistCoreTests(unittest.TestCase):
     def test_catalog_missing_path_is_explicit(self):
         with self.assertRaises(FileNotFoundError):
             scan_library({"library": {"path": str(self.root / "нет")}})
+
+    def test_block_export_uses_original_divider_files(self):
+        directory = self.root / "deviders"
+        directory.mkdir()
+        for number in range(1, 4):
+            (directory / f"━━ {number} блок ━━.mp3").write_bytes(b"divider")
+            (directory / f"━━ {number} (запас.) ━━.mp3").write_bytes(b"reserve")
+        songs = [read_track(self.a), read_track(self.b), read_track(self.c)]
+        blocks = [([songs[0]], [songs[1]]), ([songs[2]], []), ([], [])]
+        out = self.root / "Сеты.m3u8"
+        export_block_playlist(out, blocks, directory)
+        content = out.read_text(encoding="utf-8-sig")
+        for number in range(1, 4):
+            self.assertIn(str(divider_path(number, False, directory)), content)
+            self.assertIn(str(divider_path(number, True, directory)), content)
+        self.assertEqual(out.read_bytes()[:3], b"\\xef\\xbb\\xbf")
+        self.assertEqual(self.a.read_bytes(), songs[0].path.read_bytes())
+        self.assertEqual(len(distribute_blocks(songs, 3, 25)), 3)
 
     def test_no_inadvertent_source_deletion_or_overwrite(self):
         a=read_track(self.a)
