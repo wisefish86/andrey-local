@@ -103,7 +103,7 @@ def read_track(path: Path) -> Track:
             "status": "; ".join(read_txxx(id3, "TXXX:OCCASION")),
             "rating": read_rating(id3),
             "bpm": first("TBPM"),
-            "work_id": with_prefix("V-"),
+            "work_id": with_prefix("в-"),
         }
     except Exception as exc:
         problem = f"Не удалось прочитать ID3: {exc}"
@@ -344,7 +344,7 @@ def song_key(track: Track) -> tuple[str, str]:
     def norm(value: str) -> str:
         return " ".join(normalize("NFKC", value).casefold().split())
     work = norm(track.work_id)
-    if work.startswith("v-") and len(work) > 2:
+    if work.startswith("в-") and len(work) > 2:
         return "__work__", work[2:]
     if not track.canonical_name_present:
         return "__path__", norm(str(track.path))
