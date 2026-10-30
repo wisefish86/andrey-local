@@ -91,14 +91,15 @@ class SetlistCoreTests(unittest.TestCase):
         library = self.root / "Основной репертуар"
         folder = library / "Исполнитель"
         folder.mkdir(parents=True)
-        included = folder / "Песня _____ Артист.mp3"
+        included = folder / "Песня ֎ Артист.mp3"
         included.write_bytes(b"test")
         (folder / "Песня без маркера.mp3").write_bytes(b"test")
-        (folder / "Песня _____ Артист.wav").write_bytes(b"test")
+        (folder / "Песня _____ Артист.mp3").write_bytes(b"test")
+        (folder / "Песня ֎ Артист.wav").write_bytes(b"test")
         staging = library / "- - Добавляю в репертуар"
         staging.mkdir()
-        (staging / "Черновик _____ Артист.mp3").write_bytes(b"test")
-        config = {"library": {"path": str(library), "filename_contains": "_____",
+        (staging / "Черновик ֎ Артист.mp3").write_bytes(b"test")
+        config = {"library": {"path": str(library), "filename_contains": "֎",
                   "recursive": True, "exclude_directories": ["- - Добавляю в репертуар"]}}
         self.assertEqual(scan_library(config), [included])
         self.assertEqual(included.read_bytes(), b"test")
