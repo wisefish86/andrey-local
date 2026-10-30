@@ -13,7 +13,7 @@ from PySide6.QtWidgets import (
 )
 
 from core import Track, append_unique, expand_inputs, move_rows, parse_dropped_text
-from core import read_track, repeated_from_history, replace_rows, save_playlist, load_config, scan_library, distribute_blocks, export_block_playlist, block_duration, vocal_warnings
+from core import read_track, repeated_from_history, replace_rows, save_playlist, load_config, scan_library, distribute_blocks, export_block_playlist, block_duration, vocal_warnings, unique_songs, add_unique_songs, replacement_candidates
 
 
 class ReadWorker(QThread):
@@ -155,7 +155,7 @@ class TrackTable(QTableWidget):
                 self.set_tracks(move_rows(self.tracks, self.selected_rows(), target),
                                 (track.path for track in moving))
             else:
-                self.set_tracks(append_unique(self.tracks, moving),
+                self.set_tracks((add_unique_songs if self.name == "current" else append_unique)(self.tracks, moving),
                                 (track.path for track in moving))
             event.setDropAction(Qt.DropAction.CopyAction)
             event.accept()
@@ -200,6 +200,7 @@ class MainWindow(QMainWindow):
         self.resize(1350, 780)
         self.worker = None
         self.block_plan = None
+        self.replacement_history = {}
         self.setStyleSheet("""
             QMainWindow, QWidget { background:#111922; color:#e6edf5; font-size:12px; }
             QTableWidget { background:#172333; alternate-background-color:#1b2938;
@@ -291,7 +292,8 @@ class MainWindow(QMainWindow):
         if name == "current":
             button("↑", lambda: self.shift_selected(table, -1))
             button("↓", lambda: self.shift_selected(table, 1))
-            button("Заменить…", self.replace_selected)
+            button("Заменить ↻", self.quick_replace)
+            button("Выбрать файл…", self.replace_selected)
             button("Сохранить блоки M3U8", self.export_blocks)
         if name != "catalog":
             button("Сохранить M3U8", lambda t=table: self.export_list(t))
@@ -324,7 +326,7 @@ class MainWindow(QMainWindow):
     def add_catalog_selection(self):
         chosen = self.catalog.selected_tracks()
         if chosen:
-            self.current.set_tracks(append_unique(self.current.tracks, chosen),
+            self.current.set_tracks(add_unique_songs(self.current.tracks, chosen),
                                     [t.path for t in chosen])
 
     def pick_files(self, destination: str):
@@ -349,9 +351,10 @@ class MainWindow(QMainWindow):
     def finish_import(self, destination: str, tracks: list[Track], warnings: list[str]):
         table = {"current": self.current, "history": self.history, "catalog": self.catalog}[destination]
         if destination == "catalog":
-            table.set_tracks(tracks)
+            table.set_tracks(unique_songs(tracks))
         else:
-            table.set_tracks(append_unique(table.tracks, tracks), (t.path for t in tracks))
+            combine = add_unique_songs if destination == "current" else append_unique
+            table.set_tracks(combine(table.tracks, tracks), (t.path for t in tracks))
         self.statusBar().showMessage(f"Прочитано {len(tracks)} MP3, ошибок/пропусков: {len(warnings)}", 10000)
         if warnings and destination == "catalog":
             self.statusBar().showMessage("Каталог: " + "; ".join(warnings[:3]), 15000)
@@ -380,6 +383,28 @@ class MainWindow(QMainWindow):
         destination = rows[0] + direction if direction < 0 else rows[-1] + direction + 1
         table.set_tracks(move_rows(table.tracks, rows, destination),
                          [track.path for track in table.selected_tracks()])
+
+    def quick_replace(self):
+        rows = self.current.selected_rows()
+        if len(rows) != 1:
+            QMessageBox.information(self, "Замена", "Выдели одну песню для быстрой замены.")
+            return
+        row = rows[0]
+        selected = self.current.tracks[row]
+        # Track the original slot's rejected songs across repeated clicks.
+        key = (row, len(self.current.tracks))
+        rejected = self.replacement_history.setdefault(key, set())
+        rejected.add(str(selected.path).casefold())
+        options = replacement_candidates(self.current.tracks, row, self.catalog.tracks, rejected)
+        if not options:
+            self.statusBar().showMessage("Подходящие альтернативы закончились.", 7000)
+            return
+        next_track = options[0]
+        updated = list(self.current.tracks)
+        updated[row] = next_track
+        self.current.set_tracks(updated, [next_track.path])
+        self.statusBar().showMessage(
+            f"Замена: {selected.title} → {next_track.title}. Ещё раз — следующая альтернатива.", 9000)
 
     def replace_selected(self):
         rows = self.current.selected_rows()
