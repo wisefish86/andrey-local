@@ -8,7 +8,7 @@
 
 При запуске программа читает `config.json` рядом с `app.py`. Настройки:
 - `library.path` — основная папка с минусовками;
-- `library.filename_contains` — обязательный маркер в имени MP3 (по умолчанию `_____`);
+- `library.filename_contains` — обязательный маркер в имени MP3 (по умолчанию `֎`);
 - `library.recursive` — поиск во вложенных папках;
 - `library.exclude_directories` — исключённые папки (включая временные);
 - `library.auto_load` — сканировать каталог при запуске.
