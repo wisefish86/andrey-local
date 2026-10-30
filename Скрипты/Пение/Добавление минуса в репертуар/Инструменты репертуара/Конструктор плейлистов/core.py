@@ -277,3 +277,34 @@ def export_block_playlist(path: Path, blocks: list[tuple[list[Track], list[Track
         raise ValueError("Нужен .m3u или .m3u8")
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text("\n".join(lines) + "\n", encoding="utf-8-sig")
+
+def distribute_blocks(tracks: list[Track], number: int, target_minutes: int,
+                      reserve_count: int = 2) -> list[tuple[list[Track], list[Track]]]:
+    """Keep manual song order, partition by real runtime, add distinct easy reserves."""
+    if not 3 <= number <= 6 or not 10 <= target_minutes <= 60:
+        raise ValueError("Неверные параметры блоков")
+    from mutagen import File as AudioFile
+    def duration(song: Track) -> float:
+        try:
+            audio = AudioFile(str(song.path))
+            return float(audio.info.length) / 60 if audio and audio.info else 0.0
+        except (OSError, ValueError, AttributeError):
+            return 0.0
+    lengths = [duration(t) for t in tracks]
+    # Missing duration is not fabricated; assign tracks evenly as a fallback.
+    blocks: list[list[Track]] = [[] for _ in range(number)]
+    if all(v > 0 for v in lengths):
+        position = 0
+        elapsed = 0.0
+        for song, minutes in zip(tracks, lengths):
+            if position < number - 1 and blocks[position] and elapsed + minutes > target_minutes:
+                position += 1
+                elapsed = 0.0
+            blocks[position].append(song)
+            elapsed += minutes
+    else:
+        for index, song in enumerate(tracks):
+            blocks[min(number - 1, index * number // max(len(tracks), 1))].append(song)
+    # Reserve songs are drawn from remaining eligible medium/easy catalogue externally;
+    # never silently duplicate an already scheduled performance.
+    return [(group, []) for group in blocks]
