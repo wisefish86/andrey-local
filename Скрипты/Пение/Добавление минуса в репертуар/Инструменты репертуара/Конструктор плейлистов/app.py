@@ -9,7 +9,7 @@ from PySide6.QtGui import QColor, QDrag, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QApplication, QAbstractItemView, QFileDialog, QHeaderView, QLabel, QMainWindow,
     QMessageBox, QPushButton, QSplitter, QTableWidget, QTableWidgetItem,
-    QVBoxLayout, QWidget, QHBoxLayout, QSpinBox, QDialog, QComboBox, QLineEdit, QPlainTextEdit, QFormLayout,
+    QVBoxLayout, QWidget, QHBoxLayout, QSpinBox, QDialog, QComboBox, QLineEdit, QPlainTextEdit, QFormLayout, QScrollArea,
 )
 
 from core import Track, append_unique, expand_inputs, move_rows, parse_dropped_text
@@ -54,7 +54,7 @@ class TrackTable(QTableWidget):
     DIFFICULTY_SIGNS = {"сл-1": "🠒", "сл-2": "⇉", "сл-3": "⇶", "сл-4": "^"}
 
     def __init__(self, name: str, owner):
-        headers = self.PLAYLIST_HEADERS if name == "current" else self.HEADERS
+        headers = self.PLAYLIST_HEADERS if name == "current" or name.startswith(("block:", "reserve:")) else self.HEADERS
         super().__init__(0, len(headers), owner)
         self.name = name
         self.owner = owner
@@ -73,7 +73,7 @@ class TrackTable(QTableWidget):
         self.setDefaultDropAction(Qt.DropAction.CopyAction)
         self.setMouseTracking(True)
         self.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
-        self.horizontalHeader().setSectionResizeMode(1 if name == "current" else 2, QHeaderView.ResizeMode.Stretch)
+        self.horizontalHeader().setSectionResizeMode(1 if name == "current" or name.startswith(("block:", "reserve:")) else 2, QHeaderView.ResizeMode.Stretch)
         self.verticalHeader().setVisible(False)
         self.itemSelectionChanged.connect(self.selectionChanged)
 
@@ -93,7 +93,7 @@ class TrackTable(QTableWidget):
             sign = next((symbol for key, symbol in self.DIFFICULTY_SIGNS.items()
                          if key in track.difficulty), "")
             values = ((str(row + 1), f"{sign}{track.title}" if sign else track.title, track.artist)
-                      if self.name == "current" else
+                      if self.name == "current" or self.name.startswith(("block:", "reserve:")) else
                       (str(row + 1), track.artist, track.title, track.difficulty,
                        track.language, track.energy, track.rating, track.bpm))
             for col, value in enumerate(values):
@@ -106,7 +106,7 @@ class TrackTable(QTableWidget):
                     "\nРоль в блоке: " + track.role +
                     ("\n" + track.error if track.error else "")
                 )
-                if track.difficulty.startswith("сл-4") and (self.name != "current" or col == 1):
+                if track.difficulty.startswith("сл-4") and (self.name not in ("current",) and not self.name.startswith(("block:", "reserve:")) or col == 1):
                     item.setForeground(QColor("#ffad9f"))
                 self.setItem(row, col, item)
             self.setRowHeight(row, 30)
@@ -146,6 +146,9 @@ class TrackTable(QTableWidget):
             event.ignore()
             return
         source = event.source()
+        if isinstance(source, TrackTable) and self.name.startswith(("block:", "reserve:")):
+            self.owner.drop_into_block(source, self, event)
+            return
         if isinstance(source, TrackTable):
             moving = source.selected_tracks()
             if source is self:
@@ -200,6 +203,7 @@ class MainWindow(QMainWindow):
         self.resize(1350, 780)
         self.worker = None
         self.block_plan = None
+        self.block_tables = {}
         self.replacement_history = {}
         self.catalog_all = []
         self.presets = load_restaurant_presets()
@@ -229,7 +233,8 @@ class MainWindow(QMainWindow):
         self.catalog = self.make_panel(splitter, "Каталог минусов", "catalog")
         self.current = self.make_panel(splitter, "Текущий плейлист", "current")
         self.history = self.make_panel(splitter, "История прошлого выступления", "history")
-        splitter.setSizes([450, 550, 350])
+        self.history.parentWidget().hide()
+        splitter.setSizes([780, 560, 0])
         venue_controls = QHBoxLayout()
         outer.addLayout(venue_controls)
         venue_controls.addWidget(QLabel("Пресет ресторана:"))
@@ -289,6 +294,11 @@ class MainWindow(QMainWindow):
         table = TrackTable(name, self)
         table.filesDropped.connect(self.import_files)
         layout.addWidget(table, 1)
+        if name == "current":
+            self.block_area = QScrollArea()
+            self.block_area.setWidgetResizable(True)
+            self.block_area.hide()
+            layout.addWidget(self.block_area, 1)
         row = QHBoxLayout()
         layout.addLayout(row)
         def button(label, callback):
@@ -565,12 +575,71 @@ class MainWindow(QMainWindow):
             del available[:len(chosen)]
             result.append((main, chosen))
         self.block_plan = result
+        self.render_block_editor()
         counts = ", ".join(f"{len(main)}+{len(reserve)}" for main, reserve in result)
         self.statusBar().showMessage(f"Блоки (основные+резерв): {counts}", 15000)
-        QMessageBox.information(self, "Блоки подготовлены",
-            "Созданы блоки с разделителями. Числа основных и резервных песен: "
-            + counts + "\\n"
-            + "Порядок основных песен сохранён. Проверь состав перед экспортом.")
+        self.statusBar().showMessage("Блоки готовы: " + counts, 12000)
+
+    def render_block_editor(self):
+        if self.block_plan is None:
+            return
+        container = QWidget()
+        layout = QVBoxLayout(container)
+        self.block_tables = {}
+        for idx, (main, reserve) in enumerate(self.block_plan):
+            for kind, songs in (("block", main), ("reserve", reserve)):
+                key = f"{kind}:{idx}"
+                minutes, missing = block_duration(songs)
+                heading = QLabel(f"{idx + 1} {'блок' if kind == 'block' else 'запас'}"
+                                 f" · {int(minutes)}:{int(round(minutes % 1 * 60)):02d}"
+                                 + (f" · {missing} без длительности" if missing else ""))
+                heading.setStyleSheet("font-weight:700;font-size:14px;padding-top:9px;")
+                layout.addWidget(heading)
+                table = TrackTable(key, self)
+                table.setMinimumHeight(max(72, min(260, len(songs) * 30 + 36)))
+                table.set_tracks(songs)
+                self.block_tables[key] = table
+                layout.addWidget(table)
+        layout.addStretch()
+        self.block_area.setWidget(container)
+        self.current.hide()
+        self.block_area.show()
+
+    def drop_into_block(self, source, target, event):
+        if self.block_plan is None:
+            event.ignore()
+            return
+        moving = source.selected_tracks()
+        if not moving:
+            event.ignore()
+            return
+        key = target.name
+        kind, number = key.split(":")
+        destination = self.block_plan[int(number)][0 if kind == "block" else 1]
+        # Reject duplicate songs across every block and reserve.
+        from core import song_key
+        chosen = {song_key(song) for song in moving}
+        occupied = {song_key(song) for main, reserve in self.block_plan
+                    for song in main + reserve if song not in moving}
+        if chosen & occupied:
+            self.statusBar().showMessage("Эта песня уже есть в программе.", 6000)
+            event.ignore()
+            return
+        if source.name.startswith(("block:", "reserve:")):
+            src_kind, src_number = source.name.split(":")
+            src_list = self.block_plan[int(src_number)][0 if src_kind == "block" else 1]
+            src_list[:] = [song for song in src_list if song not in moving]
+        insert = target.rowAt(int(event.position().y()))
+        insert = len(destination) if insert < 0 else insert
+        if source is target:
+            # Source was removed above; correct insertion for rows before target.
+            insert -= sum(i < insert for i in source.selected_rows())
+        insert = max(0, min(insert, len(destination)))
+        destination[insert:insert] = moving
+        self.render_block_editor()
+        event.setDropAction(Qt.DropAction.CopyAction)
+        event.accept()
+        self.statusBar().showMessage("Перенесено в блок; длительность пересчитана.", 5000)
 
     def export_blocks(self):
         if self.block_plan is None:
