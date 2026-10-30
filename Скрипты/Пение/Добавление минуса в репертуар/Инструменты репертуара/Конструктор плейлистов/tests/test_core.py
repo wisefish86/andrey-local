@@ -124,7 +124,7 @@ class SetlistCoreTests(unittest.TestCase):
         for number in range(1, 4):
             self.assertIn(str(divider_path(number, False, directory)), content)
             self.assertIn(str(divider_path(number, True, directory)), content)
-        self.assertEqual(out.read_bytes()[:3], b"\\xef\\xbb\\xbf")
+        self.assertEqual(out.read_bytes()[:3], bytes([0xEF, 0xBB, 0xBF]))
         self.assertEqual(self.a.read_bytes(), songs[0].path.read_bytes())
         self.assertEqual(len(distribute_blocks(songs, 3, 25)), 3)
 
