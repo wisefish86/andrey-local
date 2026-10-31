@@ -48,6 +48,12 @@ class VersionSyncTests(unittest.TestCase):
         self.assertEqual(len(suggestions[0]["possible_originals"]), 2)
         self.assertEqual(planned_folders(self.root), [])
 
+    def test_version_suffix_not_in_generated_work_id(self):
+        self.assertEqual(generated_version("Bad Guy (cover) _____ The Interrupters"), "в-Bad-Guy")
+        self.assertEqual(generated_version("Ayo Technology (cover) _____ Milow"), "в-Ayo-Technology")
+        self.assertEqual(generated_version("Мама (acoustic) _____ Burito"), "в-Мама")
+        self.assertEqual(generated_version("Some (Other Song) _____ Artist"), "в-Some-(Other-Song)")
+
     def test_ignore_single_nested_and_non_marker(self):
         mp3(self.song / "one ֎.mp3")
         mp3(self.song / "other.mp3")
