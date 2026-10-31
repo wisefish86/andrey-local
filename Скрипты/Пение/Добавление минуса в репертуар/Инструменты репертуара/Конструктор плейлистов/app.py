@@ -428,7 +428,8 @@ class MainWindow(QMainWindow):
             selected = build_language_balanced_list(
                 self.current.tracks, self.catalog.tracks,
                 self.target_songs.value(), percentage,
-                int(preset.get("language_tolerance_percent", load_config().get("selection", {}).get("language_tolerance_percent", 10))))
+                int(preset.get("language_tolerance_percent", load_config().get("selection", {}).get("language_tolerance_percent", 10))),
+                bool(load_config().get("selection", {}).get("prefer_alternation", True)))
         except ValueError as exc:
             QMessageBox.warning(self, "Подбор по языкам", str(exc))
             return
