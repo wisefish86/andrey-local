@@ -145,12 +145,12 @@ class ReviewWindow(QMainWindow):
                                      if current_version(ID3(Path(p)))), None)
             target = target or generated_version(Path(original_path).name)
             original_changes = [p for p in original["files"]
-                                if current_version(ID3(Path(p))) != target]
+                                if current_version(ID3(Path(p))) != target or legacy_work_tag(ID3(Path(p)))]
             if original_changes and not any(x["folder"] == original_path for x in selected):
                 selected.append({"folder": original_path, "target": target,
                                  "changes": original_changes, "status": "change"})
             changes = [p for p in cover["files"]
-                       if current_version(ID3(Path(p))) != target]
+                       if current_version(ID3(Path(p))) != target or legacy_work_tag(ID3(Path(p)))]
             if changes:
                 selected.append({"folder": cover["folder"], "target": target,
                                  "changes": changes, "status": "change"})
@@ -207,7 +207,7 @@ def main():
                                      if current_version(ID3(Path(p)))), None)
             target = target or generated_version(Path(choice).name)
             changes = [p for p in cover["files"]
-                       if current_version(ID3(Path(p))) != target]
+                       if current_version(ID3(Path(p))) != target or legacy_work_tag(ID3(Path(p)))]
             if changes:
                 plan.append({"folder": cover["folder"], "status": "change",
                              "target": target, "changes": changes})
