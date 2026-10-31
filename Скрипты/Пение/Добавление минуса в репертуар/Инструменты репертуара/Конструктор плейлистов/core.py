@@ -302,17 +302,22 @@ def block_duration(songs: list[Track]) -> tuple[float, int]:
 
 
 def vocal_warnings(songs: list[Track]) -> list[str]:
-    """Warnings, not forced reordering: the singer retains editorial control."""
+    """Explain unavoidable pacing violations instead of silently hiding them."""
     alerts = []
     for i, song in enumerate(songs):
-        level = next((n for n in (1, 2, 3, 4) if f"сл-{n}" in song.difficulty), 0)
-        previous = next((n for n in (1, 2, 3, 4)
-                         if i and f"сл-{n}" in songs[i - 1].difficulty), 0)
+        level = difficulty_level(song)
+        if i == 0:
+            continue
+        previous = difficulty_level(songs[i - 1])
         if level >= 3 and previous >= 3:
             alerts.append(f"Песни {i}–{i + 1}: две сложные подряд")
-        if level == 4:
-            alerts.append(f"Песня {i + 1}: пиковая нагрузка")
+        if previous >= 3 and level != 1:
+            alerts.append(f"После песни {i} желательно дать лёгкую для восстановления")
+        if level == 2 and i >= 2 and all(
+                difficulty_level(t) == 2 for t in songs[i - 2:i + 1]):
+            alerts.append(f"Песни {i - 1}–{i + 1}: три средние подряд")
     return alerts
+
 
 def difficulty_level(track: Track) -> int:
     match = re.search(r"сл-([1-4])", track.difficulty)
