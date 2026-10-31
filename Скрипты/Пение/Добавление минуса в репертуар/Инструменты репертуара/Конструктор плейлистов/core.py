@@ -355,7 +355,7 @@ def song_key(track: Track) -> tuple[str, str]:
 def version_length(track: Track) -> str:
     """Parse [S]/[F] in filename before the folder/artist delimiter."""
     title_part = track.path.stem.split("_____", 1)[0]
-    match = re.search(r"\\[(S|F)\\]\\s*$", title_part, re.IGNORECASE)
+    match = re.search(r"\[(S|F)\]\s*$", title_part, re.IGNORECASE)
     return match.group(1).upper() if match else ""
 
 
