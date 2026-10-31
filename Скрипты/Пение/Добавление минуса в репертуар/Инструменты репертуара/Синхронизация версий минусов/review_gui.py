@@ -183,6 +183,7 @@ def main():
         library = load_library()
         plan = planned_folders(library, MARKER, SEPARATOR)
         proposals = cross_folder_suggestions(library, MARKER, SEPARATOR)
+        all_proposals = proposals
         remembered = read_links()
         unresolved = []
         for proposal in proposals:
