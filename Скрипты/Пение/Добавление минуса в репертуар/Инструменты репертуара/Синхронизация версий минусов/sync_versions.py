@@ -128,11 +128,19 @@ def planned_folders(library: Path, marker: str = MARKER, separator: str = SEPARA
     """Сканирование только: корень/папка песни/MP3; подпапки не трогаем."""
     result = []
     duplicate_targets = duplicate_title_targets(library, marker, separator)
+    pending_covers = {v["version"]["folder"]: v for v in cross_folder_suggestions(library, marker, separator)}
     for folder in sorted((p for p in library.iterdir() if p.is_dir()), key=lambda p: (p.name.casefold(), p.name)):
         files = sorted((p for p in folder.iterdir()
                         if p.is_file() and p.suffix.casefold() == ".mp3" and marker in p.name),
                        key=lambda p: (p.name.casefold(), p.name))
         if len(files) < 2:
+            continue
+        if str(folder) in pending_covers:
+            option = pending_covers[str(folder)]
+            result.append({"folder": str(folder), "status": "review",
+                           "question": "К какому оригиналу относится эта версия?",
+                           "options": [x["folder"] for x in option["possible_originals"]],
+                           "changes": []})
             continue
         try:
             entries = [(p, ID3(p)) for p in files]
@@ -202,7 +210,7 @@ def main(argv=None) -> int:
         suggestions = cross_folder_suggestions(library, marker, separator)
         summary = dict(cross_folder_suggestions=suggestions,
                        mode="apply" if args.apply else "preview", library=str(library),
-                       folders=len(plan), pending_files=sum(len(v["changes"]) for v in plan),
+                       folders=len(plan), review_folders=sum(x["status"] == "review" for x in plan), pending_files=sum(len(v["changes"]) for v in plan),
                        written_files=changed, errors=errors, plan=plan)
         destination = report_dir / f"{summary['mode']}_{stamp}.json"
         destination.write_text(json.dumps(summary, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
@@ -210,6 +218,9 @@ def main(argv=None) -> int:
             print(f"{entry['status'].upper()}: {Path(entry['folder']).name} | {entry.get('target', entry.get('error', ''))} | исправить {len(entry['changes'])}")
         print(f"Папок: {len(plan)}; нужно исправить MP3: {summary['pending_files']}; записано: {changed}; ошибок: {len(errors) + sum(e['status'] == 'error' for e in plan)}")
         print(f"Предложений по разным папкам: {len(suggestions)} (только в отчёте; без записи).")
+        for item in plan:
+            if item["status"] == "review":
+                print("ВОПРОС:", Path(item["folder"]).name, "->", " / ".join(Path(p).name for p in item["options"]))
         print("Отчёт:", destination)
         return 1 if errors or any(e["status"] == "error" for e in plan) else 0
     except (OSError, ValueError, KeyError, TypeError) as exc:
