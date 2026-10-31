@@ -17,6 +17,26 @@ from sync_versions import planned_folders, cross_folder_suggestions, current_ver
 
 
 class CoverGuiTest(unittest.TestCase):
+    def test_main_launches_manual_and_silent_modes(self):
+        app = QApplication.instance() or QApplication([])
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            with patch.object(review_gui, "load_library", return_value=root), patch.object(
+                    review_gui, "planned_folders", return_value=[]), patch.object(
+                    review_gui, "cross_folder_suggestions", return_value=[]), patch.object(
+                    review_gui, "read_links", return_value={}), patch.object(
+                    review_gui, "ReviewWindow") as window_class, patch.object(
+                    app, "exec", return_value=0), patch.object(
+                    QMessageBox, "critical") as critical:
+                with patch.object(sys, "argv", ["review_gui.py"]):
+                    self.assertEqual(review_gui.main(), 0)
+                    window_class.assert_called_once()
+                window_class.reset_mock()
+                with patch.object(sys, "argv", ["review_gui.py", "--silent-when-clean"]):
+                    self.assertEqual(review_gui.main(), 0)
+                    window_class.assert_not_called()
+                critical.assert_not_called()
+
     def test_link_and_remember(self):
         app = QApplication.instance() or QApplication([])
         with tempfile.TemporaryDirectory() as temp:
