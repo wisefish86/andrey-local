@@ -39,16 +39,16 @@ def normalize_title(title: str) -> tuple[str, bool]:
     """Remove edition metadata, preserve meaningful parenthetical titles."""
     variant = False
     while True:
-        found = re.search(r"\\s*\\(([^()]*)\\)\\s*$", title)
+        found = re.search(r"\s*\(([^()]*)\)\s*$", title)
         if not found:
             break
         words = found.group(1).casefold()
-        if not any(re.search(r"(?<!\\w)" + re.escape(word) + r"(?!\\w)", words)
+        if not any(re.search(r"(?<!\w)" + re.escape(word) + r"(?!\w)", words)
                    for word in VARIANT_WORDS):
             break
         title = title[:found.start()].strip()
         variant = True
-    title = re.sub(r"\\s*\\[[+-]?[0-9]+\\]\\s*$", "", title).strip()
+    title = re.sub(r"\s*\[[+-]?[0-9]+\]\s*$", "", title).strip()
     return title, variant
 
 
