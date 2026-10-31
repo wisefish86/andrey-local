@@ -8,7 +8,7 @@ import sys
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
     QHBoxLayout, QLabel, QPushButton, QTableWidget, QTableWidgetItem,
-    QHeaderView, QMessageBox, QComboBox, QLineEdit, QAbstractItemView)
+    QHeaderView, QMessageBox, QComboBox, QLineEdit, QAbstractItemView, QCheckBox)
 
 from cover_links import read_links, write_links
 from sync_versions import (ROOT, MARKER, SEPARATOR, planned_folders,
@@ -21,11 +21,12 @@ def load_library() -> Path:
 
 
 class ReviewWindow(QMainWindow):
-    def __init__(self, library: Path, plan: list[dict], proposals: list[dict]):
+    def __init__(self, library: Path, plan: list[dict], proposals: list[dict], unresolved_folders: set[str]):
         super().__init__()
         self.library = library
         self.plan = plan
         self.proposals = proposals
+        self.unresolved_folders = unresolved_folders
         self.setWindowTitle("Синхронизация версий · Репертуар")
         self.resize(1140, 750)
         self.setStyleSheet("""
@@ -73,6 +74,9 @@ class ReviewWindow(QMainWindow):
             self.table.setItem(row, 4, QTableWidgetItem(str(len(item["changes"]))))
             self.table.item(row, 1).setData(Qt.ItemDataRole.UserRole, item)
         layout.addWidget(QLabel("Каверы: можно вручную вписать полный тег в- без указания оригинала."))
+        self.only_unresolved = QCheckBox("Только без назначенной привязки")
+        self.only_unresolved.setChecked(True)
+        layout.addWidget(self.only_unresolved)
         self.questions = QTableWidget(0, 3)
         self.questions.setHorizontalHeaderLabels(["Кавер / версия", "Связать с произведением", "Тег в- (вручную)"])
         self.questions.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
@@ -108,6 +112,8 @@ class ReviewWindow(QMainWindow):
             self.questions.setCellWidget(row, 1, choice)
             toggle_fields(0)
             self.options.append((proposal, choice, tag_field))
+        self.only_unresolved.toggled.connect(self.update_proposal_filter)
+        self.update_proposal_filter()
         self.info = QLabel(f"Папок с изменениями: {self.table.rowCount()} · "
                            f"Вопросов по версиям: {len(proposals)}")
         layout.addWidget(self.info)
@@ -121,6 +127,11 @@ class ReviewWindow(QMainWindow):
         save.clicked.connect(self.apply_selected)
         actions.addWidget(save)
         self.save_button = save
+
+    def update_proposal_filter(self):
+        for row, (proposal, _, _) in enumerate(self.options):
+            folder = proposal["version"]["folder"]
+            self.questions.setRowHidden(row, self.only_unresolved.isChecked() and folder not in self.unresolved_folders)
 
     def apply_selected(self):
         selected = []
@@ -256,7 +267,7 @@ def main():
         plan = [x for x in plan if x["status"] != "review" or x["folder"] not in remembered]
         if args.silent_when_clean and not any(x["status"] in ("change", "review", "error") for x in plan) and not proposals:
             return 0
-        window = ReviewWindow(library, plan, proposals if args.silent_when_clean else all_proposals)
+        window = ReviewWindow(library, plan, all_proposals, {p['version']['folder'] for p in unresolved})
         window.show()
         return app.exec()
     except Exception as exc:
