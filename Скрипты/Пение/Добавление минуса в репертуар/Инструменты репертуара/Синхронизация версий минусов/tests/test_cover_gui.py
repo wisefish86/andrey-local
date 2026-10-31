@@ -6,7 +6,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
-from mutagen.id3 import ID3, TIT1
+from mutagen.id3 import ID3, TCOM
 
 BASE = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BASE))
