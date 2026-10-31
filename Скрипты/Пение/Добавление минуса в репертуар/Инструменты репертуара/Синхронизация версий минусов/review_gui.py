@@ -79,6 +79,7 @@ class ReviewWindow(QMainWindow):
         self.questions.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
         layout.addWidget(self.questions, 2)
         self.options = []
+        self.saved_links = read_links()
         for proposal in proposals:
             row = self.questions.rowCount()
             self.questions.insertRow(row)
@@ -88,6 +89,12 @@ class ReviewWindow(QMainWindow):
             choice.addItem("Пока не связывать", None)
             for candidate in proposal["possible_originals"]:
                 choice.addItem(candidate["title"] + " — " + candidate["artist"], candidate["folder"])
+            choice.addItem("Не связывать — запомнить", "ignore")
+            saved = self.saved_links.get(proposal["version"]["folder"])
+            for index in range(choice.count()):
+                if choice.itemData(index) == saved and saved is not None:
+                    choice.setCurrentIndex(index)
+                    break
             self.questions.setCellWidget(row, 1, choice)
             self.options.append((proposal, choice))
         self.info = QLabel(f"Папок с изменениями: {self.table.rowCount()} · "
