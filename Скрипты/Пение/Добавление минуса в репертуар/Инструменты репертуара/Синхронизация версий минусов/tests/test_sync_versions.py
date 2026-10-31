@@ -2,7 +2,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
-from mutagen.id3 import ID3, TIT1
+from mutagen.id3 import ID3, TCOM
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from sync_versions import planned_folders, apply_changes, current_version, generated_version, song_folder_info, cross_folder_suggestions, duplicate_title_targets
@@ -12,7 +12,7 @@ def mp3(path: Path, title_tags=""):
     path.write_bytes(b"")
     tags = ID3()
     if title_tags:
-        tags.add(TIT1(encoding=3, text=[title_tags]))
+        tags.add(TCOM(encoding=3, text=[title_tags]))
     tags.save(path)
 
 
@@ -89,7 +89,7 @@ class VersionSyncTests(unittest.TestCase):
         count, failures = apply_changes(plan, self.root / "backups")
         self.assertEqual((count, failures), (2, []))
         self.assertEqual(current_version(ID3(a)), "в-Не-вспоминай")
-        self.assertIn("а-Универсальная", str(ID3(a).getall("TIT1")[0].text))
+        self.assertIn("а-Универсальная", str(ID3(a).getall("TCOM")[0].text))
         self.assertEqual(planned_folders(self.root)[0]["status"], "ok")
 
     def test_first_existing_version_wins_conflicts(self):
