@@ -376,21 +376,21 @@ def distribute_blocks(tracks: list[Track], number: int, target_minutes: int,
     """Keep manual song order, partition by real runtime, add distinct easy reserves."""
     if not 3 <= number <= 6 or not 10 <= target_minutes <= 60:
         raise ValueError("Неверные параметры блоков")
-    lengths = [track_minutes(t) or 0.0 for t in tracks]
-    # Missing duration is not fabricated; assign tracks evenly as a fallback.
+    # Explicitly cap every block at its requested running time.
+    # Remaining tracks are candidates, not an obligation to schedule everything.
     blocks: list[list[Track]] = [[] for _ in range(number)]
-    if all(v > 0 for v in lengths):
-        position = 0
-        elapsed = 0.0
-        for song, minutes in zip(tracks, lengths):
-            if position < number - 1 and blocks[position] and elapsed + minutes > target_minutes:
-                position += 1
-                elapsed = 0.0
-            blocks[position].append(song)
-            elapsed += minutes
-    else:
-        for index, song in enumerate(tracks):
-            blocks[min(number - 1, index * number // max(len(tracks), 1))].append(song)
+    durations = [0.0] * number
+    for song in tracks:
+        duration = track_minutes(song)
+        if duration is None or duration <= 0:
+            continue
+        choices = [i for i in range(number)
+                   if durations[i] + duration <= target_minutes]
+        if not choices:
+            continue
+        index = min(choices, key=lambda i: (durations[i], i))
+        blocks[index].append(song)
+        durations[index] += duration
     # Reserve songs are drawn from remaining eligible medium/easy catalogue externally;
     # never silently duplicate an already scheduled performance.
     pacing = load_config().get('blocks', {}).get('vocal_rules', {})
