@@ -17,7 +17,7 @@ ROOT = Path(__file__).resolve().parents[2]
 PENIE = ROOT.parent
 sys.path.insert(0, str(PENIE / "_common"))
 from id3_io import read_text, split_multi  # noqa: E402
-from mutagen.id3 import ID3, TIT1  # noqa: E402
+from mutagen.id3 import ID3, TCOM  # noqa: E402
 
 VERSION_PREFIX = "в-"
 MARKER = "֎"
@@ -25,7 +25,7 @@ SEPARATOR = "_____"
 
 
 def current_version(tags: ID3) -> str:
-    values = [p.strip() for txt in read_text(tags, "TIT1")
+    values = [p.strip() for txt in read_text(tags, "TCOM")
               for p in split_multi(txt) if p.strip().casefold().startswith(VERSION_PREFIX)]
     return values[0] if values else ""
 
@@ -190,11 +190,11 @@ def apply_changes(plan: list[dict], backup_root: Path) -> tuple[int, list[dict]]
                 shutil.copy2(p, dest / p.name)
             for p in paths:
                 tags = ID3(p)
-                parts = [v for txt in read_text(tags, "TIT1") for v in split_multi(txt)]
+                parts = [v for txt in read_text(tags, "TCOM") for v in split_multi(txt)]
                 parts = [v for v in parts if not v.strip().casefold().startswith(VERSION_PREFIX)]
                 parts.append(item["target"])
-                tags.delall("TIT1")
-                tags.add(TIT1(encoding=3, text=["; ".join(parts)]))
+                tags.delall("TCOM")
+                tags.add(TCOM(encoding=3, text=["; ".join(parts)]))
                 tags.save(p)
                 changed += 1
         except Exception as exc:
