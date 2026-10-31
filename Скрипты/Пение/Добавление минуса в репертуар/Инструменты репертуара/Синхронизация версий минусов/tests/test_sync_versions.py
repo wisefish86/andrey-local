@@ -5,7 +5,7 @@ from pathlib import Path
 from mutagen.id3 import ID3, TIT1
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from sync_versions import planned_folders, apply_changes, current_version, generated_version
+from sync_versions import planned_folders, apply_changes, current_version, generated_version, song_folder_info, cross_folder_suggestions, duplicate_title_targets
 
 
 def mp3(path: Path, title_tags=""):
@@ -29,6 +29,24 @@ class VersionSyncTests(unittest.TestCase):
 
     def test_title_without_artist_and_spaces(self):
         self.assertEqual(generated_version("After Dark _____ Tito & Tarantula"), "в-After-Dark")
+
+    def test_cover_recognition_and_ambiguous_originals(self):
+        titles = ("Wonderful Life _____ Hurts",
+                  "Wonderful Life _____ Zucchero",
+                  "Wonderful Life (cover) _____ Max Oazo")
+        for name in titles:
+            folder = self.root / name
+            folder.mkdir()
+            mp3(folder / "one ֎.mp3")
+        self.assertTrue(song_folder_info(self.root / titles[2])[3])
+        targets = duplicate_title_targets(self.root)
+        self.assertEqual(targets[str(self.root / titles[0])], "в-Wonderful-Life-Hurts")
+        self.assertEqual(targets[str(self.root / titles[1])], "в-Wonderful-Life-Zucchero")
+        suggestions = cross_folder_suggestions(self.root)
+        self.assertEqual(len(suggestions), 1)
+        self.assertEqual(suggestions[0]["status"], "ambiguous")
+        self.assertEqual(len(suggestions[0]["possible_originals"]), 2)
+        self.assertEqual(planned_folders(self.root), [])
 
     def test_ignore_single_nested_and_non_marker(self):
         mp3(self.song / "one ֎.mp3")
