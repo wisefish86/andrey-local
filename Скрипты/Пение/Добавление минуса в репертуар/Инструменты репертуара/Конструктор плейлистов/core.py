@@ -453,7 +453,7 @@ def link_versions(paths: list[Path], code: str, backup_dir: Path) -> int:
     planned = []
     for path in files:
         tags = ID3(path)
-        values = [part for text in read_text(tags, "TIT1") for part in split_multi(text)]
+        values = [part for text in read_text(tags, "TCOM") for part in split_multi(text)]
         existing = [value for value in values if value.casefold().startswith("в-")]
         if any(value.casefold() != code.casefold() for value in existing):
             raise ValueError(f"Конфликт группы произведения: {path.name} — {existing}")
@@ -464,7 +464,7 @@ def link_versions(paths: list[Path], code: str, backup_dir: Path) -> int:
     for index, (path, _, _) in enumerate(planned):
         shutil.copy2(path, backup_dir / f"{index + 1:03d}_{path.name}")
     for path, tags, values in planned:
-        tags.delall("TIT1")
-        tags.add(TIT1(encoding=3, text=["; ".join(values)]))
+        tags.delall("TCOM")
+        tags.add(TCOM(encoding=3, text=["; ".join(values)]))
         tags.save(path)
     return len(planned)
