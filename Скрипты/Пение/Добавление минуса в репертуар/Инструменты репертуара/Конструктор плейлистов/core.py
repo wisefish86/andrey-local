@@ -365,7 +365,12 @@ def arrange_vocal_block(tracks: list[Track], first_block: bool = False,
                 int(level == 3 and position < count // 3),
                 remaining.index(item)
             )
-        chosen = min(remaining, key=score)
+        # Reserve a finale-role song for the last slot of the final block.
+        if len(remaining) == 1:
+            chosen = remaining[0]
+        else:
+            candidates = [t for t in remaining if "б-7-Финал" not in t.role]
+            chosen = min(candidates or remaining, key=score)
         ordered.append(chosen)
         remaining.remove(chosen)
     # Hard invariant: never leave adjacent level-3/4 songs if a softer
