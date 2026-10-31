@@ -412,6 +412,12 @@ def eligible_for_restaurant(track: Track, preset: dict) -> bool:
         return False
     if required and not (required & tags):
         return False
+    for field, chosen in (("language", track.language),
+                          ("difficulty", track.difficulty),
+                          ("energy", track.energy)):
+        allowed = {v.casefold() for v in preset.get(field + "_allow", [])}
+        if allowed and chosen.casefold() not in allowed:
+            return False
     return True
 
 
