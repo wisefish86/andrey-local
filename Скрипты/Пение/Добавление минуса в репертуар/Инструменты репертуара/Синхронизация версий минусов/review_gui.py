@@ -144,6 +144,11 @@ class ReviewWindow(QMainWindow):
             target = target or next((current_version(ID3(Path(p))) for p in original["files"]
                                      if current_version(ID3(Path(p)))), None)
             target = target or generated_version(Path(original_path).name)
+            original_changes = [p for p in original["files"]
+                                if current_version(ID3(Path(p))) != target]
+            if original_changes and not any(x["folder"] == original_path for x in selected):
+                selected.append({"folder": original_path, "target": target,
+                                 "changes": original_changes, "status": "change"})
             changes = [p for p in cover["files"]
                        if current_version(ID3(Path(p))) != target]
             if changes:
