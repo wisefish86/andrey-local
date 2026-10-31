@@ -54,6 +54,7 @@ Get-Process "BreakTimer" -ErrorAction SilentlyContinue | Stop-Process -Force
 # Запуск приложений
 # ============================================
 Start-Process "ms-settings:easeofaccess-audio"
+Start-Process "C:\Program Files (x86)\MusicBee\MusicBee.exe"
 $magnifier = 'C:\Users\Andrey\AppData\Local\OnTopReplicaPlus\OnTopReplicaPlus.exe'
 if (Test-Path -LiteralPath $magnifier -PathType Leaf) {
     Start-Process -FilePath $magnifier
