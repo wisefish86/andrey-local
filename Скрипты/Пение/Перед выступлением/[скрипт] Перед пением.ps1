@@ -78,4 +78,4 @@ $ipv4Bat = Join-Path $PSScriptRoot 'Связанные скрипты\Показ
 if (Test-Path -LiteralPath $ipv4Bat) {
     Start-Process -FilePath $env:ComSpec -ArgumentList ('/d /c ""{0}""' -f $ipv4Bat)
 }
-Start-Process "anytype://object?objectId=bafyreiek44nqfypu3es7uydlr7bpc7aitm3welxl3u3ia7tl6rsxyffgk4&spaceId=bafyreiao7lfc742foxkwd65zkudl7blk7s7s4mvsq6trwtihyyxgkktury.3vagjf2fgfoqc"
+Start-Process "https://app.notion.com/p/3e856f1afcfe81729da9fd97e6958105?source=copy_link"
