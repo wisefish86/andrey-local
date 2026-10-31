@@ -380,17 +380,28 @@ def distribute_blocks(tracks: list[Track], number: int, target_minutes: int,
     # Remaining tracks are candidates, not an obligation to schedule everything.
     blocks: list[list[Track]] = [[] for _ in range(number)]
     durations = [0.0] * number
-    for song in tracks:
-        duration = track_minutes(song)
-        if duration is None or duration <= 0:
+    pairs = []
+    for track in tracks:
+        if pairs and len(pairs[-1]) == 1 and pairs[-1][0].language != track.language:
+            pairs[-1].append(track)
+        else:
+            pairs.append([track])
+    for pair in pairs:
+        lengths = [track_minutes(t) for t in pair]
+        if any(v is None or v <= 0 for v in lengths):
             continue
-        choices = [i for i in range(number)
-                   if durations[i] + duration <= target_minutes]
-        if not choices:
-            continue
-        index = min(choices, key=lambda i: (durations[i], i))
-        blocks[index].append(song)
-        durations[index] += duration
+        options = [i for i in range(number) if durations[i] + sum(lengths) <= target_minutes]
+        if options:
+            i = min(options, key=lambda n: (durations[n], n))
+            blocks[i].extend(pair)
+            durations[i] += sum(lengths)
+        else:
+            for track, duration in zip(pair, lengths):
+                choices = [i for i in range(number) if durations[i] + duration <= target_minutes]
+                if choices:
+                    i = min(choices, key=lambda n: (durations[n], n))
+                    blocks[i].append(track)
+                    durations[i] += duration
     # Reserve songs are drawn from remaining eligible medium/easy catalogue externally;
     # never silently duplicate an already scheduled performance.
     pacing = load_config().get('blocks', {}).get('vocal_rules', {})
