@@ -39,6 +39,66 @@ def generated_version(folder_name: str, separator: str = SEPARATOR) -> str:
     return VERSION_PREFIX + "-".join(title.split())
 
 
+
+# Only explicit version labels are stripped. Similar titles alone aren't proof.
+VARIANT_LABELS = ("acoustic", "acoustics", "акустика", "remix", "mix", "cover",
+                  "кавер", "ремикс", "live", "slow ver.", "slow version",
+                  "instrumental", "инструментал", "unplugged")
+
+
+def song_folder_info(folder: Path, separator: str = SEPARATOR):
+    """Return (title, artist, base_title, explicit_variant), or None."""
+    if separator not in folder.name:
+        return None
+    title, artist = [part.strip() for part in folder.name.split(separator, 1)]
+    if not title or not artist:
+        return None
+    found = re.search(r"\\s*\\(([^()]*)\\)\\s*$", title)
+    variant = bool(found and found.group(1).strip().casefold() in VARIANT_LABELS)
+    base = title[:found.start()].strip() if variant else title
+    return title, artist, base, variant
+
+
+def cross_folder_suggestions(library: Path, marker: str = MARKER,
+                             separator: str = SEPARATOR) -> list[dict]:
+    """Report candidates only. Never use fuzzy matches to rewrite ID3."""
+    from collections import defaultdict
+    groups = defaultdict(list)
+    for folder in sorted((p for p in library.iterdir() if p.is_dir()),
+                         key=lambda p: (p.name.casefold(), p.name)):
+        info = song_folder_info(folder, separator)
+        if info is None:
+            continue
+        files = sorted((p for p in folder.iterdir() if p.is_file()
+                        and p.suffix.casefold() == ".mp3" and marker in p.name),
+                       key=lambda p: (p.name.casefold(), p.name))
+        if not files:
+            continue
+        title, artist, base, variant = info
+        groups[base.casefold()].append({"folder": str(folder), "title": title,
+                                        "artist": artist, "variant": variant,
+                                        "files": [str(p) for p in files]})
+    proposals = []
+    for base, items in sorted(groups.items()):
+        if len(items) < 2 or not any(x["variant"] for x in items):
+            continue
+        originals = [x for x in items if not x["variant"]]
+        versions = [x for x in items if x["variant"]]
+        # Same-artist versions: likely match. Different performers: ask the user.
+        for item in versions:
+            matching = [x for x in originals if x["artist"].casefold() == item["artist"].casefold()]
+            if len(matching) == 1:
+                status, choices = "likely", matching
+            elif len(originals) == 1:
+                status, choices = "review", originals
+            else:
+                status, choices = "ambiguous", originals
+            proposals.append({"title": base, "version": item, "status": status,
+                              "possible_originals": choices,
+                              "action": "review_only"})
+    return proposals
+
+
 def planned_folders(library: Path, marker: str = MARKER, separator: str = SEPARATOR):
     """Сканирование только: корень/папка песни/MP3; подпапки не трогаем."""
     result = []
@@ -113,7 +173,9 @@ def main(argv=None) -> int:
         changed, errors = (0, [])
         if args.apply:
             changed, errors = apply_changes(plan, report_dir / f"backup_{stamp}")
-        summary = dict(mode="apply" if args.apply else "preview", library=str(library),
+        suggestions = cross_folder_suggestions(library, marker, separator)
+        summary = dict(cross_folder_suggestions=suggestions,
+                       mode="apply" if args.apply else "preview", library=str(library),
                        folders=len(plan), pending_files=sum(len(v["changes"]) for v in plan),
                        written_files=changed, errors=errors, plan=plan)
         destination = report_dir / f"{summary['mode']}_{stamp}.json"
@@ -121,6 +183,7 @@ def main(argv=None) -> int:
         for entry in plan:
             print(f"{entry['status'].upper()}: {Path(entry['folder']).name} | {entry.get('target', entry.get('error', ''))} | исправить {len(entry['changes'])}")
         print(f"Папок: {len(plan)}; нужно исправить MP3: {summary['pending_files']}; записано: {changed}; ошибок: {len(errors) + sum(e['status'] == 'error' for e in plan)}")
+        print(f"Предложений по разным папкам: {len(suggestions)} (только в отчёте; без записи).")
         print("Отчёт:", destination)
         return 1 if errors or any(e["status"] == "error" for e in plan) else 0
     except (OSError, ValueError, KeyError, TypeError) as exc:
