@@ -52,6 +52,11 @@ def normalize_title(title: str) -> tuple[str, bool]:
     return title, variant
 
 
+def legacy_work_tag(tags):
+    parts = [x for value in read_text(tags, "TIT1") for x in split_multi(value)]
+    return next((x for x in parts if x.casefold().startswith("в-")), "")
+
+
 def generated_version(folder_name: str, separator: str = SEPARATOR) -> str:
     if separator not in folder_name:
         raise ValueError("В имени папки отсутствует разделитель: " + folder_name)
