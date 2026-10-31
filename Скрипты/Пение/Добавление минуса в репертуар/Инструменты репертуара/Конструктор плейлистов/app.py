@@ -331,7 +331,7 @@ class MainWindow(QMainWindow):
 
     def refresh_summary(self):
         # This runs while the second table is being created too.
-        if not hasattr(self, "current") or not hasattr(self, "history"):
+        if not all(hasattr(self, name) for name in ("catalog", "current", "history", "summary")):
             return
         count, percentage = repeated_from_history(self.current.tracks, self.history.tracks)
         message = (f"Каталог: {len(self.catalog.tracks)} файлов · "
