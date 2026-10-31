@@ -523,9 +523,14 @@ def display_rating(raw: str) -> str:
         return "—"
     if not 1 <= value <= 255:
         return "—"
-    # MusicBee POPM mapping: 1/64/128/196/255 correspond to 1..5 stars.
-    stars = 1 if value <= 32 else 2 if value <= 96 else 3 if value <= 160 else 4 if value <= 224 else 5
-    return str(stars)
+    # MusicBee five-star POPM anchors, interpolated to half stars.
+    anchors = ((1, 1), (64, 2), (128, 3), (196, 4), (255, 5))
+    for (low_byte, low_star), (high_byte, high_star) in zip(anchors, anchors[1:]):
+        if value <= high_byte:
+            fraction = (value - low_byte) / (high_byte - low_byte)
+            stars = round((low_star + fraction * (high_star - low_star)) * 2) / 2
+            return f"{stars:g}/5"
+    return "5/5"
 
 
 PRESETS_FILE = Path(__file__).with_name("restaurant_presets.json")
