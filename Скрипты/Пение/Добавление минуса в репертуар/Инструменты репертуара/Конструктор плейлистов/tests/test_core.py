@@ -8,7 +8,7 @@ from core import (read_track, append_unique, save_playlist, read_playlist, move_
                   replace_rows, repeated_from_history, expand_inputs, parse_dropped_text, scan_library, load_config, divider_path, export_block_playlist, distribute_blocks,
                   song_key, unique_songs, add_unique_songs, replacement_candidates,
                   eligible_for_restaurant, filtered_restaurant_catalog, link_versions)
-from mutagen.id3 import ID3, TPE1, TIT2, MVNM, TMOO, TCON, TIT1, TPE2, TXXX, TBPM
+from mutagen.id3 import ID3, TPE1, TIT2, MVNM, TMOO, TCON, TIT1, TCOM, TPE2, TXXX, TBPM
 
 
 class SetlistCoreTests(unittest.TestCase):
