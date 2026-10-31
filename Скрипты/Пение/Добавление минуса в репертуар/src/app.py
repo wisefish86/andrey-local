@@ -1103,6 +1103,8 @@ class MainWindow(QMainWindow):
         self.upload_plus_btn.setEnabled(False)
 
     def _make_field_control(self, field: dict[str, Any]):
+        if field["control"] == "free_text":
+            return QLineEdit()
         if field["control"] == "single_select":
             combo = QComboBox()
             combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
