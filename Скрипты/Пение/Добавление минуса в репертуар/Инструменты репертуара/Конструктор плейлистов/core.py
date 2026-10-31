@@ -103,7 +103,7 @@ def read_track(path: Path) -> Track:
             "status": "; ".join(read_txxx(id3, "TXXX:OCCASION")),
             "rating": read_rating(id3),
             "bpm": first("TBPM"),
-            "work_id": with_prefix("в-"),
+            "work_id": next((x for v in read_text(id3, "TCOM") for x in split_multi(v) if x.startswith("в-")), ""),
         }
     except Exception as exc:
         problem = f"Не удалось прочитать ID3: {exc}"
