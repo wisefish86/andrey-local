@@ -722,12 +722,25 @@ class MainWindow(QMainWindow):
                 "Блоки уже редактировались. Пересоздание изменит их распределение и резервы. Продолжить?")
             if response != QMessageBox.StandardButton.Yes:
                 return
-        if not self.current.tracks:
-            QMessageBox.information(self, "Блоки", "Сначала добавь песни в текущий плейлист.")
-            return
         count = self.block_count.value()
         target = self.block_minutes.value()
-        groups = distribute_blocks(self.current.tracks, count, target)
+        manual = bool(self.current.tracks)
+        source = self.current.tracks if manual else self.catalog.tracks
+        if len(source) < count:
+            QMessageBox.warning(self, "Недостаточно песен",
+                "После фильтрации недостаточно песен для выбранного числа блоков.")
+            return
+        if not manual:
+            preset = self.presets.get(self.venue.currentText(), {})
+            source = build_language_balanced_list(
+                [], source, min(len(source), count * max(1, target // 3)),
+                int(preset.get("english_target_percent", 50)),
+                int(preset.get("language_tolerance_percent", 10)))
+        groups = distribute_blocks(source, count, target)
+        if any(not main for main, _ in groups):
+            QMessageBox.warning(self, "Недостаточно песен",
+                "Не удалось заполнить все блоки. Уменьши длительность или число блоков.")
+            return
         used = {str(t.path).casefold() for t in self.current.tracks}
         available = [
             t for t in self.catalog.tracks
