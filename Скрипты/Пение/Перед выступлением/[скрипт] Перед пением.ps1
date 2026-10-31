@@ -55,6 +55,17 @@ Get-Process "BreakTimer" -ErrorAction SilentlyContinue | Stop-Process -Force
 # ============================================
 Start-Process "ms-settings:easeofaccess-audio"
 Start-Process "C:\Program Files (x86)\MusicBee\MusicBee.exe"
+# Wait until MusicBee has a visible main window (up to 15 seconds).
+# Get-Process is used instead of -Wait because MusicBee stays open.
+$musicBeeWindowReady = $false
+for ($attempt = 0; $attempt -lt 30; $attempt++) {
+    $musicBeeWindowReady = [bool](Get-Process -Name "MusicBee" -ErrorAction SilentlyContinue |
+        Where-Object { $_.MainWindowHandle -ne 0 } | Select-Object -First 1)
+    if ($musicBeeWindowReady) { break }
+    Start-Sleep -Milliseconds 500
+}
+# Let the window finish positioning before restoring the magnified region.
+Start-Sleep -Seconds 2
 $magnifier = 'C:\Users\Andrey\AppData\Local\OnTopReplicaPlus\OnTopReplicaPlus.exe'
 if (Test-Path -LiteralPath $magnifier -PathType Leaf) {
     Start-Process -FilePath $magnifier
