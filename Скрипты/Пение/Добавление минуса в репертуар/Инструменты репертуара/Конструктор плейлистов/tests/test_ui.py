@@ -32,7 +32,7 @@ class SetlistUiSmokeTests(unittest.TestCase):
             ui.current.set_tracks([track])
             ui.history.set_tracks([track])
             self.assertEqual(ui.current.rowCount(), 1)
-            self.assertEqual(ui.current.columnCount(), 3)
+            self.assertEqual(ui.current.columnCount(), 4)
             self.assertEqual(ui.current.horizontalHeaderItem(1).text(), "Сложность · Песня")
             self.assertEqual(ui.current.item(0, 1).text(), "Песня")
             self.assertEqual(ui.current.item(0, 2).text(), "Исполнитель")
