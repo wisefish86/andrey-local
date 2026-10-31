@@ -424,8 +424,13 @@ def distribute_blocks(tracks: list[Track], number: int, target_minutes: int,
             for index, song in enumerate(group):
                 if difficulty_level(song) != 4:
                     continue
+                before = sum(track_minutes(t) or 0 for t in group)
+                after = sum(track_minutes(t) or 0 for t in last)
+                song_length = track_minutes(song) or 0
                 candidates = [(j, other) for j, other in enumerate(last)
-                              if difficulty_level(other) in (1, 2)]
+                              if difficulty_level(other) in (1, 2)
+                              and before - song_length + (track_minutes(other) or 0) <= target_minutes
+                              and after - (track_minutes(other) or 0) + song_length <= target_minutes]
                 if not candidates:
                     break
                 swap_index, _ = min(candidates, key=lambda pair:
