@@ -716,6 +716,18 @@
       ],
       "attention_required": false,
       "attention_mode": "placeholder"
+    },
+    {
+      "id": "service_tags",
+      "label": "Служебные теги (Композитор)",
+      "section": "search",
+      "control": "free_text",
+      "storage": {
+        "kind": "text",
+        "frame": "TCOM"
+      },
+      "default": "",
+      "attention_required": false
     }
   ],
   "file_tools": {
