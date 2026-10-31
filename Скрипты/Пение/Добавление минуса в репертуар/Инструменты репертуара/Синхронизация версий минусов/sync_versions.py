@@ -30,35 +30,46 @@ def current_version(tags: ID3) -> str:
     return values[0] if values else ""
 
 
+VARIANT_WORDS = ("cover", "кавер", "remix", "ремикс", "mix", "акустика",
+                 "acoustic", "acoustics", "live", "unplugged", "instrumental",
+                 "инструментал", "version", "ver.", "slow", "country", "edit", "remaster")
+
+
+def normalize_title(title: str) -> tuple[str, bool]:
+    """Remove edition metadata, preserve meaningful parenthetical titles."""
+    variant = False
+    while True:
+        found = re.search(r"\\s*\\(([^()]*)\\)\\s*$", title)
+        if not found:
+            break
+        words = found.group(1).casefold()
+        if not any(re.search(r"(?<!\\w)" + re.escape(word) + r"(?!\\w)", words)
+                   for word in VARIANT_WORDS):
+            break
+        title = title[:found.start()].strip()
+        variant = True
+    title = re.sub(r"\\s*\\[[+-]?[0-9]+\\]\\s*$", "", title).strip()
+    return title, variant
+
+
 def generated_version(folder_name: str, separator: str = SEPARATOR) -> str:
     if separator not in folder_name:
         raise ValueError("В имени папки отсутствует разделитель: " + folder_name)
     title = folder_name.split(separator, 1)[0].strip()
+    title, _ = normalize_title(title)
     if not title:
         raise ValueError("Не удалось выделить название песни из папки: " + folder_name)
-    match = re.search(r"\s*\(([^()]*)\)\s*$", title)
-    if match and match.group(1).strip().casefold() in VARIANT_LABELS:
-        title = title[:match.start()].strip()
     return VERSION_PREFIX + "-".join(title.split())
 
 
-
-# Only explicit version labels are stripped. Similar titles alone aren't proof.
-VARIANT_LABELS = ("acoustic", "acoustics", "акустика", "remix", "mix", "cover",
-                  "кавер", "ремикс", "live", "slow ver.", "slow version",
-                  "instrumental", "инструментал", "unplugged")
-
-
 def song_folder_info(folder: Path, separator: str = SEPARATOR):
-    """Return (title, artist, base_title, explicit_variant), or None."""
+    """Return (title, artist, normalized_title, edition_flag), or None."""
     if separator not in folder.name:
         return None
     title, artist = [part.strip() for part in folder.name.split(separator, 1)]
     if not title or not artist:
         return None
-    found = re.search(r"\s*\(([^()]*)\)\s*$", title)
-    variant = bool(found and found.group(1).strip().casefold() in VARIANT_LABELS)
-    base = title[:found.start()].strip() if variant else title
+    base, variant = normalize_title(title)
     return title, artist, base, variant
 
 
