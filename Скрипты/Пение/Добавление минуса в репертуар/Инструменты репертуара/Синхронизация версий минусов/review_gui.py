@@ -178,6 +178,35 @@ def main():
         library = load_library()
         plan = planned_folders(library, MARKER, SEPARATOR)
         proposals = cross_folder_suggestions(library, MARKER, SEPARATOR)
+        remembered = read_links()
+        unresolved = []
+        for proposal in proposals:
+            cover = proposal["version"]
+            choice = remembered.get(cover["folder"])
+            if choice is None:
+                unresolved.append(proposal)
+                continue
+            if choice == "ignore":
+                continue
+            original = next((x for x in proposal["possible_originals"]
+                             if x["folder"] == choice), None)
+            if original is None:
+                unresolved.append(proposal)
+                continue
+            from sync_versions import current_version, generated_version, duplicate_title_targets
+            from mutagen.id3 import ID3
+            target = next((x["target"] for x in plan if x["folder"] == choice
+                           and x.get("target")), None)
+            target = target or duplicate_title_targets(library).get(choice)
+            target = target or next((current_version(ID3(Path(p))) for p in original["files"]
+                                     if current_version(ID3(Path(p)))), None)
+            target = target or generated_version(Path(choice).name)
+            changes = [p for p in cover["files"]
+                       if current_version(ID3(Path(p))) != target]
+            if changes:
+                plan.append({"folder": cover["folder"], "status": "change",
+                             "target": target, "changes": changes})
+        proposals = unresolved
         if args.silent_when_clean and not any(x["status"] in ("change", "review", "error") for x in plan) and not proposals:
             return 0
         window = ReviewWindow(library, plan, proposals)
