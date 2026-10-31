@@ -424,6 +424,31 @@ def eligible_for_restaurant(track: Track, preset: dict) -> bool:
 def filtered_restaurant_catalog(tracks: list[Track], preset: dict) -> list[Track]:
     return unique_songs([song for song in tracks if eligible_for_restaurant(song, preset)])
 
+def build_language_balanced_list(existing: list[Track], catalog: list[Track],
+                                 desired_count: int, english_percent: int) -> list[Track]:
+    """Append unique filtered songs towards target English share; never remove manual picks."""
+    if desired_count < 0 or not 0 <= english_percent <= 100:
+        raise ValueError("Некорректная длина плейлиста или доля английских")
+    result = add_unique_songs([], existing)
+    occupied = {song_key(t) for t in result}
+    english = sum(t.language.casefold() == "я-англ" for t in result)
+    goal_english = round(desired_count * english_percent / 100)
+    for _ in range(max(0, desired_count - len(result))):
+        candidates = [t for t in catalog if song_key(t) not in occupied
+                      and t.language.casefold() in ("я-рус", "я-англ")]
+        if not candidates:
+            break
+        prefer_english = english < goal_english
+        preferred = next((t for t in candidates
+                          if (t.language.casefold() == "я-англ") == prefer_english), None)
+        chosen = preferred or candidates[0]
+        result.append(chosen)
+        occupied.add(song_key(chosen))
+        if chosen.language.casefold() == "я-англ":
+            english += 1
+    return result
+
+
 PRESETS_FILE = Path(__file__).with_name("restaurant_presets.json")
 
 def load_restaurant_presets(path: Path = PRESETS_FILE) -> dict:
