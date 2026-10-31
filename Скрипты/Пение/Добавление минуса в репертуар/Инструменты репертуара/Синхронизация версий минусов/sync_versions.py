@@ -154,7 +154,8 @@ def planned_folders(library: Path, marker: str = MARKER, separator: str = SEPARA
                        key=lambda p: (p.name.casefold(), p.name))
         forced = duplicate_targets.get(str(folder))
         if len(files) < 2 and not forced:
-            continue
+            if not files or not legacy_work_tag(ID3(files[0])):
+                continue
         if str(folder) in pending_covers:
             option = pending_covers[str(folder)]
             result.append({"folder": str(folder), "status": "review",
@@ -168,8 +169,9 @@ def planned_folders(library: Path, marker: str = MARKER, separator: str = SEPARA
             # Первый файл с заполненным значением задаёт его для всей папки.
             # Если ни у одного нет значения, формируем из названия папки.
             selected = next((value for _, value in existing if value), "")
+            selected = selected or next((legacy_work_tag(tags) for _, tags in entries if legacy_work_tag(tags)), "")
             target = forced or selected or generated_version(folder.name, separator)
-            changes = [str(p) for p, value in existing if value != target]
+            changes = [str(p) for p, tags in entries if current_version(tags) != target or legacy_work_tag(tags)]
             result.append({"folder": str(folder), "target": target, "files": [str(p) for p in files],
                            "changes": changes, "source": "duplicate_title" if forced else ("existing" if selected else "folder"),
                            "status": "change" if changes else "ok"})
