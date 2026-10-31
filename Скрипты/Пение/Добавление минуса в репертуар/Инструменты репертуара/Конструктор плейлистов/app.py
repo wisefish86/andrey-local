@@ -783,6 +783,8 @@ class MainWindow(QMainWindow):
             used.update(song_key(t) for t in chosen)
             available = [t for t in available if song_key(t) not in used]
             result.append((main, chosen))
+        # Preserve generated selections for next startup even in catalog mode.
+        self.current.set_tracks([song for main, _ in result for song in main])
         self.block_plan = result
         self.render_block_editor()
         counts = ", ".join(f"{len(main)}+{len(reserve)}" for main, reserve in result)
