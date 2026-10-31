@@ -51,7 +51,7 @@ class TrackTable(QTableWidget):
     selectionChanged = Signal()
 
     HEADERS = ("№", "Исполнитель", "Песня / версия", "Сложность", "Язык", "Энергия", "Рейтинг", "BPM")
-    PLAYLIST_HEADERS = ("№", "Сложность · Песня", "Исполнитель")
+    PLAYLIST_HEADERS = ("№", "Сложность · Песня", "Исполнитель", "Рейтинг")
     DIFFICULTY_SIGNS = {"сл-1": "🠒", "сл-2": "⇉", "сл-3": "⇶", "сл-4": "^"}
 
     def __init__(self, name: str, owner):
@@ -99,7 +99,7 @@ class TrackTable(QTableWidget):
             marked_title = f"{sign}{track.title}" if sign else track.title
             if alternatives > 1:
                 marked_title += f"  ⇄ {alternatives}"
-            values = ((str(row + 1), marked_title, track.artist)
+            values = ((str(row + 1), marked_title, track.artist, display_rating(track.rating))
                       if self.name == "current" or self.name.startswith(("block:", "reserve:")) else
                       (str(row + 1), track.artist, track.title, track.difficulty,
                        track.language, track.energy, display_rating(track.rating), track.bpm))
