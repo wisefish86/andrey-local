@@ -509,7 +509,7 @@ def filtered_restaurant_catalog(tracks: list[Track], preset: dict) -> list[Track
 
 def build_language_balanced_list(existing: list[Track], catalog: list[Track],
                                  desired_count: int, english_percent: int,
-                                 tolerance: int = 10) -> list[Track]:
+                                 tolerance: int = 10, prefer_alternation: bool = True) -> list[Track]:
     """Balance additions while alternating languages, preserving manual entries."""
     if desired_count < 0 or not 0 <= english_percent <= 100 or not 0 <= tolerance <= 50:
         raise ValueError("Некорректные параметры языкового баланса")
@@ -524,7 +524,7 @@ def build_language_balanced_list(existing: list[Track], catalog: list[Track],
         best = min(range(len(pool)), key=lambda i: (
             max(0, abs(100 * (english + (pool[i].language.casefold() == "я-англ"))
                        / (total + 1) - english_percent) - tolerance),
-            int(pool[i].language.casefold() == last),
+            int(prefer_alternation and pool[i].language.casefold() == last),
             abs(100 * (english + (pool[i].language.casefold() == "я-англ"))
                 / (total + 1) - english_percent),
             i))
