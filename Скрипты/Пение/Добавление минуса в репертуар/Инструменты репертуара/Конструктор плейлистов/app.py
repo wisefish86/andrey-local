@@ -3,13 +3,14 @@ from __future__ import annotations
 
 from pathlib import Path
 import sys
+import json
 
 from PySide6.QtCore import QItemSelectionModel, QMimeData, Qt, QThread, QUrl, Signal, QTimer
 from PySide6.QtGui import QColor, QDrag, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QApplication, QAbstractItemView, QFileDialog, QHeaderView, QLabel, QMainWindow,
     QMessageBox, QPushButton, QSplitter, QTableWidget, QTableWidgetItem,
-    QVBoxLayout, QWidget, QHBoxLayout, QSpinBox, QDialog, QComboBox, QLineEdit, QPlainTextEdit, QFormLayout, QScrollArea,
+    QVBoxLayout, QWidget, QHBoxLayout, QSpinBox, QDialog, QComboBox, QLineEdit, QPlainTextEdit, QFormLayout, QScrollArea, QCheckBox, QGridLayout,
 )
 
 from core import Track, append_unique, expand_inputs, move_rows, parse_dropped_text
@@ -207,6 +208,11 @@ class MainWindow(QMainWindow):
         self.replacement_history = {}
         self.catalog_all = []
         self.presets = load_restaurant_presets()
+        self.session_path = Path(__file__).with_name("data") / "last_session.json"
+        try:
+            self.session = json.loads(self.session_path.read_text(encoding="utf-8")) if self.session_path.exists() else {}
+        except (OSError, ValueError):
+            self.session = {}
         self.setStyleSheet("""
             QMainWindow, QWidget { background:#111922; color:#e6edf5; font-size:12px; }
             QTableWidget { background:#172333; alternate-background-color:#1b2938;
@@ -245,7 +251,7 @@ class MainWindow(QMainWindow):
         edit_venue.clicked.connect(self.edit_restaurant_preset)
         venue_controls.addWidget(edit_venue)
         venue_controls.addStretch(1)
-        self.reload_venue_names()
+        self.reload_venue_names(self.session.get("venue"))
         options = load_config().get("blocks", {})
         controls = QHBoxLayout()
         outer.addLayout(controls)
@@ -279,11 +285,41 @@ class MainWindow(QMainWindow):
         QShortcut(QKeySequence("Ctrl+S"), self, activated=lambda: self.export_list(self.current))
         QShortcut(QKeySequence("Ctrl+O"), self, activated=lambda: self.pick_files("current"))
         self.refresh_summary()
+        QTimer.singleShot(100, self.restore_session_playlist)
         try:
             if load_config().get("library", {}).get("auto_load", True):
                 self.reload_catalog()
         except (OSError, ValueError) as exc:
             self.statusBar().showMessage(f"Конфигурация: {exc}", 15000)
+
+    def closeEvent(self, event):
+        self.save_session()
+        super().closeEvent(event)
+
+    def save_session(self):
+        state = {"venue": self.venue.currentText(),
+                 "playlist": [str(t.path) for t in self.current.tracks]}
+        self.session_path.parent.mkdir(parents=True, exist_ok=True)
+        temporary = self.session_path.with_suffix(".tmp")
+        try:
+            temporary.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
+            temporary.replace(self.session_path)
+        except OSError as exc:
+            self.statusBar().showMessage(str(exc), 10000)
+
+    def restore_session_playlist(self):
+        paths = self.session.get("playlist", [])
+        if not isinstance(paths, list):
+            return
+        tracks = []
+        for path in paths:
+            try:
+                if isinstance(path, str) and Path(path).is_file():
+                    tracks.append(read_track(Path(path)))
+            except (OSError, ValueError):
+                continue
+        if tracks:
+            self.current.set_tracks(add_unique_songs([], tracks))
 
     def make_panel(self, splitter, title: str, name: str) -> TrackTable:
         panel = QWidget()
@@ -367,45 +403,71 @@ class MainWindow(QMainWindow):
 
     def edit_restaurant_preset(self):
         dialog = QDialog(self)
-        dialog.setWindowTitle("Пресет ресторана")
-        dialog.resize(510, 430)
+        dialog.setWindowTitle("Фильтры каталога · шаблон ресторана")
+        dialog.resize(680, 680)
         layout = QVBoxLayout(dialog)
         form = QFormLayout()
         layout.addLayout(form)
-        name = QLineEdit(dialog)
         current = self.venue.currentText()
-        name.setText("" if current == "Все песни" else current)
-        form.addRow("Ресторан / название пресета:", name)
         existing = self.presets.get(current, {})
-        included = QPlainTextEdit(dialog)
-        included.setPlainText("\\n".join(existing.get("include_tags", [])))
-        excluded = QPlainTextEdit(dialog)
-        excluded.setPlainText("\\n".join(existing.get("exclude_tags", [])))
-        form.addRow("Допустить по тегам (один на строку):", included)
-        form.addRow("Исключить по тегам (один на строку):", excluded)
-        explanation = QLabel("Пустое поле «Допустить» — без дополнительных ограничений. "
-                             "Если оно заполнено, подходит песня с любым из перечисленных тегов. "
-                             "Исключения всегда имеют приоритет.")
-        explanation.setWordWrap(True)
-        layout.addWidget(explanation)
-        save = QPushButton("Сохранить пресет")
+        name = QLineEdit("" if current == "Все песни" else current)
+        form.addRow("Название шаблона:", name)
+        included = QPlainTextEdit()
+        included.setMaximumHeight(62)
+        included.setPlainText("\n".join(existing.get("include_tags", [])))
+        excluded = QPlainTextEdit()
+        excluded.setMaximumHeight(62)
+        excluded.setPlainText("\n".join(existing.get("exclude_tags", [])))
+        form.addRow("Включать по тегам (любой из):", included)
+        form.addRow("Исключать по тегам:", excluded)
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        pane = QWidget()
+        pane_layout = QVBoxLayout(pane)
+        selections = {}
+        for field, label in (("language", "Язык"), ("difficulty", "Сложность"), ("energy", "Энергия")):
+            pane_layout.addWidget(QLabel(label + " · разрешённые значения (ничего = все)"))
+            grid = QGridLayout()
+            values = sorted({getattr(t, field) for t in self.catalog_all if getattr(t, field)}, key=str.casefold)
+            selected = set(existing.get(field + "_allow", []))
+            checks = []
+            for i, value in enumerate(values):
+                check = QCheckBox(value)
+                check.setChecked(value in selected)
+                check.setStyleSheet("QCheckBox {padding:7px;border:1px solid #4c6680;border-radius:8px;}")
+                grid.addWidget(check, i // 4, i % 4)
+                checks.append((value, check))
+            selections[field] = checks
+            pane_layout.addLayout(grid)
+        scroll.setWidget(pane)
+        layout.addWidget(scroll, 1)
+        ratio = QSpinBox()
+        ratio.setRange(0, 100)
+        ratio.setSuffix("% английских · ориентир")
+        ratio.setValue(int(existing.get("english_target_percent", 50)))
+        form.addRow("Доля английских:", ratio)
+        layout.addWidget(QLabel("Доля языка — ориентир; вручную выбранные песни не удаляются."))
+        save = QPushButton("Сохранить шаблон и применить")
         layout.addWidget(save)
         def commit():
             title = name.text().strip()
             if not title or title == "Все песни":
-                QMessageBox.warning(dialog, "Пресет", "Укажи уникальное название ресторана.")
+                QMessageBox.warning(dialog, "Шаблон", "Укажи название ресторана.")
                 return
             def lines(widget):
                 return list(dict.fromkeys(x.strip() for x in widget.toPlainText().splitlines() if x.strip()))
-            if current not in ("Все песни", title) and current in self.presets:
-                QMessageBox.information(dialog, "Пресет", "Создан новый пресет; прежний сохранён.")
-            self.presets[title] = {"include_tags": lines(included), "exclude_tags": lines(excluded)}
+            preset = {"include_tags": lines(included), "exclude_tags": lines(excluded),
+                      "english_target_percent": ratio.value()}
+            for field, checks in selections.items():
+                preset[field + "_allow"] = [value for value, check in checks if check.isChecked()]
+            self.presets[title] = preset
             try:
                 save_restaurant_presets(self.presets)
             except OSError as exc:
                 QMessageBox.warning(dialog, "Ошибка сохранения", str(exc))
                 return
             self.reload_venue_names(title)
+            self.save_session()
             dialog.accept()
         save.clicked.connect(commit)
         dialog.exec()
