@@ -52,6 +52,14 @@ def normalize_title(title: str) -> tuple[str, bool]:
     return title, variant
 
 
+def clean_old_group(tags):
+    values = [part for value in read_text(tags, "TIT1") for part in split_multi(value)]
+    remaining = [part for part in values if not part.casefold().startswith("в-")]
+    if values != remaining:
+        tags.delall("TIT1")
+        if remaining:
+            tags.add(TIT1(encoding=3, text=["; ".join(remaining)]))
+
 def legacy_work_tag(tags):
     parts = [x for value in read_text(tags, "TIT1") for x in split_multi(value)]
     return next((x for x in parts if x.casefold().startswith("в-")), "")
