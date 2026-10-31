@@ -1,9 +1,9 @@
 ﻿{
-    "Started":  "2026-10-30T12:13:42.1821792+03:00",
-    "Finished":  "2026-10-30T12:14:02.2972519+03:00",
+    "Started":  "2026-10-30T21:00:02.2951346+03:00",
+    "Finished":  "2026-10-30T21:00:04.9103665+03:00",
     "Destination":  "D:\\YandexDisk\\Архив\\Backup\\Программы",
-    "Copied":  1,
-    "Unchanged":  33,
+    "Copied":  0,
+    "Unchanged":  34,
     "Deferred":  0,
     "Failed":  0,
     "Files":  [
@@ -28,7 +28,7 @@
                   {
                       "Name":  "CorelDRAW GMS",
                       "File":  "CorelDRAW\\CorelDRAW Graphics Suite 2026\\Draw\\GlobalMacros.gms",
-                      "Status":  "Copied",
+                      "Status":  "Unchanged",
                       "Error":  ""
                   },
                   {
