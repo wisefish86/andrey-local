@@ -584,6 +584,8 @@ class MainWindow(QMainWindow):
         if destination == "catalog":
             self.catalog_all = tracks
             self.apply_restaurant_preset()
+            if self.block_plan is None and self.current.tracks:
+                self.current.set_tracks(self.current.tracks)
         else:
             combine = add_unique_songs if destination == "current" else append_unique
             table.set_tracks(combine(table.tracks, tracks), (t.path for t in tracks))
