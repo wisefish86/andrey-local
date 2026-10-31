@@ -417,13 +417,13 @@ class MainWindow(QMainWindow):
                        for word in words)]
         self.catalog.set_tracks(matches)
         if hasattr(self, "ratio_hint"):
-            target = int(preset.get("english_target_percent", 50))
+            target = int(preset.get("english_target_percent", load_config().get("selection", {}).get("language_english_percent", 50)))
             tolerance = int(preset.get("language_tolerance_percent", 10))
             self.ratio_hint.setText(f"Цель: {target}% ±{tolerance}% англ.")
 
     def fill_language_ratio(self):
         preset = self.presets.get(self.venue.currentText(), {})
-        percentage = int(preset.get("english_target_percent", 50))
+        percentage = int(preset.get("english_target_percent", load_config().get("selection", {}).get("language_english_percent", 50)))
         try:
             selected = build_language_balanced_list(
                 self.current.tracks, self.catalog.tracks,
@@ -480,7 +480,7 @@ class MainWindow(QMainWindow):
         ratio = QSpinBox()
         ratio.setRange(0, 100)
         ratio.setSuffix("% английских · ориентир")
-        ratio.setValue(int(existing.get("english_target_percent", 50)))
+        ratio.setValue(int(existing.get("english_target_percent", load_config().get("selection", {}).get("language_english_percent", 50))))
         form.addRow("Доля английских:", ratio)
         tolerance = QSpinBox()
         tolerance.setRange(0, 50)
