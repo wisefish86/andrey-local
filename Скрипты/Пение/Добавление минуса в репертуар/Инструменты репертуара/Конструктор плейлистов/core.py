@@ -226,8 +226,8 @@ def replace_rows(rows: list[Track], selected: list[int], replacements: list[Trac
 
 def repeated_from_history(current: list[Track], history: list[Track]) -> tuple[int, float]:
     """Count distinct *songs*, not multiple backing-track versions."""
-    current_names = {x.identity for x in current}
-    prior_names = {x.identity for x in history}
+    current_names = {song_key(x) for x in current}
+    prior_names = {song_key(x) for x in history}
     intersection = len(current_names & prior_names)
     return intersection, (intersection / len(current_names) * 100) if current_names else 0.0
 
