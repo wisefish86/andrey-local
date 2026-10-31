@@ -389,6 +389,21 @@ def distribute_blocks(tracks: list[Track], number: int, target_minutes: int,
     # Reserve songs are drawn from remaining eligible medium/easy catalogue externally;
     # never silently duplicate an already scheduled performance.
     pacing = load_config().get('blocks', {}).get('vocal_rules', {})
+    if pacing.get("hardest_prefer_last_block", True) and len(blocks) > 1:
+        last = blocks[-1]
+        for group in blocks[:-1]:
+            for index, song in enumerate(group):
+                if difficulty_level(song) != 4:
+                    continue
+                candidates = [(j, other) for j, other in enumerate(last)
+                              if difficulty_level(other) in (1, 2)]
+                if not candidates:
+                    break
+                swap_index, _ = min(candidates, key=lambda pair:
+                                    (abs((track_minutes(pair[1]) or 0) -
+                                         (track_minutes(song) or 0)),
+                                     difficulty_level(pair[1])))
+                group[index], last[swap_index] = last[swap_index], group[index]
     return [(arrange_vocal_block(group, first_block=(i == 0), rules=pacing), [])
             for i, group in enumerate(blocks)]
 
