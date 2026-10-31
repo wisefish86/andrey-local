@@ -1385,6 +1385,9 @@ class MainWindow(QMainWindow):
             control.clear_dynamic_options()
 
     def _set_control_values(self, field, control, values: list[str]):
+        if isinstance(control, QLineEdit):
+            control.setText("; ".join(values))
+            return
         self._clear_dynamic_values(field, control)
         source_values = self._canonicalize_values(field, values)
         values_to_show = source_values or self._default_values(field)
