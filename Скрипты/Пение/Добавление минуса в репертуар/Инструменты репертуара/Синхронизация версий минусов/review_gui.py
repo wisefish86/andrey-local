@@ -12,7 +12,7 @@ from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
 
 from cover_links import read_links, write_links
 from sync_versions import (ROOT, MARKER, SEPARATOR, planned_folders,
-    cross_folder_suggestions, apply_changes, legacy_work_tag)
+    cross_folder_suggestions, apply_changes, legacy_work_tag, manual_original_tag)
 
 
 def load_library() -> Path:
@@ -73,8 +73,8 @@ class ReviewWindow(QMainWindow):
             self.table.setItem(row, 4, QTableWidgetItem(str(len(item["changes"]))))
             self.table.item(row, 1).setData(Qt.ItemDataRole.UserRole, item)
         layout.addWidget(QLabel("Неоднозначные каверы: выбери оригинал либо оставь без привязки."))
-        self.questions = QTableWidget(0, 2)
-        self.questions.setHorizontalHeaderLabels(["Кавер / версия", "Связать с произведением"])
+        self.questions = QTableWidget(0, 4)
+        self.questions.setHorizontalHeaderLabels(["Кавер / версия", "Связать с произведением", "Название оригинала", "Исполнитель оригинала"])
         self.questions.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         self.questions.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
         layout.addWidget(self.questions, 2)
@@ -89,14 +89,29 @@ class ReviewWindow(QMainWindow):
             choice.addItem("Пока не связывать", None)
             for candidate in proposal["possible_originals"]:
                 choice.addItem(candidate["title"] + " — " + candidate["artist"], candidate["folder"])
+            choice.addItem("Указать оригинал вручную", "manual")
             choice.addItem("Не связывать — запомнить", "ignore")
+            title_field = QLineEdit(proposal["title"])
+            artist_field = QLineEdit()
+            self.questions.setCellWidget(row, 2, title_field)
+            self.questions.setCellWidget(row, 3, artist_field)
+            def toggle_fields(_index, combo=choice, title=title_field, artist=artist_field):
+                enabled = combo.currentData() == "manual"
+                title.setEnabled(enabled)
+                artist.setEnabled(enabled)
+            choice.currentIndexChanged.connect(toggle_fields)
             saved = self.saved_links.get(proposal["version"]["folder"])
+            if isinstance(saved, dict) and saved.get("type") == "manual":
+                title_field.setText(saved.get("title", proposal["title"]))
+                artist_field.setText(saved.get("artist", ""))
+                saved = "manual"
             for index in range(choice.count()):
                 if choice.itemData(index) == saved and saved is not None:
                     choice.setCurrentIndex(index)
                     break
             self.questions.setCellWidget(row, 1, choice)
-            self.options.append((proposal, choice))
+            toggle_fields(0)
+            self.options.append((proposal, choice, title_field, artist_field))
         self.info = QLabel(f"Папок с изменениями: {self.table.rowCount()} · "
                            f"Вопросов по версиям: {len(proposals)}")
         layout.addWidget(self.info)
@@ -124,10 +139,26 @@ class ReviewWindow(QMainWindow):
             item["target"] = desired
             selected.append(item)
         decisions = {}
-        for proposal, combo in self.options:
+        for proposal, combo, title_field, artist_field in self.options:
             original_path = combo.currentData()
             cover = proposal["version"]
             if original_path is None:
+                continue
+            if original_path == "manual":
+                title, artist = title_field.text().strip(), artist_field.text().strip()
+                try:
+                    target = manual_original_tag(title, artist)
+                except ValueError as exc:
+                    QMessageBox.warning(self, "Оригинал", str(exc))
+                    return
+                decisions[cover["folder"]] = {"type": "manual", "title": title, "artist": artist}
+                from sync_versions import current_version
+                from mutagen.id3 import ID3
+                changes = [p for p in cover["files"]
+                           if current_version(ID3(Path(p))) != target or legacy_work_tag(ID3(Path(p)))]
+                if changes:
+                    selected.append({"folder": cover["folder"], "target": target,
+                                     "changes": changes, "status": "change"})
                 continue
             decisions[cover["folder"]] = original_path
             if original_path == "ignore":
@@ -193,6 +224,19 @@ def main():
                 unresolved.append(proposal)
                 continue
             if choice == "ignore":
+                continue
+            if isinstance(choice, dict) and choice.get("type") == "manual":
+                try:
+                    target = manual_original_tag(choice.get("title", ""), choice.get("artist", ""))
+                    from sync_versions import current_version
+                    from mutagen.id3 import ID3
+                    changes = [p for p in cover["files"]
+                               if current_version(ID3(Path(p))) != target or legacy_work_tag(ID3(Path(p)))]
+                    if changes:
+                        plan.append({"folder": cover["folder"], "status": "change",
+                                     "target": target, "changes": changes})
+                except ValueError:
+                    unresolved.append(proposal)
                 continue
             original = next((x for x in proposal["possible_originals"]
                              if x["folder"] == choice), None)
