@@ -215,7 +215,7 @@ def main():
         plan = [x for x in plan if x["status"] != "review" or x["folder"] not in remembered]
         if args.silent_when_clean and not any(x["status"] in ("change", "review", "error") for x in plan) and not proposals:
             return 0
-        window = ReviewWindow(library, plan, proposals)
+        window = ReviewWindow(library, plan, proposals if args.silent_when_clean else all_proposals)
         window.show()
         return app.exec()
     except Exception as exc:
