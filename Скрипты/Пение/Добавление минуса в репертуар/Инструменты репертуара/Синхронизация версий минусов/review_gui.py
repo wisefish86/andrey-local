@@ -12,7 +12,7 @@ from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
 
 from cover_links import read_links, write_links
 from sync_versions import (ROOT, MARKER, SEPARATOR, planned_folders,
-    cross_folder_suggestions, apply_changes, legacy_work_tag, manual_original_tag)
+    cross_folder_suggestions, apply_changes, legacy_work_tag)
 
 
 def load_library() -> Path:
@@ -72,9 +72,9 @@ class ReviewWindow(QMainWindow):
             self.table.setCellWidget(row, 3, editor)
             self.table.setItem(row, 4, QTableWidgetItem(str(len(item["changes"]))))
             self.table.item(row, 1).setData(Qt.ItemDataRole.UserRole, item)
-        layout.addWidget(QLabel("Неоднозначные каверы: выбери оригинал либо оставь без привязки."))
-        self.questions = QTableWidget(0, 4)
-        self.questions.setHorizontalHeaderLabels(["Кавер / версия", "Связать с произведением", "Название оригинала", "Исполнитель оригинала"])
+        layout.addWidget(QLabel("Каверы: можно вручную вписать полный тег в- без указания оригинала."))
+        self.questions = QTableWidget(0, 3)
+        self.questions.setHorizontalHeaderLabels(["Кавер / версия", "Связать с произведением", "Тег в- (вручную)"])
         self.questions.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         self.questions.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
         layout.addWidget(self.questions, 2)
@@ -89,21 +89,17 @@ class ReviewWindow(QMainWindow):
             choice.addItem("Пока не связывать", None)
             for candidate in proposal["possible_originals"]:
                 choice.addItem(candidate["title"] + " — " + candidate["artist"], candidate["folder"])
-            choice.addItem("Указать оригинал вручную", "manual")
+            choice.addItem("Указать тег вручную", "manual")
             choice.addItem("Не связывать — запомнить", "ignore")
-            title_field = QLineEdit(proposal["title"])
-            artist_field = QLineEdit()
-            self.questions.setCellWidget(row, 2, title_field)
-            self.questions.setCellWidget(row, 3, artist_field)
-            def toggle_fields(_index, combo=choice, title=title_field, artist=artist_field):
-                enabled = combo.currentData() == "manual"
-                title.setEnabled(enabled)
-                artist.setEnabled(enabled)
+            tag_field = QLineEdit()
+            tag_field.setPlaceholderText("в-Название-произведения")
+            self.questions.setCellWidget(row, 2, tag_field)
+            def toggle_fields(_index, combo=choice, field=tag_field):
+                field.setEnabled(combo.currentData() == "manual")
             choice.currentIndexChanged.connect(toggle_fields)
             saved = self.saved_links.get(proposal["version"]["folder"])
             if isinstance(saved, dict) and saved.get("type") == "manual":
-                title_field.setText(saved.get("title", proposal["title"]))
-                artist_field.setText(saved.get("artist", ""))
+                tag_field.setText(saved.get("tag") or ("в-" + "-".join((saved.get("title", "") + " " + saved.get("artist", "")).split())))
                 saved = "manual"
             for index in range(choice.count()):
                 if choice.itemData(index) == saved and saved is not None:
@@ -111,7 +107,7 @@ class ReviewWindow(QMainWindow):
                     break
             self.questions.setCellWidget(row, 1, choice)
             toggle_fields(0)
-            self.options.append((proposal, choice, title_field, artist_field))
+            self.options.append((proposal, choice, tag_field))
         self.info = QLabel(f"Папок с изменениями: {self.table.rowCount()} · "
                            f"Вопросов по версиям: {len(proposals)}")
         layout.addWidget(self.info)
@@ -139,19 +135,17 @@ class ReviewWindow(QMainWindow):
             item["target"] = desired
             selected.append(item)
         decisions = {}
-        for proposal, combo, title_field, artist_field in self.options:
+        for proposal, combo, tag_field in self.options:
             original_path = combo.currentData()
             cover = proposal["version"]
             if original_path is None:
                 continue
             if original_path == "manual":
-                title, artist = title_field.text().strip(), artist_field.text().strip()
-                try:
-                    target = manual_original_tag(title, artist)
-                except ValueError as exc:
-                    QMessageBox.warning(self, "Оригинал", str(exc))
+                target = tag_field.text().strip()
+                if not target.startswith("в-") or len(target) < 3 or ";" in target or "\\n" in target:
+                    QMessageBox.warning(self, "Тег версии", "Введи тег с префиксом в-, без ; и переносов строк.")
                     return
-                decisions[cover["folder"]] = {"type": "manual", "title": title, "artist": artist}
+                decisions[cover["folder"]] = {"type": "manual", "tag": target}
                 from sync_versions import current_version
                 from mutagen.id3 import ID3
                 changes = [p for p in cover["files"]
@@ -227,7 +221,9 @@ def main():
                 continue
             if isinstance(choice, dict) and choice.get("type") == "manual":
                 try:
-                    target = manual_original_tag(choice.get("title", ""), choice.get("artist", ""))
+                    target = choice.get("tag") or ("в-" + "-".join((choice.get("title", "") + " " + choice.get("artist", "")).split()))
+                    if not target.startswith("в-") or len(target) < 3:
+                        raise ValueError("Неверный сохранённый тег")
                     from sync_versions import current_version
                     from mutagen.id3 import ID3
                     changes = [p for p in cover["files"]
