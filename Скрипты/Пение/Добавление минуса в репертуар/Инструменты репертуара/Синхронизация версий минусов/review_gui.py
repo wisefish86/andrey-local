@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
     QHBoxLayout, QLabel, QPushButton, QTableWidget, QTableWidgetItem,
     QHeaderView, QMessageBox, QComboBox, QLineEdit, QAbstractItemView)
 
+from cover_links import read_links, write_links
 from sync_versions import (ROOT, MARKER, SEPARATOR, planned_folders,
     cross_folder_suggestions, apply_changes)
 
