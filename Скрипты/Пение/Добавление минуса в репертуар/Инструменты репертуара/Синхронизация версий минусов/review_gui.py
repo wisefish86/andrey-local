@@ -33,6 +33,9 @@ class ReviewWindow(QMainWindow):
         self.setStyleSheet("""
             QMainWindow {background:#121923;color:#f0f4fa}
             QWidget {color:#e9edf4;font-size:13px}
+            QMessageBox {background-color:#1a2533;color:#f0f4fa}
+            QMessageBox QLabel {color:#f0f4fa;background-color:transparent}
+            QMessageBox QPushButton {color:#ffffff;background-color:#264d6d;min-width:65px}
             QTableWidget {background:#1a2533;alternate-background-color:#203044;
                           gridline-color:#344356;selection-background-color:#355d7d}
             QLineEdit,QComboBox {background:#1f2c3b;border:1px solid #42546a;
