@@ -443,8 +443,8 @@ def link_versions(paths: list[Path], code: str, backup_dir: Path) -> int:
     import shutil
     from mutagen.id3 import ID3, TCOM
     code = code.strip()
-    if not re.fullmatch(r"в-[а-яё0-9]+", code):
-        raise ValueError("Нужен тег вида в-мамабурито: кириллица, без пробелов")
+    if not re.fullmatch(r"в-[^\s;]+", code):
+        raise ValueError("Нужен тег в-Название с дефисами вместо пробелов")
     files = list(dict.fromkeys(Path(p).resolve() for p in paths))
     if len(files) < 2:
         raise ValueError("Для связывания выбери не менее двух MP3")
