@@ -15,7 +15,7 @@
     "target_minutes": 25,
     "min_target_minutes": 10,
     "max_target_minutes": 60,
-    "reserve_per_block": 2,
+    "reserve_per_block": 3,
     "divider_folder": "deviders",
     "vocal_rules": {
       "first_block_starts_easy": true,
