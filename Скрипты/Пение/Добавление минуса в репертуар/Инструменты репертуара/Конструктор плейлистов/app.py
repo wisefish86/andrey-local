@@ -741,17 +741,21 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "Недостаточно песен",
                 "Не удалось заполнить все блоки. Уменьши длительность или число блоков.")
             return
-        used = {str(t.path).casefold() for t in self.current.tracks}
+        used = {song_key(t) for main, _ in groups for t in main}
         available = [
             t for t in self.catalog.tracks
-            if str(t.path).casefold() not in used
+            if song_key(t) not in used
             and t.status.startswith(("г-1-", "г-2-", "г-3-"))
             and t.difficulty.startswith(("сл-1", "сл-2"))
         ]
         result = []
         for main, _ in groups:
+            preferred = "сл-2" if any("сл-3" in t.difficulty or "сл-4" in t.difficulty for t in main) else "сл-1"
+            available.sort(key=lambda t: (not t.difficulty.startswith(preferred), t.title.casefold()))
             chosen = available[:self.reserve_count.value()]
             del available[:len(chosen)]
+            used.update(song_key(t) for t in chosen)
+            available = [t for t in available if song_key(t) not in used]
             result.append((main, chosen))
         self.block_plan = result
         self.render_block_editor()
