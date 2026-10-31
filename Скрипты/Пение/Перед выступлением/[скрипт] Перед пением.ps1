@@ -54,7 +54,12 @@ Get-Process "BreakTimer" -ErrorAction SilentlyContinue | Stop-Process -Force
 # Запуск приложений
 # ============================================
 Start-Process "ms-settings:easeofaccess-audio"
-Start-Process "magnify"
+$magnifier = 'C:\Users\Andrey\AppData\Local\OnTopReplicaPlus\OnTopReplicaPlus.exe'
+if (Test-Path -LiteralPath $magnifier -PathType Leaf) {
+    Start-Process -FilePath $magnifier
+} else {
+    Write-Warning "OnTopReplicaPlus не найден: $magnifier"
+}
 Start-Process "C:\Program Files\TightVNC\tvnserver.exe"
 Start-Process -FilePath (Join-Path $PSScriptRoot "Связанные скрипты\Панель громкости.ahk")
 $ipv4Bat = Join-Path $PSScriptRoot 'Связанные скрипты\Показать IPv4.bat'
