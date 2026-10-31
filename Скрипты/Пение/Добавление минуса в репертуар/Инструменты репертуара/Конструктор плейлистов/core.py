@@ -286,12 +286,12 @@ def export_block_playlist(path: Path, blocks: list[tuple[list[Track], list[Track
 
 def track_minutes(song: Track) -> float | None:
     """Actual MP3 running time; unknown values remain unknown."""
-    from mutagen import File as AudioFile
+    from mutagen import File as AudioFile, MutagenError
     try:
         audio = AudioFile(str(song.path))
         value = float(audio.info.length) / 60 if audio and audio.info else 0
         return value if value > 0 else None
-    except (OSError, ValueError, AttributeError):
+    except (OSError, ValueError, AttributeError, MutagenError):
         return None
 
 
