@@ -54,6 +54,23 @@ class VersionSyncTests(unittest.TestCase):
         self.assertEqual(generated_version("Мама (acoustic) _____ Burito"), "в-Мама")
         self.assertEqual(generated_version("Some (Other Song) _____ Artist"), "в-Some-(Other-Song)")
 
+    def test_duplicate_originals_override_existing_tags(self):
+        for performer, tag in (("Hurts", "в-Wonderful-Life"), ("Zucchero", "в-Old")):
+            folder = self.root / ("Wonderful Life _____ " + performer)
+            folder.mkdir()
+            mp3(folder / "one ֎.mp3", tag)
+        planned = planned_folders(self.root)
+        self.assertEqual(len(planned), 2)
+        expected = {"Hurts": "в-Wonderful-Life-Hurts",
+                    "Zucchero": "в-Wonderful-Life-Zucchero"}
+        for item in planned:
+            performer = Path(item["folder"]).name.split("_____")[1].strip()
+            self.assertEqual(item["target"], expected[performer])
+            self.assertEqual(item["status"], "change")
+        written, errors = apply_changes(planned, self.root / "backup")
+        self.assertEqual((written, errors), (2, []))
+        self.assertEqual([item["status"] for item in planned_folders(self.root)], ["ok", "ok"])
+
     def test_ignore_single_nested_and_non_marker(self):
         mp3(self.song / "one ֎.mp3")
         mp3(self.song / "other.mp3")
