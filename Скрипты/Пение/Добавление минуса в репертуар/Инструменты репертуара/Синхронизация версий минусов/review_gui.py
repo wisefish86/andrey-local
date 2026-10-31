@@ -158,7 +158,11 @@ class ReviewWindow(QMainWindow):
         if answer != QMessageBox.StandardButton.Yes:
             return
         destination = Path(__file__).with_name("data") / "reports" / ("gui_backup_" + datetime.now().strftime("%Y%m%d_%H%M%S_%f"))
-        changed, failures = apply_changes(selected, destination)
+        changed, failures = apply_changes(selected, destination) if selected else (0, [])
+        if not failures and decisions:
+            stored = read_links()
+            stored.update(decisions)
+            write_links(stored)
         QMessageBox.information(self, "Результат",
             f"Изменено MP3: {changed}. Ошибок: {len(failures)}. Резервные копии: {destination}")
         self.close()
