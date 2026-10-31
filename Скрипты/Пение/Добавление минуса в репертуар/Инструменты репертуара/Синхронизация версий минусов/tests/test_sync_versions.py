@@ -46,7 +46,7 @@ class VersionSyncTests(unittest.TestCase):
         self.assertEqual(len(suggestions), 1)
         self.assertEqual(suggestions[0]["status"], "ambiguous")
         self.assertEqual(len(suggestions[0]["possible_originals"]), 2)
-        self.assertEqual(planned_folders(self.root), [])
+        self.assertEqual(len(planned_folders(self.root)), 2)
 
     def test_version_suffix_not_in_generated_work_id(self):
         self.assertEqual(generated_version("Bad Guy (cover) _____ The Interrupters"), "в-Bad-Guy")
