@@ -738,8 +738,14 @@ class MainWindow(QMainWindow):
             return
         if not manual:
             preset = self.presets.get(self.venue.currentText(), {})
+            desired = min(len(source), count * max(1, target // 3))
+            previous = {song_key(t) for t in self.history.tracks}
+            cap = int(load_config().get("selection", {}).get("max_history_repeat_percent", 30))
+            fresh = [t for t in source if song_key(t) not in previous]
+            old = [t for t in source if song_key(t) in previous]
+            candidates = fresh + old[:max(0, desired * cap // 100)]
             source = build_language_balanced_list(
-                [], source, min(len(source), count * max(1, target // 3)),
+                [], candidates, desired,
                 int(preset.get("english_target_percent", 50)),
                 int(preset.get("language_tolerance_percent", 10)))
         groups = distribute_blocks(source, count, target)
