@@ -434,28 +434,44 @@ def filtered_restaurant_catalog(tracks: list[Track], preset: dict) -> list[Track
     return unique_songs([song for song in tracks if eligible_for_restaurant(song, preset)])
 
 def build_language_balanced_list(existing: list[Track], catalog: list[Track],
-                                 desired_count: int, english_percent: int) -> list[Track]:
-    """Append unique filtered songs towards target English share; never remove manual picks."""
-    if desired_count < 0 or not 0 <= english_percent <= 100:
-        raise ValueError("Некорректная длина плейлиста или доля английских")
+                                 desired_count: int, english_percent: int,
+                                 tolerance: int = 10) -> list[Track]:
+    """Balance additions while alternating languages, preserving manual entries."""
+    if desired_count < 0 or not 0 <= english_percent <= 100 or not 0 <= tolerance <= 50:
+        raise ValueError("Некорректные параметры языкового баланса")
     result = add_unique_songs([], existing)
     occupied = {song_key(t) for t in result}
-    english = sum(t.language.casefold() == "я-англ" for t in result)
-    goal_english = round(desired_count * english_percent / 100)
-    for _ in range(max(0, desired_count - len(result))):
-        candidates = [t for t in catalog if song_key(t) not in occupied
-                      and t.language.casefold() in ("я-рус", "я-англ")]
-        if not candidates:
-            break
-        prefer_english = english < goal_english
-        preferred = next((t for t in candidates
-                          if (t.language.casefold() == "я-англ") == prefer_english), None)
-        chosen = preferred or candidates[0]
+    pool = [t for t in catalog if song_key(t) not in occupied and
+            t.language.casefold() in ("я-рус", "я-англ")]
+    while len(result) < desired_count and pool:
+        total = len(result)
+        english = sum(t.language.casefold() == "я-англ" for t in result)
+        last = result[-1].language.casefold() if result else ""
+        best = min(range(len(pool)), key=lambda i: (
+            max(0, abs(100 * (english + (pool[i].language.casefold() == "я-англ"))
+                       / (total + 1) - english_percent) - tolerance),
+            int(pool[i].language.casefold() == last),
+            abs(100 * (english + (pool[i].language.casefold() == "я-англ"))
+                / (total + 1) - english_percent),
+            i))
+        chosen = pool.pop(best)
         result.append(chosen)
-        occupied.add(song_key(chosen))
-        if chosen.language.casefold() == "я-англ":
-            english += 1
+        key = song_key(chosen)
+        pool = [t for t in pool if song_key(t) != key]
     return result
+
+
+def display_rating(raw: str) -> str:
+    """Render the original POPM byte on a five-star scale; never alter ID3."""
+    try:
+        value = int(raw)
+    except (ValueError, TypeError):
+        return "—"
+    if not 1 <= value <= 255:
+        return "—"
+    # MusicBee POPM mapping: 1/64/128/196/255 correspond to 1..5 stars.
+    stars = 1 if value <= 32 else 2 if value <= 96 else 3 if value <= 160 else 4 if value <= 224 else 5
+    return str(stars)
 
 
 PRESETS_FILE = Path(__file__).with_name("restaurant_presets.json")
