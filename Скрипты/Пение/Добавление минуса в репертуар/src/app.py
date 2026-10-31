@@ -1437,6 +1437,9 @@ class MainWindow(QMainWindow):
         label.style().polish(label)
 
     def _get_control_values(self, field, control) -> list[str]:
+        if isinstance(control, QLineEdit):
+            value = clean(control.text())
+            return [value] if value else []
         if isinstance(control, QComboBox):
             value = clean(control.currentData())
             return [value] if value else []
