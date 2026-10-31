@@ -758,8 +758,19 @@ class MainWindow(QMainWindow):
                 heading = QLabel(f"{idx + 1} {'блок' if kind == 'block' else 'запас'}"
                                  f" · {int(minutes)}:{int(round(minutes % 1 * 60)):02d}"
                                  + (f" · {missing} без длительности" if missing else ""))
+                ratings = [float(display_rating(t.rating).split("/")[0])
+                           for t in songs if display_rating(t.rating) != "—"]
+                if ratings:
+                    heading.setText(heading.text() + f" · ср. рейтинг {sum(ratings)/len(ratings):.1f}/5")
                 heading.setStyleSheet("font-weight:700;font-size:14px;padding-top:9px;")
                 layout.addWidget(heading)
+                if kind == "block":
+                    alerts = vocal_warnings(songs)
+                    if alerts:
+                        warning = QLabel("⚠ " + " · ".join(alerts[:3]))
+                        warning.setWordWrap(True)
+                        warning.setStyleSheet("color:#f0bb6b;")
+                        layout.addWidget(warning)
                 table = TrackTable(key, self)
                 table.setMinimumHeight(max(72, min(260, len(songs) * 30 + 36)))
                 table.set_tracks(songs)
