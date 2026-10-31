@@ -12,7 +12,7 @@ from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
 
 from cover_links import read_links, write_links
 from sync_versions import (ROOT, MARKER, SEPARATOR, planned_folders,
-    cross_folder_suggestions, apply_changes)
+    cross_folder_suggestions, apply_changes, legacy_work_tag)
 
 
 def load_library() -> Path:
