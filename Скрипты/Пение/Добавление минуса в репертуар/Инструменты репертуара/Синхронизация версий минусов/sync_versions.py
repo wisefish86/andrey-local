@@ -53,7 +53,7 @@ def song_folder_info(folder: Path, separator: str = SEPARATOR):
     title, artist = [part.strip() for part in folder.name.split(separator, 1)]
     if not title or not artist:
         return None
-    found = re.search(r"\\s*\\(([^()]*)\\)\\s*$", title)
+    found = re.search(r"\s*\(([^()]*)\)\s*$", title)
     variant = bool(found and found.group(1).strip().casefold() in VARIANT_LABELS)
     base = title[:found.start()].strip() if variant else title
     return title, artist, base, variant
