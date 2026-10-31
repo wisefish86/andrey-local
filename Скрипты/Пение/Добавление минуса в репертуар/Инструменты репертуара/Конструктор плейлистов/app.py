@@ -418,7 +418,8 @@ class MainWindow(QMainWindow):
         self.catalog.set_tracks(matches)
         if hasattr(self, "ratio_hint"):
             target = int(preset.get("english_target_percent", 50))
-            self.ratio_hint.setText(f"Цель: {target}% англ. / {100 - target}% русск.")
+            tolerance = int(preset.get("language_tolerance_percent", 10))
+            self.ratio_hint.setText(f"Цель: {target}% ±{tolerance}% англ.")
 
     def fill_language_ratio(self):
         preset = self.presets.get(self.venue.currentText(), {})
@@ -426,7 +427,8 @@ class MainWindow(QMainWindow):
         try:
             selected = build_language_balanced_list(
                 self.current.tracks, self.catalog.tracks,
-                self.target_songs.value(), percentage)
+                self.target_songs.value(), percentage,
+                int(preset.get("language_tolerance_percent", load_config().get("selection", {}).get("language_tolerance_percent", 10))))
         except ValueError as exc:
             QMessageBox.warning(self, "Подбор по языкам", str(exc))
             return
@@ -480,6 +482,11 @@ class MainWindow(QMainWindow):
         ratio.setSuffix("% английских · ориентир")
         ratio.setValue(int(existing.get("english_target_percent", 50)))
         form.addRow("Доля английских:", ratio)
+        tolerance = QSpinBox()
+        tolerance.setRange(0, 50)
+        tolerance.setSuffix("% допуска")
+        tolerance.setValue(int(existing.get("language_tolerance_percent", 10)))
+        form.addRow("Допуск доли языка:", tolerance)
         layout.addWidget(QLabel("Доля языка — ориентир; вручную выбранные песни не удаляются."))
         save = QPushButton("Сохранить шаблон и применить")
         layout.addWidget(save)
@@ -491,7 +498,8 @@ class MainWindow(QMainWindow):
             def lines(widget):
                 return list(dict.fromkeys(x.strip() for x in widget.toPlainText().splitlines() if x.strip()))
             preset = {"include_tags": lines(included), "exclude_tags": lines(excluded),
-                      "english_target_percent": ratio.value()}
+                      "english_target_percent": ratio.value(),
+                      "language_tolerance_percent": tolerance.value()}
             for field, checks in selections.items():
                 preset[field + "_allow"] = [value for value, check in checks if check.isChecked()]
             self.presets[title] = preset
