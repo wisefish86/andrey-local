@@ -314,6 +314,58 @@ def vocal_warnings(songs: list[Track]) -> list[str]:
             alerts.append(f"Песня {i + 1}: пиковая нагрузка")
     return alerts
 
+def difficulty_level(track: Track) -> int:
+    match = re.search(r"сл-([1-4])", track.difficulty)
+    return int(match.group(1)) if match else 0
+
+
+def arrange_vocal_block(tracks: list[Track], first_block: bool = False,
+                        rules: dict | None = None) -> list[Track]:
+    """Soft vocal pacing: easy opener, breathing gaps, hard songs near the end."""
+    rules = rules or {}
+    remaining = list(tracks)
+    ordered = []
+    medium_limit = int(rules.get("max_consecutive_medium", 2))
+    easy_start = first_block and rules.get("first_block_starts_easy", True)
+    easy_share = int(rules.get("first_block_easy_share_percent", 50))
+    while remaining:
+        position = len(ordered)
+        count = len(tracks)
+        previous = difficulty_level(ordered[-1]) if ordered else 0
+        consecutive_medium = 0
+        for t in reversed(ordered):
+            if difficulty_level(t) == 2:
+                consecutive_medium += 1
+            else:
+                break
+        first_half = position < max(1, count // 2)
+        first_block_needs_easy = (first_block and first_half
+                                  and sum(difficulty_level(t) == 1 for t in ordered)
+                                  < round(count * easy_share / 100))
+        def score(item):
+            level = difficulty_level(item)
+            hard_early = level == 4 and position < count - 2
+            hard_without_rest = previous >= 3 and level >= 2
+            third_medium = level == 2 and consecutive_medium >= medium_limit
+            hard_followup = previous >= 3 and level != 1
+            start = position == 0 and (easy_start or not first_block)
+            return (
+                int(start and level != (1 if first_block else 2)),
+                int(hard_followup and rules.get("after_hard_prefer_easy", True)),
+                int(third_medium),
+                int(hard_without_rest),
+                int(hard_early and rules.get("hardest_prefer_last_block", True)),
+                int(first_block_needs_easy and level != 1),
+                int(ordered and item.language == ordered[-1].language),
+                int(level == 3 and position < count // 3),
+                remaining.index(item)
+            )
+        chosen = min(remaining, key=score)
+        ordered.append(chosen)
+        remaining.remove(chosen)
+    return ordered
+
+
 def distribute_blocks(tracks: list[Track], number: int, target_minutes: int,
                       reserve_count: int = 2) -> list[tuple[list[Track], list[Track]]]:
     """Keep manual song order, partition by real runtime, add distinct easy reserves."""
@@ -336,7 +388,9 @@ def distribute_blocks(tracks: list[Track], number: int, target_minutes: int,
             blocks[min(number - 1, index * number // max(len(tracks), 1))].append(song)
     # Reserve songs are drawn from remaining eligible medium/easy catalogue externally;
     # never silently duplicate an already scheduled performance.
-    return [(group, []) for group in blocks]
+    pacing = load_config().get('blocks', {}).get('vocal_rules', {})
+    return [(arrange_vocal_block(group, first_block=(i == 0), rules=pacing), [])
+            for i, group in enumerate(blocks)]
 
 
 def song_key(track: Track) -> tuple[str, str]:
