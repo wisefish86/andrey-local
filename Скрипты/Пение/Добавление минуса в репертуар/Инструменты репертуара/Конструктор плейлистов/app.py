@@ -14,7 +14,7 @@ from PySide6.QtWidgets import (
 )
 
 from core import Track, append_unique, expand_inputs, move_rows, parse_dropped_text
-from core import read_track, repeated_from_history, replace_rows, save_playlist, load_config, scan_library, distribute_blocks, export_block_playlist, block_duration, vocal_warnings, unique_songs, add_unique_songs, replacement_candidates, filtered_restaurant_catalog, load_restaurant_presets, save_restaurant_presets, link_versions, build_language_balanced_list, song_key, version_length, display_rating
+from core import read_track, repeated_from_history, replace_rows, save_playlist, load_config, scan_library, distribute_blocks, export_block_playlist, block_duration, vocal_warnings, unique_songs, add_unique_songs, replacement_candidates, filtered_restaurant_catalog, load_restaurant_presets, save_restaurant_presets, link_versions, build_language_balanced_list, song_key, version_length, display_rating, difficulty_level
 
 
 class ReadWorker(QThread):
@@ -752,6 +752,20 @@ class MainWindow(QMainWindow):
         if any(not main for main, _ in groups):
             QMessageBox.warning(self, "Недостаточно песен",
                 "Не удалось заполнить все блоки. Уменьши длительность или число блоков.")
+            return
+        scheduled = [t for main, _ in groups for t in main]
+        repeat_limit = int(load_config().get("selection", {}).get("max_history_repeat_percent", 30))
+        repeats, repeat_pct = repeated_from_history(scheduled, self.history.tracks)
+        if self.history.tracks and repeat_pct > repeat_limit:
+            QMessageBox.warning(self, "Повторы прошлого выступления",
+                f"Повторов {repeats} ({repeat_pct:.0f}%), максимум {repeat_limit}%. "
+                "Смягчи фильтры или замени песни.")
+            return
+        if any(difficulty_level(main[i]) >= 3 and difficulty_level(main[i - 1]) >= 3
+               for main, _ in groups for i in range(1, len(main))):
+            QMessageBox.warning(self, "Вокальная нагрузка",
+                "Не удалось разделить сложные песни более лёгкими. "
+                "Добавь песни сложности 1–2 или измени фильтр.")
             return
         used = {song_key(t) for main, _ in groups for t in main}
         available = [
