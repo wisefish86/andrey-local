@@ -461,21 +461,23 @@ class MainWindow(QMainWindow):
         scroll.setWidgetResizable(True)
         pane = QWidget()
         pane_layout = QVBoxLayout(pane)
-        selections = {}
-        for field, label in (("language", "Язык"), ("difficulty", "Сложность"), ("energy", "Энергия")):
-            pane_layout.addWidget(QLabel(label + " · разрешённые значения (ничего = все)"))
-            grid = QGridLayout()
-            values = sorted({getattr(t, field) for t in self.catalog_all if getattr(t, field)}, key=str.casefold)
-            selected = set(existing.get(field + "_allow", []))
-            checks = []
-            for i, value in enumerate(values):
-                check = QCheckBox(value)
-                check.setChecked(value in selected)
-                check.setStyleSheet("QCheckBox {padding:7px;border:1px solid #4c6680;border-radius:8px;}")
-                grid.addWidget(check, i // 4, i % 4)
-                checks.append((value, check))
-            selections[field] = checks
-            pane_layout.addLayout(grid)
+        values = {v for t in self.catalog_all for v in (*t.tags, t.language, t.difficulty, t.energy, t.role) if v and not v.startswith("в-")}
+        try:
+            schema = json.loads((Path(__file__).resolve().parents[1] / "config.json").read_text(encoding="utf-8-sig"))
+            for field in schema.get("fields", []):
+                for option in field.get("options", []):
+                    if isinstance(option, list) and option:
+                        values.add(str(option[0]))
+        except (ValueError, OSError):
+            pass
+        grid = QGridLayout()
+        for i, tag in enumerate(sorted(v for v in values if v and not v.startswith("в-"))):
+            chip = QPushButton(tag)
+            chip.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+            chip.clicked.connect(lambda checked=False, code=tag:
+                (excluded if excluded.hasFocus() else included).appendPlainText(code))
+            grid.addWidget(chip, i // 5, i % 5)
+        pane_layout.addLayout(grid)
         scroll.setWidget(pane)
         layout.addWidget(scroll, 1)
         ratio = QSpinBox()
@@ -501,8 +503,9 @@ class MainWindow(QMainWindow):
             preset = {"include_tags": lines(included), "exclude_tags": lines(excluded),
                       "english_target_percent": ratio.value(),
                       "language_tolerance_percent": tolerance.value()}
-            for field, checks in selections.items():
-                preset[field + "_allow"] = [value for value, check in checks if check.isChecked()]
+            for field in ("language", "difficulty", "energy"):
+                if field + "_allow" in existing:
+                    preset[field + "_allow"] = existing[field + "_allow"]
             self.presets[title] = preset
             try:
                 save_restaurant_presets(self.presets)
