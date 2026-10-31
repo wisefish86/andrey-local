@@ -10,11 +10,11 @@ from PySide6.QtGui import QColor, QDrag, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QApplication, QAbstractItemView, QFileDialog, QHeaderView, QLabel, QMainWindow,
     QMessageBox, QPushButton, QSplitter, QTableWidget, QTableWidgetItem,
-    QVBoxLayout, QWidget, QHBoxLayout, QSpinBox, QDialog, QComboBox, QLineEdit, QPlainTextEdit, QFormLayout, QScrollArea, QCheckBox, QGridLayout,
+    QVBoxLayout, QWidget, QHBoxLayout, QSpinBox, QDialog, QComboBox, QLineEdit, QPlainTextEdit, QFormLayout, QScrollArea, QCheckBox, QGridLayout, QInputDialog,
 )
 
 from core import Track, append_unique, expand_inputs, move_rows, parse_dropped_text
-from core import read_track, repeated_from_history, replace_rows, save_playlist, load_config, scan_library, distribute_blocks, export_block_playlist, block_duration, vocal_warnings, unique_songs, add_unique_songs, replacement_candidates, filtered_restaurant_catalog, load_restaurant_presets, save_restaurant_presets, link_versions, build_language_balanced_list
+from core import read_track, repeated_from_history, replace_rows, save_playlist, load_config, scan_library, distribute_blocks, export_block_playlist, block_duration, vocal_warnings, unique_songs, add_unique_songs, replacement_candidates, filtered_restaurant_catalog, load_restaurant_presets, save_restaurant_presets, link_versions, build_language_balanced_list, song_key, version_length
 
 
 class ReadWorker(QThread):
@@ -368,6 +368,7 @@ class MainWindow(QMainWindow):
             button("↑", lambda: self.shift_selected(table, -1))
             button("↓", lambda: self.shift_selected(table, 1))
             button("Заменить ↻", self.quick_replace)
+            button("Версии S/F…", self.choose_technical_version)
             button("Выбрать файл…", self.replace_selected)
             button("Сохранить блоки M3U8", self.export_blocks)
         if name != "catalog":
@@ -630,6 +631,38 @@ class MainWindow(QMainWindow):
         self.current.set_tracks(updated, [next_track.path])
         self.statusBar().showMessage(
             f"Замена: {selected.title} → {next_track.title}. Ещё раз — следующая альтернатива.", 9000)
+
+    def choose_technical_version(self):
+        rows = self.current.selected_rows()
+        if len(rows) != 1:
+            QMessageBox.information(self, "Версии", "Выдели одну песню в текущем плейлисте.")
+            return
+        row = rows[0]
+        selected = self.current.tracks[row]
+        # Only arrangements of the exact same song folder: no cross-artist covers.
+        variants = [t for t in self.catalog_all
+                    if t.path.parent == selected.path.parent
+                    and song_key(t) == song_key(selected)]
+        if all(t.path != selected.path for t in variants):
+            variants.append(selected)
+        variants = sorted(variants, key=lambda t: (
+            {"S": 0, "F": 1}.get(version_length(t), 2), t.path.name.casefold()))
+        if len(variants) < 2:
+            QMessageBox.information(self, "Версии", "Других версий этой песни в папке не найдено.")
+            return
+        options = [f"{version_length(t) or '—'} · {t.path.name}" for t in variants]
+        current_idx = next(i for i, t in enumerate(variants) if t.path == selected.path)
+        chosen, ok = QInputDialog.getItem(
+            self, "Версии одной песни", "Выбери минусовку:", options, current_idx, False)
+        if not ok:
+            return
+        replacement = variants[options.index(chosen)]
+        if replacement.path == selected.path:
+            return
+        updated = list(self.current.tracks)
+        updated[row] = replacement
+        self.current.set_tracks(updated, [replacement.path])
+        self.statusBar().showMessage("Версия заменена без изменения MP3.", 8000)
 
     def replace_selected(self):
         rows = self.current.selected_rows()
