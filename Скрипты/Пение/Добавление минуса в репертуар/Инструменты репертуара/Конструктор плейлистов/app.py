@@ -14,7 +14,7 @@ from PySide6.QtWidgets import (
 )
 
 from core import Track, append_unique, expand_inputs, move_rows, parse_dropped_text
-from core import read_track, repeated_from_history, replace_rows, save_playlist, load_config, scan_library, distribute_blocks, export_block_playlist, block_duration, vocal_warnings, unique_songs, add_unique_songs, replacement_candidates, filtered_restaurant_catalog, load_restaurant_presets, save_restaurant_presets, link_versions, build_language_balanced_list, song_key, version_length
+from core import read_track, repeated_from_history, replace_rows, save_playlist, load_config, scan_library, distribute_blocks, export_block_playlist, block_duration, vocal_warnings, unique_songs, add_unique_songs, replacement_candidates, filtered_restaurant_catalog, load_restaurant_presets, save_restaurant_presets, link_versions, build_language_balanced_list, song_key, version_length, display_rating
 
 
 class ReadWorker(QThread):
@@ -102,7 +102,7 @@ class TrackTable(QTableWidget):
             values = ((str(row + 1), marked_title, track.artist)
                       if self.name == "current" or self.name.startswith(("block:", "reserve:")) else
                       (str(row + 1), track.artist, track.title, track.difficulty,
-                       track.language, track.energy, track.rating, track.bpm))
+                       track.language, track.energy, display_rating(track.rating), track.bpm))
             for col, value in enumerate(values):
                 item = QTableWidgetItem(value)
                 item.setFlags(Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled)
@@ -295,7 +295,7 @@ class MainWindow(QMainWindow):
         outer.addWidget(self.summary)
         self.setCentralWidget(root)
         self.statusBar().showMessage("Готово · MP3 защищены от изменения и удаления")
-        QShortcut(QKeySequence("Ctrl+S"), self, activated=lambda: self.export_list(self.current))
+        QShortcut(QKeySequence("Ctrl+S"), self, activated=self.save_current_playlist)
         QShortcut(QKeySequence("Ctrl+O"), self, activated=lambda: self.pick_files("current"))
         self.refresh_summary()
         QTimer.singleShot(100, self.restore_session_playlist)
@@ -373,12 +373,11 @@ class MainWindow(QMainWindow):
         if name == "current":
             button("↑", lambda: self.shift_selected(table, -1))
             button("↓", lambda: self.shift_selected(table, 1))
-            button("Заменить ↻", self.quick_replace)
+            button("Заменить ←", self.quick_replace)
             button("Версии S/F…", self.choose_technical_version)
-            button("Выбрать файл…", self.replace_selected)
-            button("Сохранить блоки M3U8", self.export_blocks)
-        if name != "catalog":
-            button("Сохранить M3U8", lambda t=table: self.export_list(t))
+
+        if name == "current":
+            button("Сохранить M3U8", self.save_current_playlist)
         splitter.addWidget(panel)
         return table
 
@@ -792,6 +791,12 @@ class MainWindow(QMainWindow):
         event.setDropAction(Qt.DropAction.CopyAction)
         event.accept()
         self.statusBar().showMessage("Перенесено в блок; длительность пересчитана.", 5000)
+
+    def save_current_playlist(self):
+        if self.block_plan is not None:
+            self.export_blocks()
+        else:
+            self.export_list(self.current)
 
     def export_blocks(self):
         if self.block_plan is None:
