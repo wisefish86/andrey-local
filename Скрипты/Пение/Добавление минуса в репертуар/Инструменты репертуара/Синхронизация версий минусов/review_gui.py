@@ -21,12 +21,13 @@ def load_library() -> Path:
 
 
 class ReviewWindow(QMainWindow):
-    def __init__(self, library: Path, plan: list[dict], proposals: list[dict], unresolved_folders: set[str]):
+    def __init__(self, library: Path, plan: list[dict], proposals: list[dict], unresolved_folders: set[str] | None = None):
         super().__init__()
         self.library = library
         self.plan = plan
         self.proposals = proposals
-        self.unresolved_folders = unresolved_folders
+        self.unresolved_folders = (unresolved_folders if unresolved_folders is not None
+                                   else {p['version']['folder'] for p in proposals})
         self.setWindowTitle("Синхронизация версий · Репертуар")
         self.resize(1140, 750)
         self.setStyleSheet("""
