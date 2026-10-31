@@ -368,6 +368,14 @@ def arrange_vocal_block(tracks: list[Track], first_block: bool = False,
         chosen = min(remaining, key=score)
         ordered.append(chosen)
         remaining.remove(chosen)
+    # Hard invariant: never leave adjacent level-3/4 songs if a softer
+    # unused slot in this block can separate them.
+    for i in range(1, len(ordered)):
+        if difficulty_level(ordered[i - 1]) >= 3 and difficulty_level(ordered[i]) >= 3:
+            alternative = next((j for j in range(i + 1, len(ordered))
+                                if difficulty_level(ordered[j]) in (1, 2)), None)
+            if alternative is not None:
+                ordered[i], ordered[alternative] = ordered[alternative], ordered[i]
     return ordered
 
 
