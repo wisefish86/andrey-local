@@ -123,21 +123,33 @@ class ReviewWindow(QMainWindow):
                 return
             item["target"] = desired
             selected.append(item)
-        # Cross-folder linking only after explicit choice. No silent rewrites.
+        decisions = {}
         for proposal, combo in self.options:
-            folder = combo.currentData()
-            if folder is None:
+            original_path = combo.currentData()
+            cover = proposal["version"]
+            if original_path is None:
                 continue
-            candidate_plan = next((x for x in self.plan if x["folder"] == folder), None)
-            if candidate_plan is None or not candidate_plan.get("target"):
-                QMessageBox.information(self, "Неоднозначная связь",
-                    "Сначала синхронизируй оригинал; кавер пока не изменён.")
-                return
-            QMessageBox.information(self, "Выбор сохранён на экране",
-                "Выбор оригинала показан, но запись межпапочной связи пока отключена "
-                "до реализации постоянного хранения решений.")
-            return
-        if not selected:
+            decisions[cover["folder"]] = original_path
+            if original_path == "ignore":
+                continue
+            original = next((x for x in proposal["possible_originals"]
+                             if x["folder"] == original_path), None)
+            if original is None:
+                continue
+            from sync_versions import current_version, generated_version, duplicate_title_targets
+            from mutagen.id3 import ID3
+            target = next((x["target"] for x in selected
+                           if x["folder"] == original_path), None)
+            target = target or duplicate_title_targets(self.library).get(original_path)
+            target = target or next((current_version(ID3(Path(p))) for p in original["files"]
+                                     if current_version(ID3(Path(p)))), None)
+            target = target or generated_version(Path(original_path).name)
+            changes = [p for p in cover["files"]
+                       if current_version(ID3(Path(p))) != target]
+            if changes:
+                selected.append({"folder": cover["folder"], "target": target,
+                                 "changes": changes, "status": "change"})
+        if not selected and not decisions:
             QMessageBox.information(self, "Нет изменений", "Ничего не выбрано для записи.")
             return
         answer = QMessageBox.question(self, "Подтвердить изменение MP3",
