@@ -212,6 +212,7 @@ def main():
                 plan.append({"folder": cover["folder"], "status": "change",
                              "target": target, "changes": changes})
         proposals = unresolved
+        plan = [x for x in plan if x["status"] != "review" or x["folder"] not in remembered]
         if args.silent_when_clean and not any(x["status"] in ("change", "review", "error") for x in plan) and not proposals:
             return 0
         window = ReviewWindow(library, plan, proposals)
