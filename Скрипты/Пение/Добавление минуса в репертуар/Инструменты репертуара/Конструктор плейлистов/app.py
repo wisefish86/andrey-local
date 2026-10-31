@@ -93,7 +93,13 @@ class TrackTable(QTableWidget):
         for row, track in enumerate(self.tracks):
             sign = next((symbol for key, symbol in self.DIFFICULTY_SIGNS.items()
                          if key in track.difficulty), "")
-            values = ((str(row + 1), f"{sign}{track.title}" if sign else track.title, track.artist)
+            alternatives = (sum(t.path.parent == track.path.parent and
+                                song_key(t) == song_key(track) for t in self.owner.catalog_all)
+                            if self.name == "current" else 0)
+            marked_title = f"{sign}{track.title}" if sign else track.title
+            if alternatives > 1:
+                marked_title += f"  ⇄ {alternatives}"
+            values = ((str(row + 1), marked_title, track.artist)
                       if self.name == "current" or self.name.startswith(("block:", "reserve:")) else
                       (str(row + 1), track.artist, track.title, track.difficulty,
                        track.language, track.energy, track.rating, track.bpm))
