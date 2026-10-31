@@ -99,9 +99,35 @@ def cross_folder_suggestions(library: Path, marker: str = MARKER,
     return proposals
 
 
+def duplicate_title_targets(library: Path, marker: str = MARKER,
+                            separator: str = SEPARATOR) -> dict[str, str]:
+    """Distinguish unqualified originals sharing a title across performers."""
+    from collections import defaultdict
+    groups = defaultdict(list)
+    for folder in library.iterdir():
+        if not folder.is_dir():
+            continue
+        info = song_folder_info(folder, separator)
+        if info is None:
+            continue
+        _, artist, base, variant = info
+        if variant:
+            continue
+        if any(p.is_file() and p.suffix.casefold() == ".mp3" and marker in p.name
+               for p in folder.iterdir()):
+            groups[base.casefold()].append((folder, base, artist))
+    targets = {}
+    for originals in groups.values():
+        if len({a.casefold() for _, _, a in originals}) > 1:
+            for folder, base, artist in originals:
+                targets[str(folder)] = VERSION_PREFIX + "-".join((base + " " + artist).split())
+    return targets
+
+
 def planned_folders(library: Path, marker: str = MARKER, separator: str = SEPARATOR):
     """Сканирование только: корень/папка песни/MP3; подпапки не трогаем."""
     result = []
+    duplicate_targets = duplicate_title_targets(library, marker, separator)
     for folder in sorted((p for p in library.iterdir() if p.is_dir()), key=lambda p: (p.name.casefold(), p.name)):
         files = sorted((p for p in folder.iterdir()
                         if p.is_file() and p.suffix.casefold() == ".mp3" and marker in p.name),
@@ -114,7 +140,7 @@ def planned_folders(library: Path, marker: str = MARKER, separator: str = SEPARA
             # Первый файл с заполненным значением задаёт его для всей папки.
             # Если ни у одного нет значения, формируем из названия папки.
             selected = next((value for _, value in existing if value), "")
-            target = selected or generated_version(folder.name, separator)
+            target = selected or duplicate_targets.get(str(folder)) or generated_version(folder.name, separator)
             changes = [str(p) for p, value in existing if value != target]
             result.append({"folder": str(folder), "target": target, "files": [str(p) for p in files],
                            "changes": changes, "source": "existing" if selected else "folder",
