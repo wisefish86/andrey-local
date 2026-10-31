@@ -437,6 +437,16 @@ def save_restaurant_presets(presets: dict, path: Path = PRESETS_FILE) -> None:
     temporary.write_text(json.dumps(presets, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     temporary.replace(path)
 
+def clean_work_group(tags):
+    from mutagen.id3 import TIT1
+    original = [x for t in read_text(tags, "TIT1") for x in split_multi(t)]
+    other = [x for x in original if not x.casefold().startswith("в-")]
+    if original != other:
+        tags.delall("TIT1")
+        if other:
+            tags.add(TIT1(encoding=3, text=["; ".join(other)]))
+
+
 def link_versions(paths: list[Path], code: str, backup_dir: Path) -> int:
     """Apply one shared Cyrillic work tag, preserving other TIT1 groups with backups."""
     import re
