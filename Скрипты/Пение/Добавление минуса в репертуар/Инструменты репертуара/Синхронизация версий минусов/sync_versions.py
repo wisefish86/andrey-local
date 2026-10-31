@@ -202,7 +202,7 @@ def apply_changes(plan: list[dict], backup_root: Path) -> tuple[int, list[dict]]
                 parts.append(item["target"])
                 tags.delall("TCOM")
                 tags.add(TCOM(encoding=3, text=["; ".join(parts)]))
-                tags.save(p)
+                tags.save(p, v2_version=3)
                 changed += 1
         except Exception as exc:
             failures.append({"folder": item["folder"], "error": str(exc)})
