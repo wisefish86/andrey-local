@@ -16,6 +16,18 @@
     "min_target_minutes": 10,
     "max_target_minutes": 60,
     "reserve_per_block": 2,
-    "divider_folder": "deviders"
+    "divider_folder": "deviders",
+    "vocal_rules": {
+      "first_block_starts_easy": true,
+      "first_block_easy_share_percent": 50,
+      "max_consecutive_medium": 2,
+      "after_hard_prefer_easy": true,
+      "hardest_prefer_last_block": true
+    }
+  },
+  "selection": {
+    "language_english_percent": 50,
+    "language_tolerance_percent": 10,
+    "prefer_alternation": true
   }
 }
