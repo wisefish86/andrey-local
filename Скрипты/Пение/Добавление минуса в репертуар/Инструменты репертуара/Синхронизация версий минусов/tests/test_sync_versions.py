@@ -24,8 +24,11 @@ class VersionSyncTests(unittest.TestCase):
         self.song = self.root / "Не вспоминай _____ Niletto & Олег Майами & Леша Свик"
         self.song.mkdir()
 
-    def test_generation_from_folder_and_first_artist(self):
-        self.assertEqual(generated_version(self.song.name), "в-Не вспоминай-Niletto")
+    def test_generation_uses_song_title_only(self):
+        self.assertEqual(generated_version(self.song.name), "в-Не-вспоминай")
+
+    def test_title_without_artist_and_spaces(self):
+        self.assertEqual(generated_version("After Dark _____ Tito & Tarantula"), "в-After-Dark")
 
     def test_ignore_single_nested_and_non_marker(self):
         mp3(self.song / "one ֎.mp3")
@@ -41,10 +44,10 @@ class VersionSyncTests(unittest.TestCase):
         mp3(a, "а-Универсальная; Я-рус")
         mp3(b, "н-Нежная")
         plan = planned_folders(self.root)
-        self.assertEqual(plan[0]["target"], "в-Не вспоминай-Niletto")
+        self.assertEqual(plan[0]["target"], "в-Не-вспоминай")
         count, failures = apply_changes(plan, self.root / "backups")
         self.assertEqual((count, failures), (2, []))
-        self.assertEqual(current_version(ID3(a)), "в-Не вспоминай-Niletto")
+        self.assertEqual(current_version(ID3(a)), "в-Не-вспоминай")
         self.assertIn("а-Универсальная", str(ID3(a).getall("TIT1")[0].text))
         self.assertEqual(planned_folders(self.root)[0]["status"], "ok")
 
