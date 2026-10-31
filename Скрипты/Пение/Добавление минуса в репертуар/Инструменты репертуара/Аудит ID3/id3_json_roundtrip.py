@@ -33,7 +33,7 @@ FORMAT = "andrey_repertoire_gpt"
 VERSION = 2
 # The main editor hard-codes these five manually editable text/url fields.
 # The rest of its fields are dynamically derived from its config.json.
-GUI_SIMPLE_FIELDS = frozenset({"TPE1", "MVNM", "TIT2", "TDRC", "WOAS"})
+GUI_SIMPLE_FIELDS = frozenset({"TPE1", "MVNM", "TIT2", "TDRC", "WOAS", "TCOM"})
 EXCLUDED = {"USLT", "SYLT", "APIC", "GEOB", "PRIV", "COMM"}
 UNSAFE_TEXT = {"TIPL", "TMCL", "IPLS"}  # Structured text frames, not plain lists.
 BINARY_KEYS = {"MCDI", "ETCO", "MLLT", "SYTC", "RVA2", "EQU2", "UFID", "POPM"}
