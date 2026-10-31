@@ -36,6 +36,9 @@ def generated_version(folder_name: str, separator: str = SEPARATOR) -> str:
     title = folder_name.split(separator, 1)[0].strip()
     if not title:
         raise ValueError("Не удалось выделить название песни из папки: " + folder_name)
+    match = re.search(r"\s*\(([^()]*)\)\s*$", title)
+    if match and match.group(1).strip().casefold() in VARIANT_LABELS:
+        title = title[:match.start()].strip()
     return VERSION_PREFIX + "-".join(title.split())
 
 
