@@ -241,8 +241,7 @@ class MainWindow(QMainWindow):
         self.history = self.make_panel(splitter, "История прошлого выступления", "history")
         self.history.parentWidget().hide()
         splitter.setSizes([780, 560, 0])
-        venue_controls = QHBoxLayout()
-        outer.addLayout(venue_controls)
+        venue_controls = self.catalog_filters_layout
         venue_controls.addWidget(QLabel("Пресет ресторана:"))
         self.venue = QComboBox()
         self.venue.currentTextChanged.connect(self.apply_restaurant_preset)
@@ -250,7 +249,8 @@ class MainWindow(QMainWindow):
         edit_venue = QPushButton("Настроить фильтры…")
         edit_venue.clicked.connect(self.edit_restaurant_preset)
         venue_controls.addWidget(edit_venue)
-        venue_controls.addStretch(1)
+        self.ratio_hint = QLabel("")
+        venue_controls.addWidget(self.ratio_hint)
         self.reload_venue_names(self.session.get("venue"))
         options = load_config().get("blocks", {})
         controls = QHBoxLayout()
@@ -327,6 +327,9 @@ class MainWindow(QMainWindow):
         heading = QLabel(title)
         heading.setStyleSheet("font-size:16px;font-weight:700;")
         layout.addWidget(heading)
+        if name == "catalog":
+            self.catalog_filters_layout = QHBoxLayout()
+            layout.addLayout(self.catalog_filters_layout)
         table = TrackTable(name, self)
         table.filesDropped.connect(self.import_files)
         layout.addWidget(table, 1)
@@ -400,6 +403,9 @@ class MainWindow(QMainWindow):
                                  t.difficulty, t.role, t.energy, " ".join(t.tags))).casefold()
                        for word in words)]
         self.catalog.set_tracks(matches)
+        if hasattr(self, "ratio_hint"):
+            target = int(preset.get("english_target_percent", 50))
+            self.ratio_hint.setText(f"Цель: {target}% англ. / {100 - target}% русск.")
 
     def edit_restaurant_preset(self):
         dialog = QDialog(self)
