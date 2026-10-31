@@ -33,11 +33,10 @@ def current_version(tags: ID3) -> str:
 def generated_version(folder_name: str, separator: str = SEPARATOR) -> str:
     if separator not in folder_name:
         raise ValueError("В имени папки отсутствует разделитель: " + folder_name)
-    title, artist = (part.strip() for part in folder_name.split(separator, 1))
-    first_artist = artist.split()[0].strip("&,;") if artist.split() else ""
-    if not title or not first_artist:
-        raise ValueError("Не удалось выделить песню или исполнителя из папки: " + folder_name)
-    return VERSION_PREFIX + title + "-" + first_artist
+    title = folder_name.split(separator, 1)[0].strip()
+    if not title:
+        raise ValueError("Не удалось выделить название песни из папки: " + folder_name)
+    return VERSION_PREFIX + "-".join(title.split())
 
 
 def planned_folders(library: Path, marker: str = MARKER, separator: str = SEPARATOR):
