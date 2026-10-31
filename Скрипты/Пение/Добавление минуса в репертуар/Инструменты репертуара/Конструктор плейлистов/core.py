@@ -466,5 +466,6 @@ def link_versions(paths: list[Path], code: str, backup_dir: Path) -> int:
     for path, tags, values in planned:
         tags.delall("TCOM")
         tags.add(TCOM(encoding=3, text=["; ".join(values)]))
+        clean_work_group(tags)
         tags.save(path)
     return len(planned)
