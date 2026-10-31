@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import json
+import re
 from pathlib import Path
 import sys
 
@@ -351,16 +352,24 @@ def song_key(track: Track) -> tuple[str, str]:
     return norm(track.artist), norm(track.clean_title)
 
 
+def version_length(track: Track) -> str:
+    """Parse [S]/[F] in filename before the folder/artist delimiter."""
+    title_part = track.path.stem.split("_____", 1)[0]
+    match = re.search(r"\\[(S|F)\\]\\s*$", title_part, re.IGNORECASE)
+    return match.group(1).upper() if match else ""
+
+
+def preferred_version(tracks: list[Track]) -> Track:
+    """Choose short arrangement, then full, then unchanged first candidate."""
+    return min(tracks, key=lambda t: {"S": 0, "F": 1}.get(version_length(t), 2))
+
+
 def unique_songs(tracks: list[Track]) -> list[Track]:
     """Show one representative technical version per song in the catalog."""
-    seen: set[tuple[str, str]] = set()
-    result = []
+    grouped: dict[tuple[str, str], list[Track]] = {}
     for track in tracks:
-        key = song_key(track)
-        if key not in seen:
-            seen.add(key)
-            result.append(track)
-    return result
+        grouped.setdefault(song_key(track), []).append(track)
+    return [preferred_version(group) for group in grouped.values()]
 
 
 def add_unique_songs(existing: list[Track], incoming: list[Track]) -> list[Track]:
