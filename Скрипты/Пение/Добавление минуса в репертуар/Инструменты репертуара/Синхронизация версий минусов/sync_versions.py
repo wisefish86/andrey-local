@@ -65,6 +65,16 @@ def legacy_work_tag(tags):
     return next((x for x in parts if x.casefold().startswith("в-")), "")
 
 
+def manual_original_tag(title: str, artist: str) -> str:
+    """Canonical shared version for covers without an MP3 of the original."""
+    title, artist = title.strip(), artist.strip()
+    if not title or not artist:
+        raise ValueError("Укажи название произведения и исполнителя оригинала.")
+    if any(ch in title + artist for ch in (";", "\\n", "\\r")):
+        raise ValueError("В названии и исполнителе нельзя использовать ; или перенос строки.")
+    return VERSION_PREFIX + "-".join((title + " " + artist).split())
+
+
 def generated_version(folder_name: str, separator: str = SEPARATOR) -> str:
     if separator not in folder_name:
         raise ValueError("В имени папки отсутствует разделитель: " + folder_name)
