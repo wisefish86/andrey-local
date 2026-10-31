@@ -356,7 +356,7 @@ def arrange_vocal_block(tracks: list[Track], first_block: bool = False,
                 int(hard_without_rest),
                 int(hard_early and rules.get("hardest_prefer_last_block", True)),
                 int(first_block_needs_easy and level != 1),
-                int(ordered and item.language == ordered[-1].language),
+                int(bool(ordered) and item.language == ordered[-1].language),
                 int(level == 3 and position < count // 3),
                 remaining.index(item)
             )
