@@ -17,7 +17,7 @@ ROOT = Path(__file__).resolve().parents[2]
 PENIE = ROOT.parent
 sys.path.insert(0, str(PENIE / "_common"))
 from id3_io import read_text, split_multi  # noqa: E402
-from mutagen.id3 import ID3, TCOM  # noqa: E402
+from mutagen.id3 import ID3, TCOM, TIT1  # noqa: E402
 
 VERSION_PREFIX = "в-"
 MARKER = "֎"
