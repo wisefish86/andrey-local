@@ -58,3 +58,20 @@ jobs:
           python -m unittest discover -v \
             -s 'Скрипты/Пение/Добавление минуса в репертуар/Инструменты репертуара/Синхронизация версий минусов/tests' \
             -p 'test_sync_versions.py'
+
+  version_gui:
+    runs-on: ubuntu-latest
+    env:
+      QT_QPA_PLATFORM: offscreen
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Qt dependencies
+        run: |
+          sudo apt-get install -y libegl1 libopengl0 libxcb-cursor0
+          python -m pip install "mutagen==1.47.0" "PySide6==6.10.0"
+      - name: Test cover linking UI
+        run: |
+          python -m unittest discover -v -s 'Скрипты/Пение/Добавление минуса в репертуар/Инструменты репертуара/Синхронизация версий минусов/tests' -p 'test_cover_gui.py'
