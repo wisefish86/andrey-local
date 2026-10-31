@@ -14,7 +14,7 @@ from PySide6.QtWidgets import (
 )
 
 from core import Track, append_unique, expand_inputs, move_rows, parse_dropped_text
-from core import read_track, repeated_from_history, replace_rows, save_playlist, load_config, scan_library, distribute_blocks, export_block_playlist, block_duration, vocal_warnings, unique_songs, add_unique_songs, replacement_candidates, filtered_restaurant_catalog, load_restaurant_presets, save_restaurant_presets, link_versions
+from core import read_track, repeated_from_history, replace_rows, save_playlist, load_config, scan_library, distribute_blocks, export_block_playlist, block_duration, vocal_warnings, unique_songs, add_unique_songs, replacement_candidates, filtered_restaurant_catalog, load_restaurant_presets, save_restaurant_presets, link_versions, build_language_balanced_list
 
 
 class ReadWorker(QThread):
@@ -251,6 +251,13 @@ class MainWindow(QMainWindow):
         venue_controls.addWidget(edit_venue)
         self.ratio_hint = QLabel("")
         venue_controls.addWidget(self.ratio_hint)
+        self.target_songs = QSpinBox()
+        self.target_songs.setRange(1, 200)
+        self.target_songs.setValue(24)
+        venue_controls.addWidget(self.target_songs)
+        pick_ratio = QPushButton("Добрать по доле языков")
+        pick_ratio.clicked.connect(self.fill_language_ratio)
+        venue_controls.addWidget(pick_ratio)
         self.reload_venue_names(self.session.get("venue"))
         options = load_config().get("blocks", {})
         controls = QHBoxLayout()
@@ -406,6 +413,21 @@ class MainWindow(QMainWindow):
         if hasattr(self, "ratio_hint"):
             target = int(preset.get("english_target_percent", 50))
             self.ratio_hint.setText(f"Цель: {target}% англ. / {100 - target}% русск.")
+
+    def fill_language_ratio(self):
+        preset = self.presets.get(self.venue.currentText(), {})
+        percentage = int(preset.get("english_target_percent", 50))
+        try:
+            selected = build_language_balanced_list(
+                self.current.tracks, self.catalog.tracks,
+                self.target_songs.value(), percentage)
+        except ValueError as exc:
+            QMessageBox.warning(self, "Подбор по языкам", str(exc))
+            return
+        self.current.set_tracks(selected)
+        self.invalidate_plan()
+        self.statusBar().showMessage("Добавлены песни по сохранённой доле языков. "
+                                     "Ранее выбранные песни сохранены.", 10000)
 
     def edit_restaurant_preset(self):
         dialog = QDialog(self)
