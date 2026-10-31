@@ -441,7 +441,7 @@ def link_versions(paths: list[Path], code: str, backup_dir: Path) -> int:
     """Apply one shared Cyrillic work tag, preserving other TIT1 groups with backups."""
     import re
     import shutil
-    from mutagen.id3 import ID3, TCOM
+    from mutagen.id3 import ID3, TCOM, TIT1
     code = code.strip()
     if not re.fullmatch(r"в-[^\s;]+", code):
         raise ValueError("Нужен тег в-Название с дефисами вместо пробелов")
