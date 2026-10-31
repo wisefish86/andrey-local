@@ -28,6 +28,7 @@
   "selection": {
     "language_english_percent": 50,
     "language_tolerance_percent": 10,
-    "prefer_alternation": true
+    "prefer_alternation": true,
+    "max_history_repeat_percent": 30
   }
 }
