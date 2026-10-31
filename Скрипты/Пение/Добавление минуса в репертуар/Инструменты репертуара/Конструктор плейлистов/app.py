@@ -620,24 +620,31 @@ class MainWindow(QMainWindow):
     def quick_replace(self):
         rows = self.current.selected_rows()
         if len(rows) != 1:
-            QMessageBox.information(self, "Замена", "Выдели одну песню для быстрой замены.")
+            QMessageBox.information(self, "Замена", "Выдели одну песню справа.")
             return
         row = rows[0]
         selected = self.current.tracks[row]
-        # Track the original slot's rejected songs across repeated clicks.
-        key = (row, len(self.current.tracks))
-        rejected = self.replacement_history.setdefault(key, set())
-        rejected.add(str(selected.path).casefold())
-        options = replacement_candidates(self.current.tracks, row, self.catalog.tracks, rejected)
-        if not options:
-            self.statusBar().showMessage("Подходящие альтернативы закончились.", 7000)
-            return
-        next_track = options[0]
+        occupied = {song_key(t) for i, t in enumerate(self.current.tracks) if i != row}
+        left = self.catalog.selected_tracks()
+        if left:
+            replacement = next((t for t in left if song_key(t) not in occupied), None)
+            if replacement is None:
+                QMessageBox.information(self, "Замена", "Выбранная слева песня уже есть в плейлисте.")
+                return
+        else:
+            key = (row, len(self.current.tracks))
+            rejected = self.replacement_history.setdefault(key, set())
+            rejected.add(str(selected.path).casefold())
+            options = replacement_candidates(self.current.tracks, row, self.catalog.tracks, rejected)
+            if not options:
+                self.statusBar().showMessage("Других подходящих песен нет.", 7000)
+                return
+            replacement = options[0]
         updated = list(self.current.tracks)
-        updated[row] = next_track
-        self.current.set_tracks(updated, [next_track.path])
+        updated[row] = replacement
+        self.current.set_tracks(updated, [replacement.path])
         self.statusBar().showMessage(
-            f"Замена: {selected.title} → {next_track.title}. Ещё раз — следующая альтернатива.", 9000)
+            f"Замена: {selected.title} → {replacement.title}. MP3 не изменены.", 9000)
 
     def choose_technical_version(self):
         rows = self.current.selected_rows()
