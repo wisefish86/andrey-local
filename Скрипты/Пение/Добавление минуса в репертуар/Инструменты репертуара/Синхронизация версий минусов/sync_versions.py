@@ -136,7 +136,8 @@ def planned_folders(library: Path, marker: str = MARKER, separator: str = SEPARA
         files = sorted((p for p in folder.iterdir()
                         if p.is_file() and p.suffix.casefold() == ".mp3" and marker in p.name),
                        key=lambda p: (p.name.casefold(), p.name))
-        if len(files) < 2:
+        forced = duplicate_targets.get(str(folder))
+        if len(files) < 2 and not forced:
             continue
         if str(folder) in pending_covers:
             option = pending_covers[str(folder)]
@@ -151,10 +152,10 @@ def planned_folders(library: Path, marker: str = MARKER, separator: str = SEPARA
             # Первый файл с заполненным значением задаёт его для всей папки.
             # Если ни у одного нет значения, формируем из названия папки.
             selected = next((value for _, value in existing if value), "")
-            target = selected or duplicate_targets.get(str(folder)) or generated_version(folder.name, separator)
+            target = forced or selected or generated_version(folder.name, separator)
             changes = [str(p) for p, value in existing if value != target]
             result.append({"folder": str(folder), "target": target, "files": [str(p) for p in files],
-                           "changes": changes, "source": "existing" if selected else "folder",
+                           "changes": changes, "source": "duplicate_title" if forced else ("existing" if selected else "folder"),
                            "status": "change" if changes else "ok"})
         except Exception as exc:
             result.append({"folder": str(folder), "status": "error", "error": str(exc), "changes": []})
