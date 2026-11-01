@@ -577,21 +577,17 @@ def build_language_balanced_list(existing: list[Track], catalog: list[Track],
 
 
 def display_rating(raw: str) -> str:
-    """Render the original POPM byte on a five-star scale; never alter ID3."""
+    """Display MusicBee POPM byte as its original half-star rating."""
     try:
         value = int(raw)
     except (ValueError, TypeError):
         return "—"
     if not 1 <= value <= 255:
         return "—"
-    # MusicBee five-star POPM anchors, interpolated to half stars.
-    anchors = ((1, 1), (64, 2), (128, 3), (196, 4), (255, 5))
-    for (low_byte, low_star), (high_byte, high_star) in zip(anchors, anchors[1:]):
-        if value <= high_byte:
-            fraction = (value - low_byte) / (high_byte - low_byte)
-            stars = round((low_star + fraction * (high_star - low_star)) * 2) / 2
-            return f"{stars:g}".replace(".", ",")
-    return "5"
+    values = ((1, 0.5), (64, 1.5), (118, 2.5), (128, 3),
+              (186, 3.5), (196, 4), (242, 4.5), (255, 5))
+    stars = min(values, key=lambda pair: abs(pair[0] - value))[1]
+    return f"{stars:g}".replace(".", ",")
 
 
 PRESETS_FILE = Path(__file__).with_name("restaurant_presets.json")
