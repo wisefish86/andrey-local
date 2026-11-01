@@ -140,6 +140,33 @@ class VisibleBlockActions(unittest.TestCase):
         finally:
             ui.close()
 
+    def test_drop_event_uses_mouse_position(self):
+        from PySide6.QtCore import QPointF
+        ui = self.new_window()
+        try:
+            ui.block_plan = [([song(1), song(3)], [])]
+            ui.render_block_editor()
+            ui.catalog.set_tracks([song(2)])
+            ui.catalog.selectRow(0)
+            class DropEvent:
+                def source(self):
+                    return ui.catalog
+                def position(self):
+                    return QPointF(8, 35)
+                def setDropAction(self, action):
+                    pass
+                def accept(self):
+                    self.accepted = True
+                def ignore(self):
+                    self.accepted = False
+            event = DropEvent()
+            ui.block_tables["block:0"].dropEvent(event)
+            QApplication.processEvents()
+            self.assertTrue(event.accepted)
+            self.assertEqual([t.title for t in ui.block_plan[0][0]], ["1", "2", "3"])
+        finally:
+            ui.close()
+
     def test_selection_moves_from_main_to_reserve(self):
         ui = self.new_window()
         try:
