@@ -21,6 +21,8 @@
       "first_block_starts_easy": true,
       "first_block_easy_share_percent": 50,
       "max_consecutive_medium": 2,
+      "max_hard_per_block": 2,
+      "require_easy_between_hard": true,
       "after_hard_prefer_easy": true,
       "hardest_prefer_last_block": true
     }
