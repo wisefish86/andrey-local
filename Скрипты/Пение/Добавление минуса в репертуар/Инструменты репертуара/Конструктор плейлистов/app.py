@@ -883,6 +883,7 @@ class MainWindow(QMainWindow):
         return self.block_plan[int(idx)][0 if kind == "block" else 1]
 
     def replace_slot(self, key, index, track):
+        self.record_undo()
         if key == "current":
             tracks = list(self.current.tracks)
             tracks[index] = track
@@ -892,6 +893,7 @@ class MainWindow(QMainWindow):
             self.current.tracks = [t for main, _ in self.block_plan for t in main]
             self.render_block_editor()
             self.block_tables[key].selectRow(index)
+        self.after_playlist_edit()
 
     def quick_replace(self):
         slot = self.selected_playlist_slot()
