@@ -512,7 +512,7 @@ class MainWindow(QMainWindow):
         return True
 
     def build_track_menu(self, table):
-        menu = QMenu(table)
+        menu = QMenu(self)
         has_selection = bool(table.selected_rows())
         if table is self.catalog:
             add = menu.addAction("Добавить в плейлист")
