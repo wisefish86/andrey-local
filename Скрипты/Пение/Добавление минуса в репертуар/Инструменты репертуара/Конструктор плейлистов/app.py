@@ -433,6 +433,76 @@ class MainWindow(QMainWindow):
         self.apply_restaurant_preset()
         self.refresh_summary()
 
+    def highlight_existing(self, track):
+        key = song_key(track)
+        if self.block_plan is not None:
+            for name, table in self.block_tables.items():
+                for row, existing in enumerate(table.tracks):
+                    if song_key(existing) == key:
+                        table.selectRow(row)
+                        self.block_area.ensureWidgetVisible(table)
+                        return
+        else:
+            for row, existing in enumerate(self.current.tracks):
+                if song_key(existing) == key:
+                    self.current.selectRow(row)
+                    self.current.scrollToItem(self.current.item(row, 1))
+                    return
+
+    def insert_tracks_at(self, source, target_key, insertion):
+        """Move existing block songs or insert catalogue songs exactly at drop position."""
+        if source is None:
+            return False
+        moving = source.selected_tracks()
+        if not moving:
+            return False
+        if target_key == "current" and self.block_plan is None:
+            destination = self.current.tracks
+        elif self.block_plan is not None and target_key.startswith(("block:", "reserve:")):
+            destination = self.slot_tracks(target_key)
+        else:
+            return False
+        src_key = source.name if source.name == "current" or source.name.startswith(("block:", "reserve:")) else None
+        same = src_key == target_key
+        all_songs = ([song for main, reserve in self.block_plan for song in main + reserve]
+                     if self.block_plan is not None else self.current.tracks)
+        moving_paths = {str(t.path).casefold() for t in moving} if src_key else set()
+        occupied = {song_key(t) for t in all_songs if str(t.path).casefold() not in moving_paths}
+        seen = set()
+        duplicate = next((t for t in moving if song_key(t) in occupied or
+                          (song_key(t) in seen)), None)
+        # Check selected works for collisions too, not just file paths.
+        for t in moving:
+            seen.add(song_key(t))
+        if duplicate is not None:
+            self.highlight_existing(duplicate)
+            QMessageBox.information(self, "Песня уже добавлена",
+                                    "Это произведение уже есть в плейлисте. Оно выделено справа.")
+            return False
+        if len({song_key(t) for t in moving}) != len(moving):
+            QMessageBox.information(self, "Дубли", "Выбери только одну версию каждого произведения.")
+            return False
+        insertion = max(0, min(int(insertion), len(destination)))
+        if same:
+            selected_indices = source.selected_rows()
+            insertion -= sum(row < insertion for row in selected_indices)
+        self.record_undo()
+        if src_key is not None:
+            source_items = self.slot_tracks(src_key) if self.block_plan is not None else self.current.tracks
+            source_items[:] = [t for t in source_items if str(t.path).casefold() not in moving_paths]
+        destination[insertion:insertion] = moving
+        if self.block_plan is None:
+            self.current.set_tracks(destination, [t.path for t in moving])
+        else:
+            self.current.tracks = [t for main, _ in self.block_plan for t in main]
+            self.render_block_editor()
+            table = self.block_tables[target_key]
+            for row in range(insertion, insertion + len(moving)):
+                table.selectRow(row)
+            self.block_area.ensureWidgetVisible(table)
+        self.after_playlist_edit()
+        return True
+
     def build_track_menu(self, table):
         menu = QMenu(table)
         has_selection = bool(table.selected_rows())
