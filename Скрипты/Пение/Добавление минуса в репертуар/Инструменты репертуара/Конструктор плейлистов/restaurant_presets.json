@@ -3,9 +3,7 @@
     "include_tags": [
       "р-Шпатен"
     ],
-    "exclude_tags": [
-      "Я-рус"
-    ],
+    "exclude_tags": [],
     "english_target_percent": 50,
     "language_tolerance_percent": 10
   }
