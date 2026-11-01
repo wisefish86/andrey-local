@@ -169,7 +169,7 @@ class TrackTable(QTableWidget):
                 row = len(self.tracks)
             elif int(event.position().y()) > self.rowViewportPosition(row) + self.rowHeight(row) // 2:
                 row += 1
-            accepted = self.owner.insert_tracks_at(source, self.name, row)
+            accepted = self.owner.insert_tracks_at(source, self.name, row, defer_ui=True)
             event.setDropAction(Qt.DropAction.CopyAction)
             if accepted:
                 event.accept()
@@ -445,7 +445,7 @@ class MainWindow(QMainWindow):
                     self.current.scrollToItem(self.current.item(row, 1))
                     return
 
-    def insert_tracks_at(self, source, target_key, insertion):
+    def insert_tracks_at(self, source, target_key, insertion, defer_ui=False):
         """Move existing block songs or insert catalogue songs exactly at drop position."""
         if source is None:
             return False
@@ -487,16 +487,21 @@ class MainWindow(QMainWindow):
             source_items = self.slot_tracks(src_key) if self.block_plan is not None else self.current.tracks
             source_items[:] = [t for t in source_items if str(t.path).casefold() not in moving_paths]
         destination[insertion:insertion] = moving
-        if self.block_plan is None:
-            self.current.set_tracks(destination, [t.path for t in moving])
+        def refresh():
+            if self.block_plan is None:
+                self.current.set_tracks(destination, [t.path for t in moving])
+            else:
+                self.current.tracks = [t for main, _ in self.block_plan for t in main]
+                self.render_block_editor()
+                table = self.block_tables[target_key]
+                for row in range(insertion, insertion + len(moving)):
+                    table.selectRow(row)
+                self.block_area.ensureWidgetVisible(table)
+            self.after_playlist_edit()
+        if defer_ui:
+            QTimer.singleShot(0, refresh)
         else:
-            self.current.tracks = [t for main, _ in self.block_plan for t in main]
-            self.render_block_editor()
-            table = self.block_tables[target_key]
-            for row in range(insertion, insertion + len(moving)):
-                table.selectRow(row)
-            self.block_area.ensureWidgetVisible(table)
-        self.after_playlist_edit()
+            refresh()
         return True
 
     def build_track_menu(self, table):
