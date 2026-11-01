@@ -859,10 +859,10 @@ class MainWindow(QMainWindow):
                 heading = QLabel(f"{idx + 1} {'блок' if kind == 'block' else 'запас'}"
                                  f" · {int(minutes)}:{int(round(minutes % 1 * 60)):02d}"
                                  + (f" · {missing} без длительности" if missing else ""))
-                ratings = [float(display_rating(t.rating).split("/")[0])
+                ratings = [float(display_rating(t.rating).replace(",", "."))
                            for t in songs if display_rating(t.rating) != "—"]
                 if ratings:
-                    heading.setText(heading.text() + f" · ср. рейтинг {sum(ratings)/len(ratings):.1f}/5")
+                    heading.setText(heading.text() + f" · ср. рейтинг {sum(ratings)/len(ratings):.1f}".replace(".", ","))
                 heading.setStyleSheet("font-weight:700;font-size:14px;padding-top:9px;")
                 layout.addWidget(heading)
                 if kind == "block":
