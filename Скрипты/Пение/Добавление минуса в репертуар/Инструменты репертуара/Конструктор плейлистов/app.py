@@ -772,6 +772,8 @@ class MainWindow(QMainWindow):
             target = self.block_plan[int(index)][0 if kind == "block" else 1]
             from core import song_key
             used = {song_key(t) for main, reserve in self.block_plan for t in main + reserve}
+            if any(song_key(track) not in used for track in tracks):
+                self.record_undo()
             for track in tracks:
                 if song_key(track) not in used:
                     target.append(track)
