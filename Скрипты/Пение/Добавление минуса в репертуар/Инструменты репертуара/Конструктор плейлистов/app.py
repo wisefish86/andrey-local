@@ -797,7 +797,12 @@ class MainWindow(QMainWindow):
                 self.current.set_tracks(self.current.tracks)
         else:
             combine = add_unique_songs if destination == "current" else append_unique
-            table.set_tracks(combine(table.tracks, tracks), (t.path for t in tracks))
+            combined = combine(table.tracks, tracks)
+            if destination == "current" and combined != table.tracks:
+                self.record_undo()
+            table.set_tracks(combined, (t.path for t in tracks))
+            if destination == "current":
+                self.after_playlist_edit()
         self.statusBar().showMessage(f"Прочитано {len(tracks)} MP3, ошибок/пропусков: {len(warnings)}", 10000)
         if warnings and destination == "catalog":
             self.statusBar().showMessage("Каталог: " + "; ".join(warnings[:3]), 15000)
