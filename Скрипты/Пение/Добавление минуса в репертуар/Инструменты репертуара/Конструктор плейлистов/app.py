@@ -951,7 +951,7 @@ class MainWindow(QMainWindow):
                 ratings = [float(display_rating(t.rating).replace(",", "."))
                            for t in songs if display_rating(t.rating) != "—"]
                 if ratings and kind == "block":
-                    heading.setText(heading.text() + f" · ср. рейтинг {sum(ratings)/len(ratings):.1f}".replace(".", ","))
+                    heading.setText(heading.text() + " · ср. рейтинг " + f"{sum(ratings)/len(ratings):.1f}".replace(".", ","))
                 heading.setStyleSheet("font-weight:700;font-size:14px;padding-top:9px;")
                 layout.addWidget(heading)
                 if kind == "block":
