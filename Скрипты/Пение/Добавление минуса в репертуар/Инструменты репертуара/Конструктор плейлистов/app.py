@@ -491,23 +491,35 @@ class MainWindow(QMainWindow):
         scroll.setWidgetResizable(True)
         pane = QWidget()
         pane_layout = QVBoxLayout(pane)
-        values = {v for t in self.catalog_all for v in (*t.tags, t.language, t.difficulty, t.energy, t.role) if v and not v.startswith("в-")}
+        groups = {}
         try:
-            schema = json.loads((Path(__file__).resolve().parents[1] / "config.json").read_text(encoding="utf-8-sig"))
+            config_path = Path(__file__).resolve().parents[1] / "config.json"
+            schema = json.loads(config_path.read_text(encoding="utf-8-sig"))
             for field in schema.get("fields", []):
-                for option in field.get("options", []):
-                    if isinstance(option, list) and option:
-                        values.add(str(option[0]))
-        except (ValueError, OSError):
+                choices = [str(option[0]) for option in field.get("options", [])
+                           if isinstance(option, list) and option and option[0]]
+                choices = [tag for tag in choices if not tag.startswith("в-")]
+                if choices:
+                    groups[field.get("label", field.get("id", "Теги"))] = list(dict.fromkeys(choices))
+        except (OSError, ValueError, TypeError):
             pass
-        grid = QGridLayout()
-        for i, tag in enumerate(sorted(v for v in values if v and not v.startswith("в-"))):
-            chip = QPushButton(tag)
-            chip.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-            chip.clicked.connect(lambda checked=False, code=tag:
-                (active_field[0] or included).appendPlainText(code))
-            grid.addWidget(chip, i // 5, i % 5)
-        pane_layout.addLayout(grid)
+        known = {tag for choices in groups.values() for tag in choices}
+        extras = {tag for track in self.catalog_all
+                  for tag in (*track.tags, track.language, track.difficulty,
+                              track.energy, track.role, track.status)
+                  if tag and not tag.startswith("в-") and tag not in known}
+        if extras:
+            groups["Другие теги"] = sorted(extras, key=str.casefold)
+        for title, choices in groups.items():
+            pane_layout.addWidget(QLabel(title))
+            grid = QGridLayout()
+            for i, tag in enumerate(choices):
+                chip = QPushButton(tag)
+                chip.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+                chip.clicked.connect(lambda checked=False, code=tag:
+                    (active_field[0] or included).appendPlainText(code))
+                grid.addWidget(chip, i // 4, i % 4)
+            pane_layout.addLayout(grid)
         scroll.setWidget(pane)
         layout.addWidget(scroll, 1)
         ratio = QSpinBox()
