@@ -84,6 +84,22 @@ class VisibleBlockActions(unittest.TestCase):
         finally:
             ui.close()
 
+    def test_duplicate_work_is_located_not_added(self):
+        ui = self.new_window()
+        try:
+            ui.block_plan = [([song(1)], [song(3)])]
+            ui.render_block_editor()
+            ui.catalog.set_tracks([song(99, work="в-1")])
+            ui.catalog.selectRow(0)
+            with patch("app.QMessageBox.information") as notice:
+                result = ui.insert_tracks_at(ui.catalog, "block:0", 1)
+            self.assertFalse(result)
+            self.assertEqual(len(ui.block_plan[0][0]), 1)
+            self.assertEqual(ui.selected_playlist_slot(), ("block:0", 0))
+            notice.assert_called_once()
+        finally:
+            ui.close()
+
     def test_selection_moves_from_main_to_reserve(self):
         ui = self.new_window()
         try:
