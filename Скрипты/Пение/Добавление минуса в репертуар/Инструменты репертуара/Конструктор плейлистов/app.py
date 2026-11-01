@@ -392,6 +392,10 @@ class MainWindow(QMainWindow):
             self.catalog_search.setClearButtonEnabled(True)
             self.catalog_search.textChanged.connect(self.apply_restaurant_preset)
             layout.insertWidget(1, self.catalog_search)
+            self.hide_used = QCheckBox("Скрыть песни, уже добавленные справа")
+            self.hide_used.setChecked(True)
+            self.hide_used.toggled.connect(self.apply_restaurant_preset)
+            layout.insertWidget(2, self.hide_used)
             button("↻ Обновить", self.reload_catalog)
             button("→ В плейлист", self.add_catalog_selection)
             button("Связать версии…", self.link_selected_versions)
@@ -511,6 +515,11 @@ class MainWindow(QMainWindow):
                        " ".join((t.title, t.clean_title, t.artist, t.work_id,
                                  t.difficulty, t.role, t.energy, " ".join(t.tags))).casefold()
                        for word in words)]
+        if hasattr(self, "hide_used") and self.hide_used.isChecked():
+            occupied = ({song_key(t) for main, reserve in self.block_plan for t in main + reserve}
+                        if self.block_plan is not None
+                        else {song_key(t) for t in self.current.tracks})
+            matches = [t for t in matches if song_key(t) not in occupied]
         self.catalog.set_tracks(matches)
         if hasattr(self, "ratio_hint"):
             target = int(preset.get("english_target_percent", load_config().get("selection", {}).get("language_english_percent", 50)))
