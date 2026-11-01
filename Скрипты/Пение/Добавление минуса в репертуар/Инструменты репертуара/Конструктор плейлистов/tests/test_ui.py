@@ -55,6 +55,11 @@ class SetlistUiSmokeTests(unittest.TestCase):
                 self.assertEqual(table.height(), expected)
                 self.assertFalse(table.verticalScrollBar().isVisible())
             self.assertLess(reserve.height(), main.height())
+            main.selectRow(2)
+            self.assertEqual(ui.selected_playlist_slot(), ("block:0", 2))
+            replacement = track
+            ui.replace_slot("block:0", 2, replacement)
+            self.assertEqual(ui.block_plan[0][0][2].path, replacement.path)
             ui.close()
 
 
