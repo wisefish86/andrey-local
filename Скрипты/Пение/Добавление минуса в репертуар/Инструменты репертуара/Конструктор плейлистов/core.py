@@ -604,8 +604,8 @@ def display_rating(raw: str) -> str:
         if value <= high_byte:
             fraction = (value - low_byte) / (high_byte - low_byte)
             stars = round((low_star + fraction * (high_star - low_star)) * 2) / 2
-            return f"{stars:g}/5"
-    return "5/5"
+            return f"{stars:g}".replace(".", ",")
+    return "5"
 
 
 PRESETS_FILE = Path(__file__).with_name("restaurant_presets.json")
