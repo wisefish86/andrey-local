@@ -403,14 +403,18 @@ def distribute_blocks(tracks: list[Track], number: int, target_minutes: int,
         lengths = [track_minutes(t) for t in pair]
         if any(v is None or v <= 0 for v in lengths):
             continue
-        options = [i for i in range(number) if durations[i] + sum(lengths) <= target_minutes]
+        options = [i for i in range(number)
+                   if durations[i] + sum(lengths) <= target_minutes
+                   and sum(difficulty_level(t) >= 3 for t in blocks[i] + pair) <= 2]
         if options:
             i = min(options, key=lambda n: (durations[n], n))
             blocks[i].extend(pair)
             durations[i] += sum(lengths)
         else:
             for track, duration in zip(pair, lengths):
-                choices = [i for i in range(number) if durations[i] + duration <= target_minutes]
+                choices = [i for i in range(number)
+                           if durations[i] + duration <= target_minutes
+                           and sum(difficulty_level(t) >= 3 for t in blocks[i]) + int(difficulty_level(track) >= 3) <= 2]
                 if choices:
                     i = min(choices, key=lambda n: (durations[n], n))
                     blocks[i].append(track)
@@ -437,6 +441,8 @@ def distribute_blocks(tracks: list[Track], number: int, target_minutes: int,
                                     (abs((track_minutes(pair[1]) or 0) -
                                          (track_minutes(song) or 0)),
                                      difficulty_level(pair[1])))
+                if sum(difficulty_level(t) >= 3 for t in last) >= 2:
+                    continue
                 group[index], last[swap_index] = last[swap_index], group[index]
     return [(arrange_vocal_block(group, first_block=(i == 0), rules=pacing), [])
             for i, group in enumerate(blocks)]
