@@ -14,7 +14,7 @@ from PySide6.QtWidgets import (
 )
 
 from core import Track, append_unique, expand_inputs, move_rows, parse_dropped_text
-from core import read_track, repeated_from_history, replace_rows, save_playlist, load_config, scan_library, distribute_blocks, export_block_playlist, block_duration, vocal_warnings, unique_songs, add_unique_songs, replacement_candidates, filtered_restaurant_catalog, load_restaurant_presets, save_restaurant_presets, link_versions, build_language_balanced_list, song_key, version_length, display_rating, difficulty_level
+from core import read_track, repeated_from_history, replace_rows, save_playlist, load_config, scan_library, distribute_blocks, export_block_playlist, block_duration, vocal_warnings, unique_songs, add_unique_songs, replacement_candidates, filtered_restaurant_catalog, load_restaurant_presets, save_restaurant_presets, link_versions, build_language_balanced_list, song_key, version_length, display_rating, difficulty_level, validate_hard_spacing
 
 
 class ReadWorker(QThread):
@@ -792,6 +792,11 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "Вокальная нагрузка",
                 "Не удалось разделить сложные песни более лёгкими. "
                 "Добавь песни сложности 1–2 или измени фильтр.")
+            return
+        if any(not validate_hard_spacing(main) for main, _ in groups):
+            QMessageBox.warning(self, "Вокальная нагрузка",
+                "В блоке оказалось больше двух сложных песен или между сложными нет лёгкой (сл-1). "
+                "Формирование остановлено. Расширь фильтр лёгких песен.")
             return
         # Repair medium streaks before allocating easy songs to reserves.
         main_keys = {song_key(t) for main, _ in groups for t in main}
