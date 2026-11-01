@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QPushButton
 from core import Track, display_rating, random_replacement_candidates, version_length
 from app import MainWindow
 
@@ -48,18 +48,38 @@ class VisibleBlockActions(unittest.TestCase):
         with patch("app.load_config", return_value={"library": {"auto_load": False}, "blocks": {}}):
             return MainWindow()
 
+    def click_toolbar(self, ui, caption):
+        buttons = [w for w in ui.current.parentWidget().findChildren(QPushButton)
+                   if w.text() == caption]
+        self.assertEqual(len(buttons), 1, f"Toolbar button missing: {caption}")
+        buttons[0].click()
+
     def test_move_and_remove_selected_visible_song(self):
         ui = self.new_window()
         try:
             ui.block_plan = [([song(1), song(2), song(3)], [song(4)])]
             ui.render_block_editor()
             ui.block_tables["block:0"].selectRow(1)
-            ui.shift_selected(ui.current, -1)
+            self.click_toolbar(ui, "↑")
             self.assertEqual([t.title for t in ui.block_plan[0][0]], ["2", "1", "3"])
             self.assertEqual(ui.selected_playlist_slot(), ("block:0", 0))
-            ui.remove_selected(ui.current)
+            self.click_toolbar(ui, "↓")
+            self.assertEqual([t.title for t in ui.block_plan[0][0]], ["1", "2", "3"])
+            self.click_toolbar(ui, "Убрать")
             self.assertEqual([t.title for t in ui.block_plan[0][0]], ["1", "3"])
             self.assertEqual(len(ui.block_plan[0][1]), 1)
+        finally:
+            ui.close()
+
+    def test_add_button_uses_visible_block_not_click_boolean(self):
+        ui = self.new_window()
+        try:
+            ui.block_plan = [([song(1)], [])]
+            ui.render_block_editor()
+            ui.block_tables["block:0"].selectRow(0)
+            with patch.object(ui, "pick_files") as pick:
+                self.click_toolbar(ui, "+ MP3/M3U8")
+                pick.assert_called_once_with("block:0")
         finally:
             ui.close()
 
