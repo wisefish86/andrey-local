@@ -707,12 +707,12 @@ class MainWindow(QMainWindow):
             f"Замена: {selected.title} → {replacement.title}. MP3 не изменены.", 9000)
 
     def choose_technical_version(self):
-        rows = self.current.selected_rows()
-        if len(rows) != 1:
-            QMessageBox.information(self, "Версии", "Выдели одну песню в текущем плейлисте.")
+        slot = self.selected_playlist_slot()
+        if slot is None:
+            QMessageBox.information(self, "Версии", "Выдели одну песню в видимом блоке.")
             return
-        row = rows[0]
-        selected = self.current.tracks[row]
+        key, row = slot
+        selected = self.slot_tracks(key)[row]
         # Only arrangements of the exact same song folder: no cross-artist covers.
         variants = [t for t in self.catalog_all
                     if t.path.parent == selected.path.parent
@@ -733,9 +733,7 @@ class MainWindow(QMainWindow):
         replacement = variants[options.index(chosen)]
         if replacement.path == selected.path:
             return
-        updated = list(self.current.tracks)
-        updated[row] = replacement
-        self.current.set_tracks(updated, [replacement.path])
+        self.replace_slot(key, row, replacement)
         self.statusBar().showMessage("Версия заменена без изменения MP3.", 8000)
 
     def replace_selected(self):
