@@ -540,10 +540,7 @@ class MainWindow(QMainWindow):
                 QMessageBox.warning(dialog, "Ошибка сохранения", str(exc))
                 return
             dialog.accept()
-            self.venue.blockSignals(True)
-            self.reload_venue_names(title)
-            self.venue.blockSignals(False)
-            QTimer.singleShot(0, self.apply_restaurant_preset)
+            QTimer.singleShot(0, lambda chosen=title: self.reload_venue_names(chosen))
         save.clicked.connect(commit)
         dialog.exec()
 
