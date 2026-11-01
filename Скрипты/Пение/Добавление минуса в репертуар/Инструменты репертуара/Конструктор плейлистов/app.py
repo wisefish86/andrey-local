@@ -370,6 +370,9 @@ class MainWindow(QMainWindow):
             layout.addLayout(self.catalog_filters_layout)
         table = TrackTable(name, self)
         table.filesDropped.connect(self.import_files)
+        if name in ("current", "catalog"):
+            table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+            table.customContextMenuRequested.connect(lambda pos, t=table: self.open_track_menu(t, pos))
         layout.addWidget(table, 1)
         if name == "current":
             self.block_area = QScrollArea()
@@ -1022,6 +1025,8 @@ class MainWindow(QMainWindow):
                 rows_height = sum(table.rowHeight(row) for row in range(table.rowCount()))
                 table.setFixedHeight(table.horizontalHeader().height() + rows_height + 2 * table.frameWidth() + 2)
                 self.block_tables[key] = table
+                table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+                table.customContextMenuRequested.connect(lambda pos, t=table: self.open_track_menu(t, pos))
                 table.itemSelectionChanged.connect(lambda selected_key=key: self.activate_block_selection(selected_key))
                 layout.addWidget(table)
         layout.addStretch()
