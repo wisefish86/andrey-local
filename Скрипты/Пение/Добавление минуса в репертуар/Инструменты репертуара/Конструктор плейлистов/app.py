@@ -788,6 +788,7 @@ class MainWindow(QMainWindow):
                     used.add(song_key(track))
             self.current.tracks = [song for main, reserve in self.block_plan for song in main]
             self.render_block_editor()
+            self.after_playlist_edit()
             return
         table = {"current": self.current, "history": self.history, "catalog": self.catalog}[destination]
         if destination == "catalog":
