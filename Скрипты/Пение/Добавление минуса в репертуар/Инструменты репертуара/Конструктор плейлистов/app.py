@@ -873,7 +873,8 @@ class MainWindow(QMainWindow):
                         warning.setStyleSheet("color:#f0bb6b;")
                         layout.addWidget(warning)
                 table = TrackTable(key, self)
-                table.setMinimumHeight(max(72, min(260, len(songs) * 30 + 36)))
+                table.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+                table.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
                 table.set_tracks(songs)
                 self.block_tables[key] = table
                 layout.addWidget(table)
