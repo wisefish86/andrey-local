@@ -48,11 +48,12 @@ class VisibleBlockActions(unittest.TestCase):
         with patch("app.load_config", return_value={"library": {"auto_load": False}, "blocks": {}}):
             return MainWindow()
 
-    def click_toolbar(self, ui, caption):
-        buttons = [w for w in ui.current.parentWidget().findChildren(QPushButton)
-                   if w.text() == caption]
-        self.assertEqual(len(buttons), 1, f"Toolbar button missing: {caption}")
-        buttons[0].click()
+    def choose_menu(self, ui, caption, table=None):
+        table = table or ui.block_tables.get("block:0", ui.current)
+        menu = ui.build_track_menu(table)
+        actions = [a for a in menu.actions() if a.text() == caption]
+        self.assertEqual(len(actions), 1, caption)
+        actions[0].trigger()
 
     def test_move_and_remove_selected_visible_song(self):
         ui = self.new_window()
@@ -60,12 +61,12 @@ class VisibleBlockActions(unittest.TestCase):
             ui.block_plan = [([song(1), song(2), song(3)], [song(4)])]
             ui.render_block_editor()
             ui.block_tables["block:0"].selectRow(1)
-            self.click_toolbar(ui, "↑")
+            self.assertTrue(ui.insert_tracks_at(ui.block_tables["block:0"], "block:0", 0))
             self.assertEqual([t.title for t in ui.block_plan[0][0]], ["2", "1", "3"])
             self.assertEqual(ui.selected_playlist_slot(), ("block:0", 0))
-            self.click_toolbar(ui, "↓")
+            self.assertTrue(ui.insert_tracks_at(ui.block_tables["block:0"], "block:0", 2))
             self.assertEqual([t.title for t in ui.block_plan[0][0]], ["1", "2", "3"])
-            self.click_toolbar(ui, "Убрать")
+            self.choose_menu(ui, "Убрать из плейлиста")
             self.assertEqual([t.title for t in ui.block_plan[0][0]], ["1", "3"])
             self.assertEqual(len(ui.block_plan[0][1]), 1)
         finally:
@@ -78,7 +79,7 @@ class VisibleBlockActions(unittest.TestCase):
             ui.render_block_editor()
             ui.block_tables["block:0"].selectRow(0)
             with patch.object(ui, "pick_files") as pick:
-                self.click_toolbar(ui, "+ MP3/M3U8")
+                self.choose_menu(ui, "Добавить MP3/M3U8 из файла…")
                 pick.assert_called_once_with("block:0")
         finally:
             ui.close()
@@ -105,7 +106,7 @@ class VisibleBlockActions(unittest.TestCase):
             ui.render_block_editor()
             ui.block_tables["block:0"].selectRow(0)
             with patch("app.QInputDialog.getItem", side_effect=lambda *a: (a[3][-1], True)):
-                self.click_toolbar(ui, "Версии S/F…")
+                self.choose_menu(ui, "Выбрать версию S/F…")
             self.assertEqual(ui.block_plan[0][0][0].path, full.path)
         finally:
             ui.close()
@@ -130,7 +131,7 @@ class VisibleBlockActions(unittest.TestCase):
             ui.render_block_editor()
             ui.block_tables["block:0"].selectRow(1)
             with patch("app.block_duration", return_value=(12.0, 0)), patch("app.track_minutes", return_value=3.0):
-                self.click_toolbar(ui, "Заменить ←")
+                self.choose_menu(ui, "Заменить случайной песней")
             self.assertEqual(ui.block_plan[0][0][1].work_id, "в-6")
             self.assertEqual(ui.selected_playlist_slot(), ("block:0", 1))
         finally:
