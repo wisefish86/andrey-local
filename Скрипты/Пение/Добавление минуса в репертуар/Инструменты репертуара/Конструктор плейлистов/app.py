@@ -1075,6 +1075,7 @@ class MainWindow(QMainWindow):
         self.current.set_tracks([song for main, _ in result for song in main])
         self.block_plan = result
         self.render_block_editor()
+        self.after_playlist_edit()
         counts = ", ".join(f"{len(main)}+{len(reserve)}" for main, reserve in result)
         self.statusBar().showMessage(f"Блоки (основные+резерв): {counts}", 15000)
         self.statusBar().showMessage("Блоки готовы: " + counts, 12000)
