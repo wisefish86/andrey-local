@@ -73,7 +73,7 @@ class TrackTable(QTableWidget):
         self.setDragDropMode(QAbstractItemView.DragDropMode.DragDrop)
         self.setDefaultDropAction(Qt.DropAction.CopyAction)
         self.setMouseTracking(True)
-        self.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
+        self.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
         self.horizontalHeader().setSectionResizeMode(1 if name == "current" or name.startswith(("block:", "reserve:")) else 2, QHeaderView.ResizeMode.Stretch)
         self.verticalHeader().setVisible(False)
         self.itemSelectionChanged.connect(self.selectionChanged)
