@@ -311,7 +311,6 @@ class MainWindow(QMainWindow):
         QShortcut(QKeySequence("Ctrl+S"), self, activated=self.save_current_playlist)
         QShortcut(QKeySequence("Ctrl+O"), self, activated=lambda: self.pick_files("current"))
         self.refresh_summary()
-        QTimer.singleShot(100, self.restore_session_playlist)
         try:
             if load_config().get("library", {}).get("auto_load", True):
                 self.reload_catalog()
@@ -323,8 +322,7 @@ class MainWindow(QMainWindow):
         super().closeEvent(event)
 
     def save_session(self):
-        state = {"venue": self.venue.currentText(),
-                 "playlist": [str(t.path) for t in self.current.tracks]}
+        state = {"venue": self.venue.currentText()}
         self.session_path.parent.mkdir(parents=True, exist_ok=True)
         temporary = self.session_path.with_suffix(".tmp")
         try:
@@ -541,9 +539,11 @@ class MainWindow(QMainWindow):
             except OSError as exc:
                 QMessageBox.warning(dialog, "Ошибка сохранения", str(exc))
                 return
-            self.reload_venue_names(title)
-            self.save_session()
             dialog.accept()
+            self.venue.blockSignals(True)
+            self.reload_venue_names(title)
+            self.venue.blockSignals(False)
+            QTimer.singleShot(0, self.apply_restaurant_preset)
         save.clicked.connect(commit)
         dialog.exec()
 
