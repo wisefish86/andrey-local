@@ -1137,43 +1137,6 @@ class MainWindow(QMainWindow):
         self.current.hide()
         self.block_area.show()
 
-    def drop_into_block(self, source, target, event):
-        if self.block_plan is None:
-            event.ignore()
-            return
-        moving = source.selected_tracks()
-        if not moving:
-            event.ignore()
-            return
-        key = target.name
-        kind, number = key.split(":")
-        destination = self.block_plan[int(number)][0 if kind == "block" else 1]
-        # Reject duplicate songs across every block and reserve.
-        from core import song_key
-        chosen = {song_key(song) for song in moving}
-        occupied = {song_key(song) for main, reserve in self.block_plan
-                    for song in main + reserve if song not in moving}
-        if chosen & occupied:
-            self.statusBar().showMessage("Эта песня уже есть в программе.", 6000)
-            event.ignore()
-            return
-        if source.name.startswith(("block:", "reserve:")):
-            src_kind, src_number = source.name.split(":")
-            src_list = self.block_plan[int(src_number)][0 if src_kind == "block" else 1]
-            src_list[:] = [song for song in src_list if song not in moving]
-        insert = target.rowAt(int(event.position().y()))
-        insert = len(destination) if insert < 0 else insert
-        if source is target:
-            # Source was removed above; correct insertion for rows before target.
-            insert -= sum(i < insert for i in source.selected_rows())
-        insert = max(0, min(insert, len(destination)))
-        destination[insert:insert] = moving
-        self.current.tracks = [song for main, reserve in self.block_plan for song in main]
-        QTimer.singleShot(0, self.render_block_editor)
-        event.setDropAction(Qt.DropAction.CopyAction)
-        event.accept()
-        self.statusBar().showMessage("Перенесено в блок; длительность пересчитана.", 5000)
-
     def save_current_playlist(self):
         if self.block_plan is not None:
             self.export_blocks()
