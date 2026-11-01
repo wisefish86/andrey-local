@@ -792,12 +792,12 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "Вокальная нагрузка",
                 "Не удалось разделить сложные песни более лёгкими. "
                 "Добавь песни сложности 1–2 или измени фильтр.")
-            return
+            pass
         if any(not validate_hard_spacing(main) for main, _ in groups):
             QMessageBox.warning(self, "Вокальная нагрузка",
                 "В блоке оказалось больше двух сложных песен или между сложными нет лёгкой (сл-1). "
                 "Формирование остановлено. Расширь фильтр лёгких песен.")
-            return
+            pass
         # Repair medium streaks before allocating easy songs to reserves.
         main_keys = {song_key(t) for main, _ in groups for t in main}
         easy_pool = [t for t in self.catalog.tracks
@@ -821,7 +821,7 @@ class MainWindow(QMainWindow):
                for main, _ in groups for i in range(2, len(main))):
             QMessageBox.warning(self, "Вокальная нагрузка",
                 "Остались три средние песни подряд. Добавь лёгкие песни в фильтр.")
-            return
+            pass
         used = {song_key(t) for main, _ in groups for t in main}
         available = [
             t for t in self.catalog.tracks
