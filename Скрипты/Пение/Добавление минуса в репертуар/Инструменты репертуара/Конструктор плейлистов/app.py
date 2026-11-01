@@ -5,7 +5,7 @@ from pathlib import Path
 import sys
 import json
 
-from PySide6.QtCore import QItemSelectionModel, QMimeData, Qt, QThread, QUrl, Signal, QTimer
+from PySide6.QtCore import QItemSelectionModel, QMimeData, Qt, QThread, QUrl, Signal, QTimer, QPoint
 from PySide6.QtGui import QColor, QDrag, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QApplication, QAbstractItemView, QFileDialog, QHeaderView, QLabel, QMainWindow,
@@ -429,14 +429,21 @@ class MainWindow(QMainWindow):
         self.apply_restaurant_preset()
         self.refresh_summary()
 
+    def focus_block_row(self, key, row):
+        table = self.block_tables[key]
+        table.selectRow(row)
+        point = table.viewport().mapTo(
+            self.block_area.widget(),
+            QPoint(8, table.rowViewportPosition(row) + table.rowHeight(row) // 2))
+        self.block_area.ensureVisible(point.x(), point.y(), 20, 45)
+
     def highlight_existing(self, track):
         key = song_key(track)
         if self.block_plan is not None:
             for name, table in self.block_tables.items():
                 for row, existing in enumerate(table.tracks):
                     if song_key(existing) == key:
-                        table.selectRow(row)
-                        self.block_area.ensureWidgetVisible(table)
+                        self.focus_block_row(name, row)
                         return
         else:
             for row, existing in enumerate(self.current.tracks):
