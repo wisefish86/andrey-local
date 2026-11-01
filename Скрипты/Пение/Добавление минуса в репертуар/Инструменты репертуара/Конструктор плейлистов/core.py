@@ -384,6 +384,15 @@ def arrange_vocal_block(tracks: list[Track], first_block: bool = False,
     return ordered
 
 
+def validate_hard_spacing(songs: list[Track]) -> bool:
+    """At most two demanding songs, separated by at least one easy song."""
+    hard = [i for i, song in enumerate(songs) if difficulty_level(song) >= 3]
+    if len(hard) > 2:
+        return False
+    return len(hard) < 2 or any(difficulty_level(song) == 1
+                                for song in songs[hard[0] + 1:hard[1]])
+
+
 def distribute_blocks(tracks: list[Track], number: int, target_minutes: int,
                       reserve_count: int = 2) -> list[tuple[list[Track], list[Track]]]:
     """Keep manual song order, partition by real runtime, add distinct easy reserves."""
@@ -407,7 +416,7 @@ def distribute_blocks(tracks: list[Track], number: int, target_minutes: int,
                    if durations[i] + sum(lengths) <= target_minutes
                    and sum(difficulty_level(t) >= 3 for t in blocks[i] + pair) <= 2]
         if options:
-            i = min(options, key=lambda n: (durations[n], n))
+            i = min(options, key=lambda n: (sum(difficulty_level(t) >= 3 for t in blocks[n]), durations[n], n))
             blocks[i].extend(pair)
             durations[i] += sum(lengths)
         else:
@@ -416,7 +425,7 @@ def distribute_blocks(tracks: list[Track], number: int, target_minutes: int,
                            if durations[i] + duration <= target_minutes
                            and sum(difficulty_level(t) >= 3 for t in blocks[i]) + int(difficulty_level(track) >= 3) <= 2]
                 if choices:
-                    i = min(choices, key=lambda n: (durations[n], n))
+                    i = min(choices, key=lambda n: (sum(difficulty_level(t) >= 3 for t in blocks[n]), durations[n], n))
                     blocks[i].append(track)
                     durations[i] += duration
     # Reserve songs are drawn from remaining eligible medium/easy catalogue externally;
