@@ -17,6 +17,16 @@ from core import Track, append_unique, expand_inputs, move_rows, parse_dropped_t
 from core import read_track, repeated_from_history, replace_rows, save_playlist, load_config, scan_library, distribute_blocks, export_block_playlist, block_duration, vocal_warnings, unique_songs, add_unique_songs, replacement_candidates, filtered_restaurant_catalog, load_restaurant_presets, save_restaurant_presets, link_versions, build_language_balanced_list, song_key, version_length, display_rating, difficulty_level, validate_hard_spacing
 
 
+class FocusTagEdit(QPlainTextEdit):
+    def __init__(self, on_focus):
+        super().__init__()
+        self.on_focus = on_focus
+
+    def focusInEvent(self, event):
+        self.on_focus(self)
+        super().focusInEvent(event)
+
+
 class ReadWorker(QThread):
     loaded = Signal(str, object, object)
 
@@ -477,10 +487,10 @@ class MainWindow(QMainWindow):
         name = QLineEdit("" if current == "Все песни" else current)
         form.addRow("Название шаблона:", name)
         active_field = [None]
-        included = QPlainTextEdit()
+        included = FocusTagEdit(lambda widget: active_field.__setitem__(0, widget))
         included.setMaximumHeight(62)
         included.setPlainText("\n".join(existing.get("include_tags", [])))
-        excluded = QPlainTextEdit()
+        excluded = FocusTagEdit(lambda widget: active_field.__setitem__(0, widget))
         excluded.setMaximumHeight(62)
         excluded.setPlainText("\n".join(existing.get("exclude_tags", [])))
         form.addRow("Включать по тегам (любой из):", included)
