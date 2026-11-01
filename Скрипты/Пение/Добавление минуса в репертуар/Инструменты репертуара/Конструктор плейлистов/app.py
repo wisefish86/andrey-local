@@ -163,7 +163,7 @@ class TrackTable(QTableWidget):
             event.ignore()
             return
         source = event.source()
-        if isinstance(source, TrackTable) and self.name.startswith(("block:", "reserve:")):
+        if isinstance(source, TrackTable):
             self.owner.insert_tracks_at(source, self.name, max(0, self.rowAt(int(event.position().y()))))
             return
         if isinstance(source, TrackTable):
