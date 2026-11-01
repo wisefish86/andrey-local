@@ -325,73 +325,57 @@ def difficulty_level(track: Track) -> int:
 
 
 def arrange_vocal_block(tracks: list[Track], first_block: bool = False,
-                        rules: dict | None = None) -> list[Track]:
-    """Soft vocal pacing: easy opener, breathing gaps, hard songs near the end."""
-    rules = rules or {}
+                        rules: dict | None = None, last_block: bool = False) -> list[Track]:
+    """Order songs with recovery and dramaturgy constraints ahead of language."""
     remaining = list(tracks)
-    ordered = []
-    medium_limit = int(rules.get("max_consecutive_medium", 2))
-    easy_start = first_block and rules.get("first_block_starts_easy", True)
-    easy_share = int(rules.get("first_block_easy_share_percent", 50))
+    ordered: list[Track] = []
+    limit = int((rules or {}).get("max_consecutive_medium", 2))
     while remaining:
         position = len(ordered)
-        count = len(tracks)
         previous = difficulty_level(ordered[-1]) if ordered else 0
-        consecutive_medium = 0
+        medium_run = 0
         for t in reversed(ordered):
-            if difficulty_level(t) == 2:
-                consecutive_medium += 1
-            else:
+            if difficulty_level(t) != 2:
                 break
-        first_half = position < max(1, count // 2)
-        first_block_needs_easy = (first_block and first_half
-                                  and sum(difficulty_level(t) == 1 for t in ordered)
-                                  < round(count * easy_share / 100))
-        def score(item):
-            level = difficulty_level(item)
-            hard_early = level == 4 and position < count - 2
-            hard_without_rest = previous >= 3 and level >= 2
-            third_medium = level == 2 and consecutive_medium >= medium_limit
-            hard_followup = previous >= 3 and level != 1
-            start = position == 0 and (easy_start or not first_block)
+            medium_run += 1
+        hard_seen = sum(difficulty_level(t) >= 3 for t in ordered)
+        finale_pending = any("б-7-" in t.role for t in remaining)
+        def valid(t: Track) -> bool:
+            level = difficulty_level(t)
+            if previous >= 3 and level != 1:
+                return False
+            if level == 2 and medium_run >= limit:
+                return False
+            if level >= 3 and hard_seen and not any(
+                    difficulty_level(x) == 1 for x in ordered[
+                        next(i for i, x in enumerate(ordered) if difficulty_level(x) >= 3) + 1:]):
+                return False
+            if "б-7-" in t.role and len(remaining) > 1:
+                return False
+            if "б-6-" in t.role and position < max(2, len(tracks) // 2):
+                return False
+            return True
+        pool = [t for t in remaining if valid(t)]
+        if not pool:
+            # No valid continuation exists with this fixed song set.
+            # Keep the plan viewable; the existing validator will warn.
+            pool = [t for t in remaining if not ("б-7-" in t.role and len(remaining) > 1)] or remaining
+        def score(t: Track):
+            level = difficulty_level(t)
+            start = position == 0
+            preferred_start = 1 if first_block else 2
+            hard_early = level >= 3 and position < len(tracks) // 2
             return (
-                int(start and level != (1 if first_block else 2)),
-                int(hard_followup and rules.get("after_hard_prefer_easy", True)),
-                int(third_medium),
-                int(hard_without_rest),
-                int(hard_early and rules.get("hardest_prefer_last_block", True)),
-                int(first_block_needs_easy and level != 1),
-                int(bool(ordered) and item.language == ordered[-1].language),
-                int(level == 3 and position < count // 3),
-                remaining.index(item)
+                int(start and level != preferred_start),
+                int(hard_early),
+                int(level == 4 and position < len(tracks) - 3),
+                int(bool(ordered) and t.language == ordered[-1].language),
+                int(level >= 3),
+                remaining.index(t),
             )
-        # Reserve a finale-role song for the last slot of the final block.
-        if len(remaining) == 1:
-            chosen = remaining[0]
-        else:
-            candidates = [t for t in remaining if "б-7-Финал" not in t.role]
-            chosen = min(candidates or remaining, key=score)
+        chosen = min(pool, key=score)
         ordered.append(chosen)
         remaining.remove(chosen)
-    # Hard invariant: never leave adjacent level-3/4 songs if a softer
-    # unused slot in this block can separate them.
-    for i in range(1, len(ordered)):
-        if difficulty_level(ordered[i - 1]) >= 3 and difficulty_level(ordered[i]) >= 3:
-            alternative = next((j for j in range(i + 1, len(ordered))
-                                if difficulty_level(ordered[j]) in (1, 2)), None)
-            if alternative is not None:
-                ordered[i], ordered[alternative] = ordered[alternative], ordered[i]
-    hard_positions = [i for i, t in enumerate(ordered) if difficulty_level(t) >= 3]
-    if len(hard_positions) == 2 and not any(
-            difficulty_level(t) == 1 for t in ordered[hard_positions[0] + 1:hard_positions[1]]):
-        # Move an existing easy song between two hard songs, preserving the set.
-        easy_position = next((i for i, t in enumerate(ordered)
-                              if difficulty_level(t) == 1
-                              and not hard_positions[0] < i < hard_positions[1]), None)
-        if easy_position is not None:
-            easy_song = ordered.pop(easy_position)
-            first_hard = next(i for i, t in enumerate(ordered) if difficulty_level(t) >= 3)
-            ordered.insert(first_hard + 1, easy_song)
     return ordered
 
 
@@ -424,6 +408,7 @@ def distribute_blocks(tracks: list[Track], number: int, target_minutes: int,
         if any(v is None or v <= 0 for v in lengths):
             continue
         options = [i for i in range(number)
+                   if all(not t.role.startswith(("б-6-", "б-7-")) for t in pair) or i == number - 1
                    if durations[i] + sum(lengths) <= target_minutes
                    and sum(difficulty_level(t) >= 3 for t in blocks[i] + pair) <= 2]
         if options:
@@ -433,6 +418,7 @@ def distribute_blocks(tracks: list[Track], number: int, target_minutes: int,
         else:
             for track, duration in zip(pair, lengths):
                 choices = [i for i in range(number)
+                           if i == number - 1 or not track.role.startswith(("б-6-", "б-7-"))
                            if durations[i] + duration <= target_minutes
                            and sum(difficulty_level(t) >= 3 for t in blocks[i]) + int(difficulty_level(track) >= 3) <= 2]
                 if choices:
@@ -464,7 +450,7 @@ def distribute_blocks(tracks: list[Track], number: int, target_minutes: int,
                 if sum(difficulty_level(t) >= 3 for t in last) >= 2:
                     continue
                 group[index], last[swap_index] = last[swap_index], group[index]
-    return [(arrange_vocal_block(group, first_block=(i == 0), rules=pacing), [])
+    return [(arrange_vocal_block(group, first_block=(i == 0), rules=pacing, last_block=(i == number - 1)), [])
             for i, group in enumerate(blocks)]
 
 
