@@ -75,6 +75,33 @@ class VisibleBlockActions(unittest.TestCase):
         finally:
             ui.close()
 
+    def test_s_f_button_changes_selected_visible_version(self):
+        ui = self.new_window()
+        try:
+            short = song(1, variant=" [S]")
+            full = song(1, variant=" [F]")
+            ui.block_plan = [([short], [])]
+            ui.catalog_all = [short, full]
+            ui.render_block_editor()
+            ui.block_tables["block:0"].selectRow(0)
+            with patch("app.QInputDialog.getItem", side_effect=lambda *a: (a[3][-1], True)):
+                ui.choose_technical_version()
+            self.assertEqual(ui.block_plan[0][0][0].path, full.path)
+        finally:
+            ui.close()
+
+    def test_reserve_heading_has_no_average_rating(self):
+        ui = self.new_window()
+        try:
+            ui.block_plan = [([song(1), song(2)], [song(3), song(4), song(5)])]
+            ui.render_block_editor()
+            from PySide6.QtWidgets import QLabel
+            headings = [label.text() for label in ui.block_area.widget().findChildren(QLabel)]
+            self.assertTrue(any("ср. рейтинг" in name for name in headings if "1 блок" in name))
+            self.assertTrue(all("ср. рейтинг" not in name for name in headings if "1 запас" in name))
+        finally:
+            ui.close()
+
     def test_quick_replace_uses_filtered_unused_song(self):
         ui = self.new_window()
         try:
