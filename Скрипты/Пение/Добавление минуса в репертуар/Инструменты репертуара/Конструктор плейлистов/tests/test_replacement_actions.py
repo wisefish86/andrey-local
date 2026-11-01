@@ -95,10 +95,10 @@ class VisibleBlockActions(unittest.TestCase):
         try:
             ui.block_plan = [([song(1), song(2)], [song(3), song(4), song(5)])]
             ui.render_block_editor()
-            from PySide6.QtWidgets import QLabel
-            headings = [label.text() for label in ui.block_area.widget().findChildren(QLabel)]
-            self.assertTrue(any("ср. рейтинг" in name for name in headings if "1 блок" in name))
-            self.assertTrue(all("ср. рейтинг" not in name for name in headings if "1 запас" in name))
+            block_label = ui.block_area.widget().layout().itemAt(0).widget().text()
+            reserve_label = ui.block_area.widget().layout().itemAt(2).widget().text()
+            self.assertIn("ср. рейтинг", block_label)
+            self.assertNotIn("ср. рейтинг", reserve_label)
         finally:
             ui.close()
 
