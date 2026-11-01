@@ -286,13 +286,23 @@ class MainWindow(QMainWindow):
         generate = QPushButton("Сформировать блоки")
         generate.clicked.connect(self.generate_blocks)
         controls.addWidget(generate)
-        history_button = QPushButton("История…")
-        history_button.clicked.connect(lambda: (self.history.parentWidget().show(), self.pick_files("history")))
-        controls.addWidget(history_button)
         controls.addStretch(1)
         self.block_count.valueChanged.connect(self.invalidate_plan)
         self.block_minutes.valueChanged.connect(self.invalidate_plan)
         self.reserve_count.valueChanged.connect(self.invalidate_plan)
+        history_controls = QHBoxLayout()
+        outer.addLayout(history_controls)
+        history_label = QLabel("Прошлое выступление · ограничение повторов 30%:")
+        history_controls.addWidget(history_label)
+        self.history_count_label = QLabel("Не загружено")
+        history_controls.addWidget(self.history_count_label)
+        load_history = QPushButton("Загрузить прошлый M3U8…")
+        load_history.clicked.connect(self.load_previous_playlist)
+        history_controls.addWidget(load_history)
+        clear_history = QPushButton("Очистить историю")
+        clear_history.clicked.connect(self.clear_previous_playlist)
+        history_controls.addWidget(clear_history)
+        history_controls.addStretch(1)
         self.summary = QLabel("Перетащи файлы или используй «Добавить MP3/M3U8»")
         self.summary.setWordWrap(True)
         outer.addWidget(self.summary)
@@ -384,6 +394,20 @@ class MainWindow(QMainWindow):
         splitter.addWidget(panel)
         return table
 
+    def load_previous_playlist(self):
+        path, _ = QFileDialog.getOpenFileName(
+            self, "Выбери плейлист предыдущего выступления",
+            str(Path.home()), "Плейлисты (*.m3u8 *.m3u)")
+        if not path:
+            return
+        self.history.set_tracks([])
+        self.history.parentWidget().show()
+        self.import_files("history", [Path(path)])
+
+    def clear_previous_playlist(self):
+        self.history.set_tracks([])
+        self.history.parentWidget().hide()
+
     def refresh_summary(self):
         # This runs while the second table is being created too.
         if not all(hasattr(self, name) for name in ("catalog", "current", "history", "summary")):
@@ -396,6 +420,8 @@ class MainWindow(QMainWindow):
         if self.current.tracks and self.history.tracks and percentage > 20:
             message += "  ⚠ Выше ориентира 10–20%."
         self.summary.setText(message)
+        if hasattr(self, "history_count_label"):
+            self.history_count_label.setText(f"{len(self.history.tracks)} песен" if self.history.tracks else "Не загружено")
 
     def reload_venue_names(self, selected=None):
         chosen = selected or self.venue.currentText() or "Все песни"
