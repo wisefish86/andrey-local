@@ -381,6 +381,17 @@ def arrange_vocal_block(tracks: list[Track], first_block: bool = False,
                                 if difficulty_level(ordered[j]) in (1, 2)), None)
             if alternative is not None:
                 ordered[i], ordered[alternative] = ordered[alternative], ordered[i]
+    hard_positions = [i for i, t in enumerate(ordered) if difficulty_level(t) >= 3]
+    if len(hard_positions) == 2 and not any(
+            difficulty_level(t) == 1 for t in ordered[hard_positions[0] + 1:hard_positions[1]]):
+        # Move an existing easy song between two hard songs, preserving the set.
+        easy_position = next((i for i, t in enumerate(ordered)
+                              if difficulty_level(t) == 1
+                              and not hard_positions[0] < i < hard_positions[1]), None)
+        if easy_position is not None:
+            easy_song = ordered.pop(easy_position)
+            first_hard = next(i for i, t in enumerate(ordered) if difficulty_level(t) >= 3)
+            ordered.insert(first_hard + 1, easy_song)
     return ordered
 
 
