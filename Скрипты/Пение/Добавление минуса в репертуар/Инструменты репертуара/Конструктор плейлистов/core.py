@@ -8,6 +8,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import json
 import re
+import random
 from pathlib import Path
 import sys
 
@@ -467,10 +468,46 @@ def song_key(track: Track) -> tuple[str, str]:
     return norm(track.artist), norm(track.clean_title)
 
 
+def random_replacement_candidates(current: list[Track], index: int,
+                                  catalog: list[Track], used: set[tuple[str, str]],
+                                  rng: random.Random | None = None) -> list[Track]:
+    """Rank unused compositions for this slot, randomizing equally suitable ones.
+
+    The original slot and its two neighbours determine vocal pacing. The caller
+    may additionally check duration against the block's time budget.
+    """
+    if not 0 <= index < len(current):
+        return []
+    selected = current[index]
+    pool = unique_songs([track for track in catalog
+                         if song_key(track) not in used and track.path != selected.path])
+    baseline_level = difficulty_level(selected)
+    randomizer = rng or random
+    randomizer.shuffle(pool)
+
+    def cost(track: Track):
+        proposal = list(current)
+        proposal[index] = track
+        hard_count = sum(difficulty_level(t) >= 3 for t in proposal)
+        role = track.role
+        position_penalty = int(role.startswith("б-7-") and index != len(current) - 1)
+        position_penalty += int(role.startswith("б-6-") and index < len(current) // 2)
+        return (
+            int(hard_count > 2),
+            len(vocal_warnings(proposal)),
+            position_penalty,
+            abs(difficulty_level(track) - baseline_level),
+            int(track.energy != selected.energy),
+            int(track.role != selected.role),
+        )
+
+    return sorted(pool, key=cost)
+
+
 def version_length(track: Track) -> str:
     """Parse [S]/[F] in filename before the folder/artist delimiter."""
     title_part = track.path.stem.split("_____", 1)[0]
-    match = re.search(r"\[(S|F)\]\s*$", title_part, re.IGNORECASE)
+    match = re.search(r"\[(S|F)\](?=\s|$)", title_part, re.IGNORECASE)
     return match.group(1).upper() if match else ""
 
 
