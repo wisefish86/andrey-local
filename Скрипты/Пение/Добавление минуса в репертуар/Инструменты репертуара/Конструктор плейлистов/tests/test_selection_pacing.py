@@ -37,8 +37,10 @@ class SelectionPacingTests(unittest.TestCase):
                 self.assertEqual(difficulty_level(arranged[index + 1]), 1)
 
     def test_rating_display_does_not_change_raw(self):
-        self.assertEqual(display_rating("242"), "5")
+        self.assertEqual(display_rating("242"), "4,5")
         self.assertEqual(display_rating("196"), "4")
+        self.assertEqual(display_rating("186"), "3,5")
+        self.assertEqual(display_rating("255"), "5")
         self.assertEqual(display_rating("128"), "3")
         self.assertEqual(display_rating(""), "—")
         self.assertEqual(display_rating("224"), "4,5")
