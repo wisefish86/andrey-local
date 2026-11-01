@@ -221,6 +221,8 @@ class MainWindow(QMainWindow):
         self.worker = None
         self.block_plan = None
         self.block_tables = {}
+        self.active_block_key = None
+        self._updating_block_selection = False
         self.replacement_history = {}
         self.catalog_all = []
         self.presets = load_restaurant_presets()
@@ -389,7 +391,7 @@ class MainWindow(QMainWindow):
             button("→ В плейлист", self.add_catalog_selection)
             button("Связать версии…", self.link_selected_versions)
         else:
-            button("+ MP3/M3U8", lambda n=name: self.pick_files(n))
+            button("+ MP3/M3U8", lambda n=name: self.pick_files(self.active_block_key or "block:0" if n == "current" and self.block_plan is not None else n))
             button("Убрать", lambda t=table: self.remove_selected(t))
         if name == "current":
             button("↑", lambda: self.shift_selected(table, -1))
@@ -662,33 +664,76 @@ class MainWindow(QMainWindow):
         if worker is not None:
             worker.deleteLater()
 
+    def activate_block_selection(self, key: str):
+        if self._updating_block_selection or key not in self.block_tables:
+            return
+        if not self.block_tables[key].selected_rows():
+            return
+        self.active_block_key = key
+        self._updating_block_selection = True
+        try:
+            for other_key, table in self.block_tables.items():
+                if other_key != key:
+                    table.clearSelection()
+        finally:
+            self._updating_block_selection = False
+
+    def selected_playlist_slot(self):
+        if self.block_plan is not None:
+            key = self.active_block_key
+            if key in self.block_tables:
+                rows = self.block_tables[key].selected_rows()
+                if len(rows) == 1:
+                    return key, rows[0]
+            choices = [(key, i) for key, table in self.block_tables.items()
+                       for i in table.selected_rows()]
+            return choices[0] if len(choices) == 1 else None
+        rows = self.current.selected_rows()
+        return ("current", rows[0]) if len(rows) == 1 else None
+
     def remove_selected(self, table: TrackTable):
+        if self.block_plan is not None and (table is self.current or table.name.startswith(("block:", "reserve:"))):
+            slot = self.selected_playlist_slot()
+            if slot is None:
+                self.statusBar().showMessage("Выдели песню в видимом блоке.", 6000)
+                return
+            key, _ = slot
+            rows = self.block_tables[key].selected_rows()
+            tracks = self.slot_tracks(key)
+            tracks[:] = [track for i, track in enumerate(tracks) if i not in rows]
+            self.current.tracks = [song for main, _ in self.block_plan for song in main]
+            self.render_block_editor()
+            self.statusBar().showMessage(f"Убрано {len(rows)} из блока. MP3 не затронуты.", 7000)
+            return
         indexes = set(table.selected_rows())
         if not indexes or table.name == "catalog":
             return
         table.set_tracks([track for index, track in enumerate(table.tracks) if index not in indexes])
         self.statusBar().showMessage(
-            f"Убрано из списка: {len(indexes)}. MP3 на диске не затронуты.", 7000
-        )
+            f"Убрано из списка: {len(indexes)}. MP3 на диске не затронуты.", 7000)
 
     def shift_selected(self, table: TrackTable, direction: int):
+        if self.block_plan is not None:
+            slot = self.selected_playlist_slot()
+            if slot is None:
+                self.statusBar().showMessage("Выдели песню в видимом блоке.", 6000)
+                return
+            key, row = slot
+            tracks = self.slot_tracks(key)
+            new_row = max(0, min(len(tracks) - 1, row + direction))
+            if new_row == row:
+                return
+            tracks[row], tracks[new_row] = tracks[new_row], tracks[row]
+            self.current.tracks = [song for main, _ in self.block_plan for song in main]
+            self.render_block_editor()
+            self.block_tables[key].selectRow(new_row)
+            return
         rows = table.selected_rows()
         if not rows:
             return
-        # A single step preserves the order of a multi-row selection.
         destination = rows[0] + direction if direction < 0 else rows[-1] + direction + 1
-        table.set_tracks(move_rows(table.tracks, rows, destination),
-                         [track.path for track in table.selected_tracks()])
-
-    def selected_playlist_slot(self):
-        if self.block_plan is not None:
-            rows = [(key, i) for key, table in self.block_tables.items()
-                    for i in table.selected_rows()]
-            if len(rows) == 1:
-                return rows[0]
-            return None
-        rows = self.current.selected_rows()
-        return ("current", rows[0]) if len(rows) == 1 else None
+        selected_paths = [track.path for track in table.selected_tracks()]
+        table.set_tracks(move_rows(table.tracks, rows, destination), selected_paths)
 
     def slot_tracks(self, key):
         if key == "current":
@@ -875,6 +920,7 @@ class MainWindow(QMainWindow):
         container = QWidget()
         layout = QVBoxLayout(container)
         self.block_tables = {}
+        self.active_block_key = None
         for idx, (main, reserve) in enumerate(self.block_plan):
             for kind, songs in (("block", main), ("reserve", reserve)):
                 key = f"{kind}:{idx}"
@@ -884,7 +930,7 @@ class MainWindow(QMainWindow):
                                  + (f" · {missing} без длительности" if missing else ""))
                 ratings = [float(display_rating(t.rating).replace(",", "."))
                            for t in songs if display_rating(t.rating) != "—"]
-                if ratings:
+                if ratings and kind == "block":
                     heading.setText(heading.text() + f" · ср. рейтинг {sum(ratings)/len(ratings):.1f}".replace(".", ","))
                 heading.setStyleSheet("font-weight:700;font-size:14px;padding-top:9px;")
                 layout.addWidget(heading)
@@ -902,6 +948,7 @@ class MainWindow(QMainWindow):
                 rows_height = sum(table.rowHeight(row) for row in range(table.rowCount()))
                 table.setFixedHeight(table.horizontalHeader().height() + rows_height + 2 * table.frameWidth() + 2)
                 self.block_tables[key] = table
+                table.itemSelectionChanged.connect(lambda selected_key=key: self.activate_block_selection(selected_key))
                 layout.addWidget(table)
         layout.addStretch()
         self.block_area.setWidget(container)
