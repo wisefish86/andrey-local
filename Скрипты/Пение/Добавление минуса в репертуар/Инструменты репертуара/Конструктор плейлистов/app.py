@@ -812,6 +812,11 @@ class MainWindow(QMainWindow):
                         main_keys.add(song_key(suitable))
                         easy_pool = [t for t in easy_pool if song_key(t) != song_key(suitable)]
                 index += 1
+        if any(all(difficulty_level(t) == 2 for t in main[i - 2:i + 1])
+               for main, _ in groups for i in range(2, len(main))):
+            QMessageBox.warning(self, "Вокальная нагрузка",
+                "Остались три средние песни подряд. Добавь лёгкие песни в фильтр.")
+            return
         used = {song_key(t) for main, _ in groups for t in main}
         available = [
             t for t in self.catalog.tracks
