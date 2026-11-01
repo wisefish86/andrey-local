@@ -658,32 +658,51 @@ class MainWindow(QMainWindow):
         table.set_tracks(move_rows(table.tracks, rows, destination),
                          [track.path for track in table.selected_tracks()])
 
-    def quick_replace(self):
+    def selected_playlist_slot(self):
+        if self.block_plan is not None:
+            rows = [(key, i) for key, table in self.block_tables.items()
+                    for i in table.selected_rows()]
+            if len(rows) == 1:
+                return rows[0]
+            return None
         rows = self.current.selected_rows()
-        if len(rows) != 1:
-            QMessageBox.information(self, "Замена", "Выдели одну песню справа.")
-            return
-        row = rows[0]
-        selected = self.current.tracks[row]
-        occupied = {song_key(t) for i, t in enumerate(self.current.tracks) if i != row}
-        left = self.catalog.selected_tracks()
-        if left:
-            replacement = next((t for t in left if song_key(t) not in occupied), None)
-            if replacement is None:
-                QMessageBox.information(self, "Замена", "Выбранная слева песня уже есть в плейлисте.")
-                return
+        return ("current", rows[0]) if len(rows) == 1 else None
+
+    def slot_tracks(self, key):
+        if key == "current":
+            return self.current.tracks
+        kind, idx = key.split(":")
+        return self.block_plan[int(idx)][0 if kind == "block" else 1]
+
+    def replace_slot(self, key, index, track):
+        if key == "current":
+            tracks = list(self.current.tracks)
+            tracks[index] = track
+            self.current.set_tracks(tracks, [track.path])
         else:
-            key = (row, len(self.current.tracks))
-            rejected = self.replacement_history.setdefault(key, set())
-            rejected.add(str(selected.path).casefold())
-            options = replacement_candidates(self.current.tracks, row, self.catalog.tracks, rejected)
-            if not options:
-                self.statusBar().showMessage("Других подходящих песен нет.", 7000)
-                return
-            replacement = options[0]
-        updated = list(self.current.tracks)
-        updated[row] = replacement
-        self.current.set_tracks(updated, [replacement.path])
+            self.slot_tracks(key)[index] = track
+            self.current.tracks = [t for main, _ in self.block_plan for t in main]
+            self.render_block_editor()
+            self.block_tables[key].selectRow(index)
+
+    def quick_replace(self):
+        slot = self.selected_playlist_slot()
+        if slot is None:
+            QMessageBox.information(self, "Замена", "Выдели одну песню в видимом блоке.")
+            return
+        key, row = slot
+        selected = self.slot_tracks(key)[row]
+        others = ([t for main, reserve in self.block_plan for t in main + reserve]
+                  if self.block_plan is not None else self.current.tracks)
+        used = {song_key(t) for t in others if t.path != selected.path}
+        from_left = self.catalog.selected_tracks()
+        options = from_left if from_left else self.catalog.tracks
+        replacement = next((t for t in options if song_key(t) not in used
+                            and t.path != selected.path), None)
+        if replacement is None:
+            QMessageBox.information(self, "Замена", "Подходящих новых песен нет.")
+            return
+        self.replace_slot(key, row, replacement)
         self.statusBar().showMessage(
             f"Замена: {selected.title} → {replacement.title}. MP3 не изменены.", 9000)
 
