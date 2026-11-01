@@ -391,8 +391,8 @@ class MainWindow(QMainWindow):
             button("→ В плейлист", self.add_catalog_selection)
             button("Связать версии…", self.link_selected_versions)
         else:
-            button("+ MP3/M3U8", lambda n=name: self.pick_files(self.active_block_key or "block:0" if n == "current" and self.block_plan is not None else n))
-            button("Убрать", lambda t=table: self.remove_selected(t))
+            button("+ MP3/M3U8", lambda checked=False, n=name: self.pick_files((self.active_block_key or "block:0") if n == "current" and self.block_plan is not None else n))
+            button("Убрать", lambda checked=False, t=table: self.remove_selected(t))
         if name == "current":
             button("↑", lambda: self.shift_selected(table, -1))
             button("↓", lambda: self.shift_selected(table, 1))
