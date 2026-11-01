@@ -793,6 +793,25 @@ class MainWindow(QMainWindow):
                 "Не удалось разделить сложные песни более лёгкими. "
                 "Добавь песни сложности 1–2 или измени фильтр.")
             return
+        # Repair medium streaks before allocating easy songs to reserves.
+        main_keys = {song_key(t) for main, _ in groups for t in main}
+        easy_pool = [t for t in self.catalog.tracks
+                     if difficulty_level(t) == 1 and song_key(t) not in main_keys]
+        from core import track_minutes
+        for main, _ in groups:
+            index = 2
+            while index < len(main):
+                if all(difficulty_level(t) == 2 for t in main[index - 2:index + 1]):
+                    old = main[index]
+                    current_duration = sum(track_minutes(t) or 0 for t in main)
+                    suitable = next((t for t in easy_pool
+                                     if current_duration - (track_minutes(old) or 0)
+                                     + (track_minutes(t) or target + 1) <= target), None)
+                    if suitable is not None:
+                        main[index] = suitable
+                        main_keys.add(song_key(suitable))
+                        easy_pool = [t for t in easy_pool if song_key(t) != song_key(suitable)]
+                index += 1
         used = {song_key(t) for main, _ in groups for t in main}
         available = [
             t for t in self.catalog.tracks
