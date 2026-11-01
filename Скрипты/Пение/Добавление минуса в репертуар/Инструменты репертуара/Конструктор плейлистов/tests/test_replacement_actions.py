@@ -100,6 +100,19 @@ class VisibleBlockActions(unittest.TestCase):
         finally:
             ui.close()
 
+    def test_undo_after_removal(self):
+        ui = self.new_window()
+        try:
+            ui.block_plan = [([song(1), song(2)], [song(3)])]
+            ui.render_block_editor()
+            ui.block_tables["block:0"].selectRow(0)
+            self.choose_menu(ui, "Убрать из плейлиста")
+            self.assertEqual(len(ui.block_plan[0][0]), 1)
+            ui.undo_last_change()
+            self.assertEqual(len(ui.block_plan[0][0]), 2)
+        finally:
+            ui.close()
+
     def test_selection_moves_from_main_to_reserve(self):
         ui = self.new_window()
         try:
