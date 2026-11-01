@@ -105,7 +105,7 @@ class VisibleBlockActions(unittest.TestCase):
             ui.render_block_editor()
             ui.block_tables["block:0"].selectRow(0)
             with patch("app.QInputDialog.getItem", side_effect=lambda *a: (a[3][-1], True)):
-                ui.choose_technical_version()
+                self.click_toolbar(ui, "Версии S/F…")
             self.assertEqual(ui.block_plan[0][0][0].path, full.path)
         finally:
             ui.close()
@@ -130,7 +130,7 @@ class VisibleBlockActions(unittest.TestCase):
             ui.render_block_editor()
             ui.block_tables["block:0"].selectRow(1)
             with patch("app.block_duration", return_value=(12.0, 0)), patch("app.track_minutes", return_value=3.0):
-                ui.quick_replace()
+                self.click_toolbar(ui, "Заменить ←")
             self.assertEqual(ui.block_plan[0][0][1].work_id, "в-6")
             self.assertEqual(ui.selected_playlist_slot(), ("block:0", 1))
         finally:
