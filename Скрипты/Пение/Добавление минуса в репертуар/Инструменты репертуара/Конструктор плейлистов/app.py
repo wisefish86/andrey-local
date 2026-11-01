@@ -739,10 +739,13 @@ class MainWindow(QMainWindow):
         self.reload_catalog()
 
     def add_catalog_selection(self):
-        chosen = self.catalog.selected_tracks()
-        if chosen:
-            self.current.set_tracks(add_unique_songs(self.current.tracks, chosen),
-                                    [t.path for t in chosen])
+        if not self.catalog.selected_tracks():
+            return
+        if self.block_plan is not None:
+            key = self.active_block_key if self.active_block_key in self.block_tables else "block:0"
+            self.insert_tracks_at(self.catalog, key, len(self.slot_tracks(key)))
+        else:
+            self.insert_tracks_at(self.catalog, "current", len(self.current.tracks))
 
     def pick_files(self, destination: str):
         paths, _ = QFileDialog.getOpenFileNames(
