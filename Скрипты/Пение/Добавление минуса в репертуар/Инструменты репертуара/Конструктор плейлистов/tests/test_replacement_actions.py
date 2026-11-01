@@ -167,6 +167,18 @@ class VisibleBlockActions(unittest.TestCase):
         finally:
             ui.close()
 
+    def test_current_playlist_reorder_and_undo(self):
+        ui = self.new_window()
+        try:
+            ui.current.set_tracks([song(1), song(2), song(3)])
+            ui.current.selectRow(2)
+            self.assertTrue(ui.insert_tracks_at(ui.current, "current", 0))
+            self.assertEqual([t.title for t in ui.current.tracks], ["3", "1", "2"])
+            ui.undo_last_change()
+            self.assertEqual([t.title for t in ui.current.tracks], ["1", "2", "3"])
+        finally:
+            ui.close()
+
     def test_selection_moves_from_main_to_reserve(self):
         ui = self.new_window()
         try:
