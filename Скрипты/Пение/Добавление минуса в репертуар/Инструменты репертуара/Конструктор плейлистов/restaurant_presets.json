@@ -1,0 +1,12 @@
+{
+  "123": {
+    "include_tags": [
+      "р-Шпатен"
+    ],
+    "exclude_tags": [
+      "Я-рус"
+    ],
+    "english_target_percent": 50,
+    "language_tolerance_percent": 10
+  }
+}
