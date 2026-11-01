@@ -862,6 +862,7 @@ class MainWindow(QMainWindow):
             new_row = max(0, min(len(tracks) - 1, row + direction))
             if new_row == row:
                 return
+            self.record_undo()
             tracks[row], tracks[new_row] = tracks[new_row], tracks[row]
             self.current.tracks = [song for main, _ in self.block_plan for song in main]
             self.render_block_editor()
@@ -872,6 +873,7 @@ class MainWindow(QMainWindow):
             return
         destination = rows[0] + direction if direction < 0 else rows[-1] + direction + 1
         selected_paths = [track.path for track in table.selected_tracks()]
+        self.record_undo()
         table.set_tracks(move_rows(table.tracks, rows, destination), selected_paths)
 
     def slot_tracks(self, key):
