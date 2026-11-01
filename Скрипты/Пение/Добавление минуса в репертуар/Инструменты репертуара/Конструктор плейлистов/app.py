@@ -835,15 +835,19 @@ class MainWindow(QMainWindow):
             key, _ = slot
             rows = self.block_tables[key].selected_rows()
             tracks = self.slot_tracks(key)
+            self.record_undo()
             tracks[:] = [track for i, track in enumerate(tracks) if i not in rows]
             self.current.tracks = [song for main, _ in self.block_plan for song in main]
             self.render_block_editor()
+            self.after_playlist_edit()
             self.statusBar().showMessage(f"Убрано {len(rows)} из блока. MP3 не затронуты.", 7000)
             return
         indexes = set(table.selected_rows())
         if not indexes or table.name == "catalog":
             return
+        self.record_undo()
         table.set_tracks([track for index, track in enumerate(table.tracks) if index not in indexes])
+        self.after_playlist_edit()
         self.statusBar().showMessage(
             f"Убрано из списка: {len(indexes)}. MP3 на диске не затронуты.", 7000)
 
