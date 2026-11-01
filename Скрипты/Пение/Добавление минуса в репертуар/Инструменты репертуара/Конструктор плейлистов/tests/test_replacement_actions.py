@@ -127,6 +127,19 @@ class VisibleBlockActions(unittest.TestCase):
         finally:
             ui.close()
 
+    def test_catalogue_hides_used_tracks_by_default(self):
+        ui = self.new_window()
+        try:
+            ui.catalog_all = [song(1), song(2)]
+            ui.current.set_tracks([song(1)])
+            ui.apply_restaurant_preset()
+            self.assertTrue(ui.hide_used.isChecked())
+            self.assertEqual([t.title for t in ui.catalog.tracks], ["2"])
+            ui.hide_used.setChecked(False)
+            self.assertEqual(len(ui.catalog.tracks), 2)
+        finally:
+            ui.close()
+
     def test_selection_moves_from_main_to_reserve(self):
         ui = self.new_window()
         try:
