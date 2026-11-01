@@ -787,17 +787,6 @@ class MainWindow(QMainWindow):
                 f"Повторов {repeats} ({repeat_pct:.0f}%), максимум {repeat_limit}%. "
                 "Смягчи фильтры или замени песни.")
             return
-        if any(difficulty_level(main[i]) >= 3 and difficulty_level(main[i - 1]) >= 3
-               for main, _ in groups for i in range(1, len(main))):
-            QMessageBox.warning(self, "Вокальная нагрузка",
-                "Не удалось разделить сложные песни более лёгкими. "
-                "Добавь песни сложности 1–2 или измени фильтр.")
-            pass
-        if any(not validate_hard_spacing(main) for main, _ in groups):
-            QMessageBox.warning(self, "Вокальная нагрузка",
-                "В блоке оказалось больше двух сложных песен или между сложными нет лёгкой (сл-1). "
-                "Формирование остановлено. Расширь фильтр лёгких песен.")
-            pass
         # Repair medium streaks before allocating easy songs to reserves.
         main_keys = {song_key(t) for main, _ in groups for t in main}
         easy_pool = [t for t in self.catalog.tracks
@@ -817,11 +806,6 @@ class MainWindow(QMainWindow):
                         main_keys.add(song_key(suitable))
                         easy_pool = [t for t in easy_pool if song_key(t) != song_key(suitable)]
                 index += 1
-        if any(all(difficulty_level(t) == 2 for t in main[i - 2:i + 1])
-               for main, _ in groups for i in range(2, len(main))):
-            QMessageBox.warning(self, "Вокальная нагрузка",
-                "Остались три средние песни подряд. Добавь лёгкие песни в фильтр.")
-            pass
         used = {song_key(t) for main, _ in groups for t in main}
         available = [
             t for t in self.catalog.tracks
