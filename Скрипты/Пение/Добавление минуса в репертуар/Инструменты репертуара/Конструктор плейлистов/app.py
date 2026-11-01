@@ -397,6 +397,67 @@ class MainWindow(QMainWindow):
         splitter.addWidget(panel)
         return table
 
+    def record_undo(self):
+        snapshot = (list(self.current.tracks),
+                    None if self.block_plan is None else
+                    [(list(main), list(reserve)) for main, reserve in self.block_plan])
+        self.undo_stack.append(snapshot)
+        if len(self.undo_stack) > 50:
+            self.undo_stack.pop(0)
+
+    def undo_last_change(self):
+        if not self.undo_stack:
+            self.statusBar().showMessage("Отменять нечего.", 4000)
+            return
+        tracks, plan = self.undo_stack.pop()
+        self.block_plan = None if plan is None else [(list(a), list(b)) for a, b in plan]
+        if self.block_plan is None:
+            self.current.set_tracks(tracks)
+            self.block_area.hide()
+            self.current.show()
+        else:
+            self.current.tracks = list(tracks)
+            self.render_block_editor()
+        self.apply_restaurant_preset()
+        self.refresh_summary()
+        self.statusBar().showMessage("Последнее изменение плейлиста отменено.", 5000)
+
+    def after_playlist_edit(self):
+        self.apply_restaurant_preset()
+        self.refresh_summary()
+
+    def build_track_menu(self, table):
+        menu = QMenu(table)
+        has_selection = bool(table.selected_rows())
+        if table is self.catalog:
+            add = menu.addAction("Добавить в плейлист")
+            add.setEnabled(has_selection)
+            add.triggered.connect(self.add_catalog_selection)
+        else:
+            remove = menu.addAction("Убрать из плейлиста")
+            remove.setEnabled(has_selection)
+            remove.triggered.connect(lambda: self.remove_selected(table))
+            change = menu.addAction("Заменить случайной песней")
+            change.setEnabled(has_selection)
+            change.triggered.connect(self.quick_replace)
+            versions = menu.addAction("Выбрать версию S/F…")
+            versions.setEnabled(has_selection)
+            versions.triggered.connect(self.choose_technical_version)
+            menu.addSeparator()
+            add = menu.addAction("Добавить MP3/M3U8 из файла…")
+            add.triggered.connect(lambda: self.pick_files(table.name))
+        menu.addSeparator()
+        undo = menu.addAction("Отменить изменение  Ctrl+Z")
+        undo.setEnabled(bool(self.undo_stack))
+        undo.triggered.connect(self.undo_last_change)
+        return menu
+
+    def open_track_menu(self, table, point):
+        row = table.rowAt(point.y())
+        if row >= 0 and row not in table.selected_rows():
+            table.selectRow(row)
+        self.build_track_menu(table).exec(table.viewport().mapToGlobal(point))
+
     def load_previous_playlist(self):
         path, _ = QFileDialog.getOpenFileName(
             self, "Выбери плейлист предыдущего выступления",
