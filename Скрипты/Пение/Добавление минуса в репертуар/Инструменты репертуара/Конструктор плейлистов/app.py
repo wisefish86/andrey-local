@@ -10,7 +10,7 @@ from PySide6.QtGui import QColor, QDrag, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QApplication, QAbstractItemView, QFileDialog, QHeaderView, QLabel, QMainWindow,
     QMessageBox, QPushButton, QSplitter, QTableWidget, QTableWidgetItem,
-    QVBoxLayout, QWidget, QHBoxLayout, QSpinBox, QDialog, QComboBox, QLineEdit, QPlainTextEdit, QFormLayout, QScrollArea, QCheckBox, QGridLayout, QInputDialog,
+    QVBoxLayout, QWidget, QHBoxLayout, QSpinBox, QDialog, QComboBox, QLineEdit, QPlainTextEdit, QFormLayout, QScrollArea, QCheckBox, QGridLayout, QInputDialog, QMenu,
 )
 
 from core import Track, append_unique, expand_inputs, move_rows, parse_dropped_text
@@ -224,6 +224,7 @@ class MainWindow(QMainWindow):
         self.active_block_key = None
         self._updating_block_selection = False
         self.replacement_history = {}
+        self.undo_stack = []
         self.catalog_all = []
         self.presets = load_restaurant_presets()
         self.session_path = Path(__file__).with_name("data") / "last_session.json"
