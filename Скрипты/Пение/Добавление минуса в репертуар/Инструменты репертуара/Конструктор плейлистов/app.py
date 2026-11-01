@@ -164,21 +164,17 @@ class TrackTable(QTableWidget):
             return
         source = event.source()
         if isinstance(source, TrackTable):
-            self.owner.insert_tracks_at(source, self.name, max(0, self.rowAt(int(event.position().y()))))
-            return
-        if isinstance(source, TrackTable):
-            moving = source.selected_tracks()
-            if source is self:
-                target = self.rowAt(int(event.position().y()))
-                if target < 0:
-                    target = len(self.tracks)
-                self.set_tracks(move_rows(self.tracks, self.selected_rows(), target),
-                                (track.path for track in moving))
-            else:
-                self.set_tracks((add_unique_songs if self.name == "current" else append_unique)(self.tracks, moving),
-                                (track.path for track in moving))
+            row = self.rowAt(int(event.position().y()))
+            if row < 0:
+                row = len(self.tracks)
+            elif int(event.position().y()) > self.rowViewportPosition(row) + self.rowHeight(row) // 2:
+                row += 1
+            accepted = self.owner.insert_tracks_at(source, self.name, row)
             event.setDropAction(Qt.DropAction.CopyAction)
-            event.accept()
+            if accepted:
+                event.accept()
+            else:
+                event.ignore()
             return
         mime = event.mimeData()
         paths = [Path(url.toLocalFile()) for url in mime.urls() if url.isLocalFile()] if mime.hasUrls() else []
