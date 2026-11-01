@@ -609,8 +609,11 @@ class MainWindow(QMainWindow):
         except ValueError as exc:
             QMessageBox.warning(self, "Подбор по языкам", str(exc))
             return
+        if selected != self.current.tracks:
+            self.record_undo()
         self.current.set_tracks(selected)
         self.invalidate_plan()
+        self.after_playlist_edit()
         self.statusBar().showMessage("Добавлены песни по сохранённой доле языков. "
                                      "Ранее выбранные песни сохранены.", 10000)
 
