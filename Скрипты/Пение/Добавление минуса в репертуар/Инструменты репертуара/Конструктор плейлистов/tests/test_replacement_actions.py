@@ -113,6 +113,20 @@ class VisibleBlockActions(unittest.TestCase):
         finally:
             ui.close()
 
+    def test_insert_at_position_then_undo(self):
+        ui = self.new_window()
+        try:
+            ui.block_plan = [([song(1), song(3)], [song(4)])]
+            ui.render_block_editor()
+            ui.catalog.set_tracks([song(2)])
+            ui.catalog.selectRow(0)
+            self.assertTrue(ui.insert_tracks_at(ui.catalog, "block:0", 1))
+            self.assertEqual([t.title for t in ui.block_plan[0][0]], ["1", "2", "3"])
+            ui.undo_last_change()
+            self.assertEqual([t.title for t in ui.block_plan[0][0]], ["1", "3"])
+        finally:
+            ui.close()
+
     def test_selection_moves_from_main_to_reserve(self):
         ui = self.new_window()
         try:
