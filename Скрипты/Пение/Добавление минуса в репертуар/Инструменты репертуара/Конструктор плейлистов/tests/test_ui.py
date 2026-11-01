@@ -44,6 +44,17 @@ class SetlistUiSmokeTests(unittest.TestCase):
             self.assertEqual(ui.current.rowCount(), 0)
             self.assertTrue(mp3.is_file(), "Deleting row must not delete MP3")
             self.assertEqual(ui.history.rowCount(), 1)
+            ui.block_plan = [([track] * 8, [track] * 3)]
+            ui.render_block_editor()
+            main = ui.block_tables["block:0"]
+            reserve = ui.block_tables["reserve:0"]
+            for table in (main, reserve):
+                expected = (table.horizontalHeader().height()
+                            + sum(table.rowHeight(i) for i in range(table.rowCount()))
+                            + 2 * table.frameWidth() + 2)
+                self.assertEqual(table.height(), expected)
+                self.assertFalse(table.verticalScrollBar().isVisible())
+            self.assertLess(reserve.height(), main.height())
             ui.close()
 
 
