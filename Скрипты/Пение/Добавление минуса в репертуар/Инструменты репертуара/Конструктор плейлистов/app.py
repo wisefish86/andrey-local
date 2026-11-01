@@ -322,6 +322,7 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(root)
         self.statusBar().showMessage("Готово · MP3 защищены от изменения и удаления")
         QShortcut(QKeySequence("Ctrl+S"), self, activated=self.save_current_playlist)
+        QShortcut(QKeySequence.StandardKey.Undo, self, activated=self.undo_last_change)
         QShortcut(QKeySequence("Ctrl+O"), self, activated=lambda: self.pick_files("current"))
         self.refresh_summary()
         try:
@@ -391,16 +392,7 @@ class MainWindow(QMainWindow):
             button("↻ Обновить", self.reload_catalog)
             button("→ В плейлист", self.add_catalog_selection)
             button("Связать версии…", self.link_selected_versions)
-        else:
-            button("+ MP3/M3U8", lambda checked=False, n=name: self.pick_files((self.active_block_key or "block:0") if n == "current" and self.block_plan is not None else n))
-            button("Убрать", lambda checked=False, t=table: self.remove_selected(t))
-        if name == "current":
-            button("↑", lambda: self.shift_selected(table, -1))
-            button("↓", lambda: self.shift_selected(table, 1))
-            button("Заменить ←", self.quick_replace)
-            button("Версии S/F…", self.choose_technical_version)
-
-        if name == "current":
+        elif name == "current":
             button("Сохранить M3U8", self.save_current_playlist)
         splitter.addWidget(panel)
         return table
