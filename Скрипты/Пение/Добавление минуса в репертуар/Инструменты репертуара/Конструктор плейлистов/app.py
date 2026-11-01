@@ -14,7 +14,7 @@ from PySide6.QtWidgets import (
 )
 
 from core import Track, append_unique, expand_inputs, move_rows, parse_dropped_text
-from core import read_track, repeated_from_history, replace_rows, save_playlist, load_config, scan_library, distribute_blocks, export_block_playlist, block_duration, vocal_warnings, unique_songs, add_unique_songs, replacement_candidates, filtered_restaurant_catalog, load_restaurant_presets, save_restaurant_presets, link_versions, build_language_balanced_list, song_key, version_length, display_rating, difficulty_level, validate_hard_spacing
+from core import read_track, repeated_from_history, replace_rows, save_playlist, load_config, scan_library, distribute_blocks, export_block_playlist, block_duration, vocal_warnings, unique_songs, add_unique_songs, replacement_candidates, filtered_restaurant_catalog, load_restaurant_presets, save_restaurant_presets, link_versions, build_language_balanced_list, song_key, version_length, display_rating, difficulty_level, validate_hard_spacing, random_replacement_candidates, track_minutes
 
 
 class FocusTagEdit(QPlainTextEdit):
@@ -758,20 +758,40 @@ class MainWindow(QMainWindow):
             QMessageBox.information(self, "Замена", "Выдели одну песню в видимом блоке.")
             return
         key, row = slot
-        selected = self.slot_tracks(key)[row]
-        others = ([t for main, reserve in self.block_plan for t in main + reserve]
-                  if self.block_plan is not None else self.current.tracks)
-        used = {song_key(t) for t in others if t.path != selected.path}
-        from_left = self.catalog.selected_tracks()
-        options = from_left if from_left else self.catalog.tracks
-        replacement = next((t for t in options if song_key(t) not in used
-                            and t.path != selected.path), None)
+        songs = self.slot_tracks(key)
+        selected = songs[row]
+        occupied = ([track for main, reserve in self.block_plan for track in main + reserve]
+                    if self.block_plan is not None else self.current.tracks)
+        used = {song_key(t) for t in occupied}
+        candidates = random_replacement_candidates(songs, row, self.catalog.tracks, used)
+        if not candidates:
+            QMessageBox.information(self, "Замена",
+                                    "В отфильтрованном каталоге нет новых композиций.")
+            return
+
+        replacement = None
+        if key.startswith("block:"):
+            current_minutes, missing = block_duration(songs)
+            selected_minutes = track_minutes(selected)
+            limit = self.block_minutes.value()
+            if selected_minutes is None or missing:
+                self.statusBar().showMessage("Неизвестная длительность — подбираю замену без проверки лимита.", 6000)
+                replacement = candidates[0]
+            else:
+                for candidate in candidates:
+                    minutes = track_minutes(candidate)
+                    if minutes is not None and current_minutes - selected_minutes + minutes <= limit + 0.001:
+                        replacement = candidate
+                        break
+        else:
+            replacement = candidates[0]
         if replacement is None:
-            QMessageBox.information(self, "Замена", "Подходящих новых песен нет.")
+            QMessageBox.information(self, "Замена",
+                                    "Свободные песни есть, но ни одна не помещается в лимит длительности блока.")
             return
         self.replace_slot(key, row, replacement)
         self.statusBar().showMessage(
-            f"Замена: {selected.title} → {replacement.title}. MP3 не изменены.", 9000)
+            f"Случайная замена: {selected.title} → {replacement.title}. MP3 не изменены.", 9000)
 
     def choose_technical_version(self):
         slot = self.selected_playlist_slot()
