@@ -164,7 +164,7 @@ class TrackTable(QTableWidget):
             return
         source = event.source()
         if isinstance(source, TrackTable) and self.name.startswith(("block:", "reserve:")):
-            self.owner.drop_into_block(source, self, event)
+            self.owner.insert_tracks_at(source, self.name, max(0, self.rowAt(int(event.position().y()))))
             return
         if isinstance(source, TrackTable):
             moving = source.selected_tracks()
