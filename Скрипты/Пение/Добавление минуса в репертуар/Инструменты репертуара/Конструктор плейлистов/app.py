@@ -476,6 +476,7 @@ class MainWindow(QMainWindow):
         existing = self.presets.get(current, {})
         name = QLineEdit("" if current == "Все песни" else current)
         form.addRow("Название шаблона:", name)
+        active_field = [None]
         included = QPlainTextEdit()
         included.setMaximumHeight(62)
         included.setPlainText("\n".join(existing.get("include_tags", [])))
@@ -484,6 +485,8 @@ class MainWindow(QMainWindow):
         excluded.setPlainText("\n".join(existing.get("exclude_tags", [])))
         form.addRow("Включать по тегам (любой из):", included)
         form.addRow("Исключать по тегам:", excluded)
+        included.cursorPositionChanged.connect(lambda: active_field.__setitem__(0, included))
+        excluded.cursorPositionChanged.connect(lambda: active_field.__setitem__(0, excluded))
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         pane = QWidget()
@@ -502,7 +505,7 @@ class MainWindow(QMainWindow):
             chip = QPushButton(tag)
             chip.setFocusPolicy(Qt.FocusPolicy.NoFocus)
             chip.clicked.connect(lambda checked=False, code=tag:
-                (excluded if excluded.hasFocus() else included).appendPlainText(code))
+                (active_field[0] or included).appendPlainText(code))
             grid.addWidget(chip, i // 5, i % 5)
         pane_layout.addLayout(grid)
         scroll.setWidget(pane)
