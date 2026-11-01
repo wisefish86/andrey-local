@@ -345,6 +345,14 @@ def arrange_vocal_block(tracks: list[Track], first_block: bool = False,
             level = difficulty_level(t)
             if previous >= 3 and level != 1:
                 return False
+            # Keep enough easy songs for a recovery *after* every hard one.
+            # Otherwise greedy ordering consumes the easy tracks first and
+            # strands two hard songs at the end of a block.
+            if level == 1 and previous < 3:
+                easy_left = sum(difficulty_level(x) == 1 for x in remaining)
+                hard_left = sum(difficulty_level(x) >= 3 for x in remaining)
+                if hard_left and easy_left <= hard_left:
+                    return False
             if level == 2 and medium_run >= limit:
                 return False
             if level >= 3 and hard_seen and not any(
