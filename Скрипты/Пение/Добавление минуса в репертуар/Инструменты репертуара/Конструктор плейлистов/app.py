@@ -312,14 +312,14 @@ class MainWindow(QMainWindow):
         clear_history.clicked.connect(self.clear_previous_playlist)
         history_controls.addWidget(clear_history)
         history_controls.addStretch(1)
-        self.summary = QLabel("Перетащи файлы или используй «Добавить MP3/M3U8»")
+        self.summary = QLabel("Перетащи песню слева направо; правый клик — действия, Ctrl+Z — отмена")
         self.summary.setWordWrap(True)
         outer.addWidget(self.summary)
         self.setCentralWidget(root)
         self.statusBar().showMessage("Готово · MP3 защищены от изменения и удаления")
         QShortcut(QKeySequence("Ctrl+S"), self, activated=self.save_current_playlist)
         QShortcut(QKeySequence.StandardKey.Undo, self, activated=self.undo_last_change)
-        QShortcut(QKeySequence("Ctrl+O"), self, activated=lambda: self.pick_files("current"))
+        QShortcut(QKeySequence("Ctrl+O"), self, activated=lambda: self.pick_files((self.active_block_key or "block:0") if self.block_plan is not None else "current"))
         self.refresh_summary()
         try:
             if load_config().get("library", {}).get("auto_load", True):
