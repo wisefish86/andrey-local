@@ -876,6 +876,8 @@ class MainWindow(QMainWindow):
                 table.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
                 table.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
                 table.set_tracks(songs)
+                rows_height = sum(table.rowHeight(row) for row in range(table.rowCount()))
+                table.setFixedHeight(table.horizontalHeader().height() + rows_height + 2 * table.frameWidth() + 2)
                 self.block_tables[key] = table
                 layout.addWidget(table)
         layout.addStretch()
