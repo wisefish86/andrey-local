@@ -1,10 +1,10 @@
 ﻿{
-    "Started":  "2026-11-02T09:40:14.1787898+03:00",
-    "Finished":  "2026-11-02T09:40:36.0548738+03:00",
+    "Started":  "2026-11-02T22:55:46.3664707+03:00",
+    "Finished":  "2026-11-02T22:55:49.4685858+03:00",
     "Destination":  "D:\\YandexDisk\\Архив\\Backup\\Программы",
     "Copied":  0,
-    "Unchanged":  34,
-    "Deferred":  0,
+    "Unchanged":  33,
+    "Deferred":  1,
     "Failed":  0,
     "Files":  [
                   {
@@ -27,9 +27,9 @@
                   },
                   {
                       "Name":  "CorelDRAW GMS",
-                      "File":  "CorelDRAW\\CorelDRAW Graphics Suite 2026\\Draw\\GlobalMacros.gms",
-                      "Status":  "Unchanged",
-                      "Error":  ""
+                      "File":  "*.gms",
+                      "Status":  "Deferred",
+                      "Error":  "Application is running; wait until it closes."
                   },
                   {
                       "Name":  "Adobe Photoshop",
