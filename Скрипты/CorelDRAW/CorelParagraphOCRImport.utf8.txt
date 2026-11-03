@@ -6,8 +6,9 @@
 ' Использование:
 '  1. Запустите Main_ImportPosterOCR.
 '  2. Выберите JSON. В диалог выбора файла можно вставить полный путь.
-'  3. При отсутствии мм и DPI применяется 300 dpi по умолчанию.
-'  4. Проверьте макет, предупреждения и сохраните как CDR.
+'  3. Физические размеры мм из JSON приоритетнее DPI; иначе 300 dpi.
+'  4. Выравнивание текста читается из поля align каждого блока.
+'  5. Проверьте макет и сохраните как CDR.
 ' Условия: импорт создает новый документ и не меняет уже открытые макеты.
 ' JSON: UTF-8; модуль .bas для русской VBA-системы: Windows-1251.
 ' Проверка в CorelDRAW 2026 на реальном компьютере еще не проведена.
@@ -41,8 +42,9 @@ Public Sub Main_ImportPosterOCRFromPath(ByVal jsonPath As String)
     Dim fontName As String, fontTitle As String, fontBold As String, fontBody As String
     Dim fontPx As Double, pt As Single, initialPt As Single, minPt As Single
     Dim role As String, itemID As String, content As String
+    Dim alignMode As String
     Dim itemCount As Long, overflowCount As Long, shrunkCount As Long
-    Dim needsReviewCount As Long, tinyCount As Long
+    Dim needsReviewCount As Long, tinyCount As Long, missingAlignCount As Long
     Dim summary As String
     Dim sh As Shape, d As Document
     Dim isCreated As Boolean, isBad As Boolean
@@ -109,6 +111,13 @@ Public Sub Main_ImportPosterOCRFromPath(ByVal jsonPath As String)
         w = NumberValue(FieldValue(CStr(block), "width_px"))
         h = NumberValue(FieldValue(CStr(block), "height_px"))
         fontPx = NumberValue(FieldValue(CStr(block), "font_px"))
+        alignMode = LCase$(Trim$(OptionalFieldValue(CStr(block), "align", "left")))
+        Select Case alignMode
+            Case "left", "center", "right", "justify", "force_justify"
+                ' Recognized alignment, proceed.
+            Case Else
+                Err.Raise vbObjectError + 817, , "Неизвестное выравнивание в " & itemID & ": " & alignMode
+        End Select
         If Len(itemID) = 0 Or Len(content) = 0 Or _
            x < 0 Or y < 0 Or w <= 0 Or h <= 0 Or fontPx <= 0 Or _
            x + w > canvasWpx + 2 Or y + h > canvasHpx + 2 Then
@@ -131,6 +140,9 @@ Public Sub Main_ImportPosterOCRFromPath(ByVal jsonPath As String)
         w = NumberValue(FieldValue(CStr(block), "width_px"))
         h = NumberValue(FieldValue(CStr(block), "height_px"))
         fontPx = NumberValue(FieldValue(CStr(block), "font_px"))
+        alignMode = LCase$(Trim$(OptionalFieldValue(CStr(block), "align", "left")))
+        If InStr(1, CStr(block), """align""", vbBinaryCompare) = 0 Then _
+            missingAlignCount = missingAlignCount + 1
 
         leftMm = x / canvasWpx * canvasWmm
         rightMm = (x + w) / canvasWpx * canvasWmm
@@ -155,6 +167,15 @@ Public Sub Main_ImportPosterOCRFromPath(ByVal jsonPath As String)
             leftMm, topMm, rightMm, bottomMm, content, , , _
             fontName, pt)
         sh.Name = "OCR_" & itemID
+        ' Используем реальные свойства выравнивания абзацев CorelDRAW,
+        ' а не смещение рамки или пробелы в начале строк.
+        Select Case alignMode
+            Case "center": sh.Text.Story.Alignment = cdrCenterAlignment
+            Case "right": sh.Text.Story.Alignment = cdrRightAlignment
+            Case "justify": sh.Text.Story.Alignment = cdrFullJustifyAlignment
+            Case "force_justify": sh.Text.Story.Alignment = cdrForceJustifyAlignment
+            Case Else: sh.Text.Story.Alignment = cdrLeftAlignment
+        End Select
         itemCount = itemCount + 1
 
         ' Только уменьшение при переполнении. Ширина/высота рамки не меняются.
@@ -184,6 +205,7 @@ Public Sub Main_ImportPosterOCRFromPath(ByVal jsonPath As String)
     summary = "Создана ОДНА страница: " & _
         Format$(canvasWmm, "0.0") & " x " & Format$(canvasHmm, "0.0") & " мм." & vbCrLf & _
         "Редактируемых абзацных рамок: " & CStr(itemCount) & vbCrLf & _
+        "Без поля выравнивания (слева): " & CStr(missingAlignCount) & vbCrLf & _
         "Кегль уменьшен: " & CStr(shrunkCount) & vbCrLf & _
         "Слишком сильно уменьшен: " & CStr(tinyCount) & vbCrLf & _
         "Переполнение осталось: " & CStr(overflowCount) & vbCrLf & _
@@ -307,6 +329,15 @@ Private Function FieldValue(ByVal src As String, ByVal key As String) As String
         p = p + 1
     Loop
     FieldValue = result
+End Function
+
+Private Function OptionalFieldValue(ByVal raw As String, ByVal key As String, _
+                                    ByVal fallback As String) As String
+    If InStr(1, raw, """" & key & """", vbBinaryCompare) = 0 Then
+        OptionalFieldValue = fallback
+    Else
+        OptionalFieldValue = FieldValue(raw, key)
+    End If
 End Function
 
 Private Function NumberValue(ByVal raw As String) As Double
