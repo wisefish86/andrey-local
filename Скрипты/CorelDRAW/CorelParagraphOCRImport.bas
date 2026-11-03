@@ -1,229 +1,318 @@
-' Название: Импорт OCR-плакатов в абзацные блоки
+' Название: Импорт текстовых блоков плаката из JSON
 ' Модуль: CorelParagraphOCRImport
 ' Запуск: Main_ImportPosterOCR
-' Назначение: Создает НОВЫЙ документ CorelDRAW с двумя страницами
-' и редактируемыми абзацными текстовыми рамками по координатам JSON.
+' Назначение: создание ОДНОЙ страницы CorelDRAW с редактируемыми
+' абзацными рамками, соответствующими координатам полного изображения.
 ' Использование:
-'   1. Запустите Main_ImportPosterOCR из редактора макросов CorelDRAW.
-'   2. Выберите файл posters_ocr_corel.json.
-'   3. Проверьте текст, переносы, переполнение и сохраните CDR.
-' Условия: исходные документы не меняются; картинки в CDR не импортируются.
-' JSON: UTF-8, схема corel-paragraph-ocr/v1. Макрос не исправляет исходный текст.
-' Важно: выполнение и компиляция в CorelDRAW 2026 не проверены.
+'  1. Запустите Main_ImportPosterOCR.
+'  2. Выберите JSON. В диалог выбора файла можно вставить полный путь.
+'  3. При отсутствии мм и DPI применяется 300 dpi по умолчанию.
+'  4. Проверьте макет, предупреждения и сохраните как CDR.
+' Условия: импорт создает новый документ и не меняет уже открытые макеты.
+' JSON: UTF-8; модуль .bas для русской VBA-системы: Windows-1251.
+' Проверка в CorelDRAW 2026 на реальном компьютере еще не проведена.
 Option Explicit
 
+Private Const JSON_VERSION As String = "corel-paragraph-ocr/v2"
+Private Const MAX_BLOCKS As Long = 2500
+Private Const DEFAULT_DPI As Double = 300#
+Private Const DEFAULT_FONT_TITLE As String = "PF Din Text Cond Pro Medium"
+Private Const DEFAULT_FONT_BOLD As String = "PF Din Text Cond Pro Bold"
+Private Const DEFAULT_FONT_BODY As String = "PF Din Text Cond Pro Light"
+
+' Одно действие через штатный графический выбор JSON.
 Public Sub Main_ImportPosterOCR()
-    Dim jsonPath As String, raw As String
-    Dim pages As Collection, items As Collection
-    Dim pageInfo As Variant, entry As Variant
-    Dim pageWidth(1 To 2) As Double, pageHeight(1 To 2) As Double
-    Dim sourceWidth(1 To 2) As Double, sourceHeight(1 To 2) As Double
-    Dim doc As Document, sh As Shape
-    Dim p As Long, count As Long, reviewCount As Long
-    Dim x As Double, y As Double, w As Double, h As Double
-    Dim leftEdge As Double, rightEdge As Double
-    Dim topEdge As Double, bottomEdge As Double
-    Dim fontSize As Single, boldState As cdrTriState
-    Dim itemId As String, itemText As String, itemRole As String
-    Dim created As Boolean, msg As String
-
-    On Error GoTo ImportFailed
-    jsonPath = CorelScriptTools.GetFileBox( _
-        "OCR JSON (*.json)|*.json|All files (*.*)|*.*", _
-        "Выберите распознанный плакат JSON", 0)
-    If Len(jsonPath) = 0 Then Exit Sub
-    raw = LoadUtf8Text(jsonPath)
-    If InStr(1, raw, "corel-paragraph-ocr/v1", vbBinaryCompare) = 0 Then
-        Err.Raise vbObjectError + 920, , "Неподдерживаемая схема JSON"
-    End If
-
-    Set pages = JsonObjects(raw, "pages")
-    Set items = JsonObjects(raw, "blocks")
-    If pages.Count <> 2 Then Err.Raise vbObjectError + 921, , "В JSON ожидается ровно 2 страницы"
-    If items.Count = 0 Then Err.Raise vbObjectError + 922, , "В JSON нет текстовых блоков"
-
-    ' Сначала проверяем размеры и структуру, чтобы не создавать ошибочный документ.
-    For Each pageInfo In pages
-        p = CLng(Val(JsonValue(CStr(pageInfo), "page")))
-        If p < 1 Or p > 2 Then Err.Raise vbObjectError + 923, , "Номер страницы вне диапазона"
-        pageWidth(p) = Val(JsonValue(CStr(pageInfo), "width_mm"))
-        pageHeight(p) = Val(JsonValue(CStr(pageInfo), "height_mm"))
-        sourceWidth(p) = Val(JsonValue(CStr(pageInfo), "source_width_px"))
-        sourceHeight(p) = Val(JsonValue(CStr(pageInfo), "source_height_px"))
-    Next pageInfo
-    For p = 1 To 2
-        If pageWidth(p) <= 0 Or pageHeight(p) <= 0 Or _
-           sourceWidth(p) <= 0 Or sourceHeight(p) <= 0 Then
-            Err.Raise vbObjectError + 924, , "Неверные размеры страницы " & CStr(p)
-        End If
-    Next p
-    For Each entry In items
-        p = CLng(Val(JsonValue(CStr(entry), "page")))
-        If p < 1 Or p > 2 Then Err.Raise vbObjectError + 925, , "Некорректная страница блока"
-        x = Val(JsonValue(CStr(entry), "x_px"))
-        y = Val(JsonValue(CStr(entry), "y_px"))
-        w = Val(JsonValue(CStr(entry), "width_px"))
-        h = Val(JsonValue(CStr(entry), "height_px"))
-        If x < 0 Or y < 0 Or w <= 0 Or h <= 0 Or _
-           x + w > sourceWidth(p) + 1 Or y + h > sourceHeight(p) + 1 Then
-            Err.Raise vbObjectError + 926, , "Неверная геометрия: " & JsonValue(CStr(entry), "id")
-        End If
-    Next entry
-
-    ' Создаём отдельный документ, никак не изменяя уже открытые макеты.
-    Set doc = Application.CreateDocument
-    created = True
-    doc.Unit = cdrMillimeter
-    doc.Pages(1).SetSize pageWidth(1), pageHeight(1)
-    doc.AddPages 1
-    doc.Pages(2).SetSize pageWidth(2), pageHeight(2)
-
-    For Each entry In items
-        itemId = JsonValue(CStr(entry), "id")
-        itemText = JsonValue(CStr(entry), "text")
-        itemRole = JsonValue(CStr(entry), "role")
-        p = CLng(Val(JsonValue(CStr(entry), "page")))
-        x = Val(JsonValue(CStr(entry), "x_px"))
-        y = Val(JsonValue(CStr(entry), "y_px"))
-        w = Val(JsonValue(CStr(entry), "width_px"))
-        h = Val(JsonValue(CStr(entry), "height_px"))
-        fontSize = CSng(Val(JsonValue(CStr(entry), "font_pt")))
-        If fontSize < 4 Or fontSize > 64 Then fontSize = 8
-        boldState = cdrFalse
-        If itemRole = "title" Or itemRole = "heading" Then boldState = cdrTrue
-
-        leftEdge = pageWidth(p) * x / sourceWidth(p)
-        rightEdge = pageWidth(p) * (x + w) / sourceWidth(p)
-        topEdge = pageHeight(p) * (sourceHeight(p) - y) / sourceHeight(p)
-        bottomEdge = pageHeight(p) * (sourceHeight(p) - y - h) / sourceHeight(p)
-        Set sh = doc.Pages(p).ActiveLayer.CreateParagraphText( _
-            leftEdge, topEdge, rightEdge, bottomEdge, itemText, , , _
-            "Arial", fontSize, boldState)
-        sh.Name = itemId & "_" & itemRole
-        count = count + 1
-        If JsonValue(CStr(entry), "needs_review") = "true" Then reviewCount = reviewCount + 1
-        If count Mod 10 = 0 Then DoEvents
-    Next entry
-
-    doc.Pages(1).Activate
-    MsgBox "Создан НОВЫЙ документ: " & CStr(count) & " абзацных рамок." & vbCrLf & _
-           "Отмечено для проверки: " & CStr(reviewCount) & vbCrLf & _
-           "Проверьте переполнение, переносы строк и сам текст." & vbCrLf & _
-           "Исходные документы не изменялись.", vbInformation, "Импорт OCR"
-    Exit Sub
-
-ImportFailed:
-    msg = "Импорт прерван: " & Err.Description & vbCrLf & _
-          "Создано текстовых рамок: " & CStr(count) & "."
-    If created Then msg = msg & vbCrLf & _
-        "Новый документ может быть неполным. Закройте его без сохранения."
-    MsgBox msg, vbExclamation, "Импорт OCR"
+    Dim selectedFile As String
+    selectedFile = CorelScriptTools.GetFileBox( _
+        "Файлы JSON (*.json)|*.json|Все файлы (*.*)|*.*", _
+        "Импорт текстовых блоков в CorelDRAW", 0)
+    If Len(selectedFile) = 0 Then Exit Sub
+    Main_ImportPosterOCRFromPath selectedFile
 End Sub
 
-Private Function LoadUtf8Text(ByVal path As String) As String
-    Dim stream As Object
-    Set stream = CreateObject("ADODB.Stream")
-    stream.Type = 2               ' adTypeText
-    stream.Charset = "utf-8"
-    stream.Open
-    stream.LoadFromFile path
-    LoadUtf8Text = stream.ReadText(-1)
-    stream.Close
-    If Left$(LoadUtf8Text, 1) = ChrW$(65279) Then
-        LoadUtf8Text = Mid$(LoadUtf8Text, 2)
+' Дополнительный вход для последующего подключения внешнего drag-and-drop
+' лаунчера: все операции выполняет тот же единственный модуль VBA.
+Public Sub Main_ImportPosterOCRFromPath(ByVal jsonPath As String)
+    Dim sourceJson As String, blocks As Collection, block As Variant
+    Dim canvasWpx As Double, canvasHpx As Double
+    Dim canvasWmm As Double, canvasHmm As Double, dpiX As Double, dpiY As Double
+    Dim x As Double, y As Double, w As Double, h As Double
+    Dim leftMm As Double, topMm As Double, rightMm As Double, bottomMm As Double
+    Dim fontName As String, fontTitle As String, fontBold As String, fontBody As String
+    Dim fontPx As Double, pt As Single, initialPt As Single, minPt As Single
+    Dim role As String, itemID As String, content As String
+    Dim itemCount As Long, overflowCount As Long, shrunkCount As Long
+    Dim needsReviewCount As Long, tinyCount As Long
+    Dim summary As String
+    Dim sh As Shape, d As Document
+    Dim isCreated As Boolean, isBad As Boolean
+    Dim i As Long
+
+    On Error GoTo ImportError
+    If Len(Dir$(jsonPath)) = 0 Then Err.Raise vbObjectError + 810, , "Файл JSON не найден."
+    sourceJson = ReadUtf8(jsonPath)
+    If FieldValue(sourceJson, "schema") <> JSON_VERSION Then
+        Err.Raise vbObjectError + 811, , "Неподдерживаемый формат JSON: нужна схема v2."
     End If
+
+    canvasWpx = NumberValue(FieldValue(sourceJson, "canvas_width_px"))
+    canvasHpx = NumberValue(FieldValue(sourceJson, "canvas_height_px"))
+    If canvasWpx <= 0 Or canvasHpx <= 0 Then
+        Err.Raise vbObjectError + 812, , "Некорректный размер исходного изображения в пикселях."
+    End If
+
+    ' У размеров в мм приоритет над DPI; наличие только пикселей не дает мм.
+    canvasWmm = NumberValue(FieldValue(sourceJson, "canvas_width_mm"))
+    canvasHmm = NumberValue(FieldValue(sourceJson, "canvas_height_mm"))
+    dpiX = NumberValue(FieldValue(sourceJson, "dpi_x"))
+    dpiY = NumberValue(FieldValue(sourceJson, "dpi_y"))
+    If canvasWmm > 0 Then
+        If canvasHmm <= 0 Then canvasHmm = canvasWmm * canvasHpx / canvasWpx
+    ElseIf dpiX > 0 Then
+        canvasWmm = 25.4 * canvasWpx / dpiX
+        If dpiY > 0 Then
+            canvasHmm = 25.4 * canvasHpx / dpiY
+        Else
+            canvasHmm = canvasWmm * canvasHpx / canvasWpx
+        End If
+    Else
+        ' При отсутствии явного размера/метаданных DPI — стабильный дефолт.
+        canvasWmm = 25.4 * canvasWpx / DEFAULT_DPI
+        canvasHmm = 25.4 * canvasHpx / DEFAULT_DPI
+    End If
+    If canvasWmm < 10 Or canvasHmm < 10 Or _
+       canvasWmm > 15000 Or canvasHmm > 15000 Then
+        Err.Raise vbObjectError + 813, , "Проверьте размер страницы: недопустимые миллиметры."
+    End If
+    If Abs(canvasWmm / canvasHmm - canvasWpx / canvasHpx) > 0.004 * canvasWpx / canvasHpx Then
+        Err.Raise vbObjectError + 814, , "Размеры в мм и пропорции изображения не совпадают."
+    End If
+
+    fontTitle = FieldValue(sourceJson, "font_title")
+    fontBold = FieldValue(sourceJson, "font_bold")
+    fontBody = FieldValue(sourceJson, "font_body")
+    If Len(fontTitle) = 0 Then fontTitle = DEFAULT_FONT_TITLE
+    If Len(fontBold) = 0 Then fontBold = DEFAULT_FONT_BOLD
+    If Len(fontBody) = 0 Then fontBody = DEFAULT_FONT_BODY
+
+    Set blocks = ReadArrayOfObjects(sourceJson, "blocks")
+    If blocks.Count = 0 Or blocks.Count > MAX_BLOCKS Then
+        Err.Raise vbObjectError + 815, , "Число текстовых блоков вне допустимого диапазона."
+    End If
+
+    ' Проверяем весь JSON до создания документа.
+    For Each block In blocks
+        itemID = FieldValue(CStr(block), "id")
+        content = FieldValue(CStr(block), "text")
+        x = NumberValue(FieldValue(CStr(block), "x_px"))
+        y = NumberValue(FieldValue(CStr(block), "y_px"))
+        w = NumberValue(FieldValue(CStr(block), "width_px"))
+        h = NumberValue(FieldValue(CStr(block), "height_px"))
+        fontPx = NumberValue(FieldValue(CStr(block), "font_px"))
+        If Len(itemID) = 0 Or Len(content) = 0 Or _
+           x < 0 Or y < 0 Or w <= 0 Or h <= 0 Or fontPx <= 0 Or _
+           x + w > canvasWpx + 2 Or y + h > canvasHpx + 2 Then
+            Err.Raise vbObjectError + 816, , "Проблема данных OCR: " & itemID
+        End If
+    Next block
+
+    Set d = Application.CreateDocument
+    isCreated = True
+    d.Unit = cdrMillimeter
+    d.Pages(1).SetSize canvasWmm, canvasHmm
+    d.Pages(1).Activate
+
+    For Each block In blocks
+        itemID = FieldValue(CStr(block), "id")
+        content = FieldValue(CStr(block), "text")
+        role = LCase$(FieldValue(CStr(block), "role"))
+        x = NumberValue(FieldValue(CStr(block), "x_px"))
+        y = NumberValue(FieldValue(CStr(block), "y_px"))
+        w = NumberValue(FieldValue(CStr(block), "width_px"))
+        h = NumberValue(FieldValue(CStr(block), "height_px"))
+        fontPx = NumberValue(FieldValue(CStr(block), "font_px"))
+
+        leftMm = x / canvasWpx * canvasWmm
+        rightMm = (x + w) / canvasWpx * canvasWmm
+        topMm = (canvasHpx - y) / canvasHpx * canvasHmm
+        bottomMm = (canvasHpx - y - h) / canvasHpx * canvasHmm
+        pt = CSng(fontPx * canvasWmm / canvasWpx * 72 / 25.4)
+        If pt < 2 Then pt = 2
+        If pt > 200 Then pt = 200
+        initialPt = pt
+        ' Используем реальные начертания PF Din, без синтетического Bold.
+        Select Case role
+            Case "title", "heading", "subheading"
+                fontName = fontTitle
+            Case "emphasis", "bold", "highlight"
+                fontName = fontBold
+            Case Else
+                fontName = fontBody
+        End Select
+
+        ' Unicode-вариант Corel API: кириллица не превращается в вопросительные знаки.
+        Set sh = d.ActiveLayer.CreateParagraphTextWide( _
+            leftMm, topMm, rightMm, bottomMm, content, , , _
+            fontName, pt)
+        sh.Name = "OCR_" & itemID
+        itemCount = itemCount + 1
+
+        ' Только уменьшение при переполнении. Ширина/высота рамки не меняются.
+        ' Сначала мягкая коррекция до 65% исходного размера.
+        minPt = CSng(pt * 0.65)
+        If minPt < 2 Then minPt = 2
+        i = 0
+        Do While sh.Text.Overflow And pt > minPt And i < 125
+            pt = CSng(pt - 0.2)
+            If pt < minPt Then pt = minPt
+            sh.Text.Story.Size = pt
+            i = i + 1
+        Loop
+        If pt + 0.1 < initialPt Then shrunkCount = shrunkCount + 1
+
+        ' Если всё ещё переполнение — штатный Corel Fit Text to Frame,
+        ' затем показываем предупреждения по слишком мелкому кеглю.
+        If sh.Text.Overflow Then sh.Text.FitTextToFrame
+        If sh.Text.Overflow Then overflowCount = overflowCount + 1
+        If sh.Text.Story.Size < initialPt * 0.65 Then tinyCount = tinyCount + 1
+        If FieldValue(CStr(block), "needs_review") = "true" Then _
+            needsReviewCount = needsReviewCount + 1
+        If itemCount Mod 10 = 0 Then DoEvents
+    Next block
+
+    d.Pages(1).Activate
+    summary = "Создана ОДНА страница: " & _
+        Format$(canvasWmm, "0.0") & " x " & Format$(canvasHmm, "0.0") & " мм." & vbCrLf & _
+        "Редактируемых абзацных рамок: " & CStr(itemCount) & vbCrLf & _
+        "Кегль уменьшен: " & CStr(shrunkCount) & vbCrLf & _
+        "Слишком сильно уменьшен: " & CStr(tinyCount) & vbCrLf & _
+        "Переполнение осталось: " & CStr(overflowCount) & vbCrLf & _
+        "OCR-фрагменты для сверки: " & CStr(needsReviewCount) & vbCrLf & vbCrLf & _
+        "Проверьте макет и сохраните его в CDR."
+    MsgBox summary, vbInformation, "Импорт OCR в CorelDRAW"
+    Exit Sub
+
+ImportError:
+    summary = "Ошибка импорта: " & Err.Description & vbCrLf & _
+        "Объектов успели создать: " & CStr(itemCount) & "."
+    If isCreated Then summary = summary & vbCrLf & _
+        "Новый документ может быть неполным. Закройте его без сохранения."
+    MsgBox summary, vbExclamation, "Импорт OCR"
+End Sub
+
+Private Function ReadUtf8(ByVal filePath As String) As String
+    Dim inputStream As Object, result As String
+    Set inputStream = CreateObject("ADODB.Stream")
+    inputStream.Type = 2
+    inputStream.Charset = "utf-8"
+    inputStream.Open
+    inputStream.LoadFromFile filePath
+    result = inputStream.ReadText(-1)
+    inputStream.Close
+    If Len(result) > 0 Then
+        If Left$(result, 1) = ChrW$(65279) Then result = Mid$(result, 2)
+    End If
+    ReadUtf8 = result
 End Function
 
-' Извлекает плоские объекты массива pages или blocks без внешних библиотек.
-' Учитывает кавычки и escapes, чтобы скобки внутри текста не рвали запись.
-Private Function JsonObjects(ByVal raw As String, ByVal arrayName As String) As Collection
-    Dim out As New Collection
-    Dim startField As Long, i As Long, depth As Long, first As Long
-    Dim insideString As Boolean, escaped As Boolean
-    Dim ch As String
-    startField = InStr(1, raw, """" & arrayName & """", vbBinaryCompare)
-    If startField = 0 Then Err.Raise vbObjectError + 930, , "Не найден массив: " & arrayName
-    startField = InStr(startField, raw, "[")
-    If startField = 0 Then Err.Raise vbObjectError + 931, , "Не найдено начало массива"
-    For i = startField + 1 To Len(raw)
+' Небольшой парсер только для текущего OCR-формата:
+' верхнеуровневые поля и массив простых объектов, без вложенных блоков.
+Private Function ReadArrayOfObjects(ByVal raw As String, ByVal arrayName As String) As Collection
+    Dim found As New Collection, pos As Long, i As Long, startPos As Long
+    Dim depth As Long, ch As String, escaped As Boolean, quoted As Boolean
+    pos = InStr(1, raw, """" & arrayName & """", vbBinaryCompare)
+    If pos = 0 Then Err.Raise vbObjectError + 820, , "Не найден массив JSON: " & arrayName
+    pos = InStr(pos, raw, "[")
+    If pos = 0 Then Err.Raise vbObjectError + 821, , "Нет открывающей скобки массива JSON"
+    For i = pos + 1 To Len(raw)
         ch = Mid$(raw, i, 1)
-        If insideString Then
+        If quoted Then
             If escaped Then
                 escaped = False
             ElseIf ch = "\" Then
                 escaped = True
             ElseIf ch = """" Then
-                insideString = False
+                quoted = False
             End If
         Else
             Select Case ch
                 Case """"
-                    insideString = True
+                    quoted = True
                 Case "{"
-                    If depth = 0 Then first = i
+                    If depth = 0 Then startPos = i
                     depth = depth + 1
                 Case "}"
                     depth = depth - 1
-                    If depth < 0 Then Err.Raise vbObjectError + 932, , "Нарушенные скобки JSON"
-                    If depth = 0 Then out.Add Mid$(raw, first, i - first + 1)
+                    If depth < 0 Then Err.Raise vbObjectError + 822, , "Неверная вложенность JSON"
+                    If depth = 0 Then found.Add Mid$(raw, startPos, i - startPos + 1)
                 Case "]"
                     If depth = 0 Then Exit For
             End Select
         End If
     Next i
-    Set JsonObjects = out
+    If quoted Or depth <> 0 Then Err.Raise vbObjectError + 823, , "Незавершённый массив JSON"
+    Set ReadArrayOfObjects = found
 End Function
 
-Private Function JsonValue(ByVal obj As String, ByVal key As String) As String
-    Dim pos As Long, i As Long, ch As String, esc As String
-    Dim code As String, result As String
-    pos = InStr(1, obj, """" & key & """", vbBinaryCompare)
-    If pos = 0 Then Err.Raise vbObjectError + 933, , "Отсутствует поле JSON: " & key
-    pos = InStr(pos + Len(key) + 2, obj, ":") + 1
-    If pos <= 1 Then Err.Raise vbObjectError + 934, , "Нет разделителя JSON: " & key
-    Do While pos <= Len(obj)
-        ch = Mid$(obj, pos, 1)
-        If ch <> " " And ch <> vbCr And ch <> vbLf And ch <> vbTab Then Exit Do
-        pos = pos + 1
+Private Function FieldValue(ByVal src As String, ByVal key As String) As String
+    Dim p As Long, q As Long, symbol As String, esc As String
+    Dim result As String, unicodeHex As String
+    p = InStr(1, src, """" & key & """", vbBinaryCompare)
+    If p = 0 Then Err.Raise vbObjectError + 830, , "Не найдено поле JSON: " & key
+    p = InStr(p + Len(key) + 2, src, ":")
+    If p = 0 Then Err.Raise vbObjectError + 831, , "Нет двоеточия у JSON-поля: " & key
+    p = p + 1
+    Do While p <= Len(src)
+        symbol = Mid$(src, p, 1)
+        If symbol <> " " And symbol <> vbTab And symbol <> vbCr And symbol <> vbLf Then Exit Do
+        p = p + 1
     Loop
-    If Mid$(obj, pos, 1) <> """" Then
-        i = pos
-        Do While i <= Len(obj)
-            ch = Mid$(obj, i, 1)
-            If ch = "," Or ch = "}" Or ch = vbCr Or ch = vbLf Then Exit Do
-            i = i + 1
+    If Mid$(src, p, 1) <> """" Then
+        q = p
+        Do While q <= Len(src)
+            symbol = Mid$(src, q, 1)
+            If symbol = "," Or symbol = "}" Or symbol = vbCr Or symbol = vbLf Then Exit Do
+            q = q + 1
         Loop
-        JsonValue = Trim$(Mid$(obj, pos, i - pos))
+        FieldValue = Trim$(Mid$(src, p, q - p))
         Exit Function
     End If
 
-    pos = pos + 1
-    Do While pos <= Len(obj)
-        ch = Mid$(obj, pos, 1)
-        If ch = """" Then Exit Do
-        If ch = "\" Then
-            pos = pos + 1
-            If pos > Len(obj) Then Err.Raise vbObjectError + 935, , "Незавершённая escape-последовательность"
-            esc = Mid$(obj, pos, 1)
+    p = p + 1
+    Do While p <= Len(src)
+        symbol = Mid$(src, p, 1)
+        If symbol = """" Then Exit Do
+        If symbol = "\" Then
+            p = p + 1
+            If p > Len(src) Then Err.Raise vbObjectError + 832, , "Ошибка escape в JSON"
+            esc = Mid$(src, p, 1)
             Select Case esc
                 Case "n": result = result & vbCrLf
-                Case "r": result = result & vbCrLf
+                Case "r": result = result & vbCr
                 Case "t": result = result & vbTab
                 Case """": result = result & """"
                 Case "\": result = result & "\"
                 Case "/": result = result & "/"
                 Case "u"
-                    code = Mid$(obj, pos + 1, 4)
-                    If Len(code) <> 4 Then Err.Raise vbObjectError + 936, , "Неполная Unicode escape"
-                    result = result & ChrW$(CLng("&H" & code))
-                    pos = pos + 4
+                    unicodeHex = Mid$(src, p + 1, 4)
+                    If Len(unicodeHex) <> 4 Then Err.Raise vbObjectError + 833, , "Unicode escape оборван"
+                    result = result & ChrW$(CLng("&H" & unicodeHex))
+                    p = p + 4
                 Case Else
-                    Err.Raise vbObjectError + 937, , "Неизвестная JSON escape: " & esc
+                    Err.Raise vbObjectError + 834, , "Неизвестная escape-последовательность: " & esc
             End Select
         Else
-            result = result & ch
+            result = result & symbol
         End If
-        pos = pos + 1
+        p = p + 1
     Loop
-    JsonValue = result
+    FieldValue = result
+End Function
+
+Private Function NumberValue(ByVal raw As String) As Double
+    If LCase$(Trim$(raw)) = "null" Then
+        NumberValue = 0
+    Else
+        NumberValue = Val(Replace$(Trim$(raw), ",", "."))
+    End If
 End Function
