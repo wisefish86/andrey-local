@@ -36,9 +36,15 @@ Public Sub Main_FontInspector()
         MsgBox "Сначала откройте документ CorelDRAW.", vbExclamation
         Exit Sub
     End If
+    On Error GoTo OpenError
     InspectorSelectionMode = (ActiveSelectionRange.Count > 0)
     If InspectorSelectionMode Then InspectorCaptureSelection
+    Load frmFontInspector
     frmFontInspector.Show vbModeless
+    Exit Sub
+OpenError:
+    MsgBox "Инспектор не открылся. Ошибка " & Err.Number & ": " & Err.Description & vbCrLf & _
+           "Проверьте имя формы frmFontInspector и Debug > Compile VBAProject.", vbExclamation
 End Sub
 
 Public Function InspectorCaptureSelection() As Boolean
