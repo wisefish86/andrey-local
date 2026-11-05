@@ -61,13 +61,12 @@ Private Sub UserForm_Initialize()
     ready = True
 End Sub
 
-' The form paints first; scan starts only after activation and DoEvents.
+' Never run a potentially long scan in Initialize or Activate:
+' modeless Show must return before the user starts analysis explicitly.
 Private Sub UserForm_Activate()
     If didAutoScan Or Not ready Then Exit Sub
     didAutoScan = True
-    Me.Repaint
-    DoEvents
-    RefreshResults
+    lblInfo.Caption = "Окно готово. Нажмите «Проверить», чтобы начать поиск."
 End Sub
 
 Private Function LabelAt(ByVal key As String, ByVal s As String, ByVal x As Single, _
@@ -238,25 +237,19 @@ Private Sub btnCapture_Click()
     End If
     InspectorSelectionMode = True
     optSelection.Value = True
-    RefreshResults
+    lblInfo.Caption = "Выделение сохранено. Нажмите «Проверить»."
 End Sub
 
 Private Sub optDocument_Click()
     If Not ready Or busy Then Exit Sub
     InspectorSelectionMode = False
-    RefreshResults
+    lblInfo.Caption = "Режим: весь документ. Нажмите «Проверить»."
 End Sub
 
 Private Sub optSelection_Click()
     If Not ready Or busy Then Exit Sub
     InspectorSelectionMode = True
-    If InspectorScopeShapes Is Nothing Then
-        If Not InspectorCaptureSelection() Then
-            lblInfo.Caption = "Выделите стенд и нажмите «Взять выделение»."
-            Exit Sub
-        End If
-    End If
-    RefreshResults
+    lblInfo.Caption = "Режим: выделенный стенд. Нажмите «Взять выделение» или «Проверить»."
 End Sub
 
 Private Sub btnClose_Click()
