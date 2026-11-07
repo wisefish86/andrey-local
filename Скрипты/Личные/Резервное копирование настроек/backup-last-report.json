@@ -1,16 +1,16 @@
 ﻿{
-    "Started":  "2026-11-06T21:31:22.5846469+03:00",
-    "Finished":  "2026-11-06T21:31:25.9264889+03:00",
+    "Started":  "2026-11-07T21:00:03.6673819+03:00",
+    "Finished":  "2026-11-07T21:00:06.9431637+03:00",
     "Destination":  "D:\\YandexDisk\\Архив\\Backup\\Программы",
-    "Copied":  2,
-    "Unchanged":  32,
+    "Copied":  0,
+    "Unchanged":  34,
     "Deferred":  0,
     "Failed":  0,
     "Files":  [
                   {
                       "Name":  "Flow Launcher",
                       "File":  "Flow Launcher\\Favorites.conf",
-                      "Status":  "Copied",
+                      "Status":  "Unchanged",
                       "Error":  ""
                   },
                   {
@@ -28,7 +28,7 @@
                   {
                       "Name":  "CorelDRAW GMS",
                       "File":  "CorelDRAW\\CorelDRAW Graphics Suite 2026\\Draw\\GlobalMacros.gms",
-                      "Status":  "Copied",
+                      "Status":  "Unchanged",
                       "Error":  ""
                   },
                   {
