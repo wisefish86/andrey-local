@@ -33,7 +33,7 @@ CONFIG_PATH = APP_ROOT / "config.json"
 PUBLIC_FILTER_FIELDS = ("language", "audience", "situations", "energy", "mood", "recognition", "era")
 # These are values of the TXXX:OCCASION status field, not folders or file names.
 PUBLIC_EXCLUDED_STATUSES = frozenset({"г-6-запас", "г-7-версии"})
-LEARNING_STATUS = "г-5-выучить"
+PREPARATION_STATUSES = frozenset({"г-4-повторить", "г-5-выучить"})
 
 
 def repertoire_status(track: dict[str, Any]) -> str:
@@ -358,11 +358,11 @@ def main() -> int:
         # alternative versions or sources of ratings/preview URLs.
         allowed = [v for v in variants if repertoire_status(v) not in PUBLIC_EXCLUDED_STATUSES]
         excluded_public_tracks += len(variants) - len(allowed)
-        regular = [v for v in allowed if repertoire_status(v) != LEARNING_STATUS]
-        learning = [v for v in allowed if repertoire_status(v) == LEARNING_STATUS]
+        regular = [v for v in allowed if repertoire_status(v) not in PREPARATION_STATUSES]
+        learning = [v for v in allowed if repertoire_status(v) in PREPARATION_STATUSES]
         if not regular and not learning:
             continue
-        # Songs to learn are a separate, opt-in catalogue, not regular repertoire.
+        # Songs needing rehearsal or learning remain opt-in, not regular repertoire.
         # If a song already has a usable version, show only that regular version.
         visible_variants = regular if regular else learning
         chosen = visible_variants[0]
@@ -444,7 +444,7 @@ def main() -> int:
     print("Готово")
     print(f"Минусовок: {len(tracks)}")
     print(f"В публичном репертуаре: {len(songs)} песен")
-    print(f"Отдельно 'Выучить': {len(learning_songs)} песен")
+    print(f"Отдельно 'Могу подготовить': {len(learning_songs)} песен")
     print(f"Исключено из публикации ('Запас'/'Версии'): {excluded_public_tracks} минусовок")
     print(f"Ошибок: {len(errors)}")
     print(f"Внутренний JSON: {output}")
