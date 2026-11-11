@@ -239,7 +239,12 @@ Private Function JsonObject() As Object
     Do
         name = JsonString()
         Need ":"
-        value = JsonValue()
+        WhiteSpace
+        If Mid$(mInput, mPos, 1) = "{" Or Mid$(mInput, mPos, 1) = "[" Then
+            Set value = JsonValue()
+        Else
+            value = JsonValue()
+        End If
         If d.Exists(name) Then Err.Raise 5, , "Повтор поля JSON: " & name
         d.Add name, value
         WhiteSpace
@@ -255,7 +260,12 @@ Private Function JsonArray() As Collection
     WhiteSpace
     If Mid$(mInput, mPos, 1) = "]" Then mPos = mPos + 1: Set JsonArray = c: Exit Function
     Do
-        value = JsonValue()
+        WhiteSpace
+        If Mid$(mInput, mPos, 1) = "{" Or Mid$(mInput, mPos, 1) = "[" Then
+            Set value = JsonValue()
+        Else
+            value = JsonValue()
+        End If
         c.Add value
         WhiteSpace
         If Mid$(mInput, mPos, 1) = "]" Then mPos = mPos + 1: Exit Do
@@ -301,7 +311,7 @@ End Function
 
 Private Function JsonString() As String
     Dim result As String, ch As String, escaped As String, code As String
-    Dim num As Long, highSurrogate As Long, lowSurrogate As Long
+    Dim num As Long, lowSurrogate As Long
     Need """"
     Do While mPos <= Len(mInput)
         ch = Mid$(mInput, mPos, 1)
