@@ -76,13 +76,14 @@ Public Sub Main_ExportCorelJSON()
         If Not finished Then Exit For
     Next pg
 
+    If mErrors > 0 Then finished = False
     json = "{" & _
         """schema"":""coreldraw-text-fast/v2""," & _
         """exportedAtLocal"":" & Quote(Format$(Now, "yyyy-mm-dd\Thh:nn:ss")) & "," & _
         """exporter"":""CorelJSONExport""," & _
         """sourceFile"":" & Quote(doc.FileName) & "," & _
         """complete"":" & JsonBool(finished) & "," & _
-        """formatScope"":""text-object; individual character spans are not exported""," & _
+        """formatScope"":""text-only; styles are not exported""," & _
         """textObjects"":" & "[" & items & "]," & _
         """summary"":{""count"":" & CStr(mDone) & ",""errors"":" & CStr(mErrors) & _
         ",""elapsedSeconds"":" & JsonNumber(ElapsedSeconds()) & "}," & _
@@ -121,12 +122,7 @@ Private Function OneText(ByVal sh As Shape, ByVal pageIndex As Long) As String
         """id"":" & Prop(sh, "StaticID") & "," & _
         """name"":" & Prop(sh, "Name") & "," & _
         """layer"":" & Prop(Obj(sh, "Layer"), "Name") & "," & _
-        """kind"":" & Prop(t, "Type") & "," & _
-        """isArtistic"":" & Prop(t, "IsArtisticText") & "," & _
-        """text"":" & Prop(story, "Text") & "," & _
-        """font"":" & TextFormat(story) & "," & _
-        """shapeTextColor"":" & ColorInfo(Obj(Obj(sh, "Fill"), "UniformColor")) & "," & _
-        """style"":" & StyleRef(Obj(sh, "Style")) & "}"
+        """text"":" & Prop(story, "Text") & "}"
     OneText = row
     Exit Function
 
