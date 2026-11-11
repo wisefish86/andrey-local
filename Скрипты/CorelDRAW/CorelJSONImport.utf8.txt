@@ -166,7 +166,6 @@ Private Function SafeChange(ByVal oldText As String, ByVal newText As String) As
     Loop
     a = Mid$(oldText, p + 1, n - p - s)
     b = Mid$(newText, p + 1, m - p - s)
-    If Len(a) = 0 Or Len(b) = 0 Then Exit Function
     If InStr(a, vbCr) Or InStr(a, vbLf) Or InStr(b, vbCr) Or InStr(b, vbLf) Then Exit Function
     SafeChange = True
 End Function
@@ -182,8 +181,19 @@ Private Sub ApplyOne(ByVal t As Text, ByVal oldText As String, ByVal newText As 
         If Mid$(oldText, n - s, 1) <> Mid$(newText, m - s, 1) Then Exit Do
         s = s + 1
     Loop
-    Set tr = t.Range(p + 1, n - s)
-    tr.Replace Mid$(newText, p + 1, m - p - s)
+    If n - p - s = 0 Then
+        If p = 0 Then
+            t.Story.InsertBefore Mid$(newText, p + 1, m - p - s)
+        Else
+            t.Range(p, p).InsertAfter Mid$(newText, p + 1, m - p - s)
+        End If
+    ElseIf m - p - s = 0 Then
+        Set tr = t.Range(p + 1, n - s)
+        tr.Delete
+    Else
+        Set tr = t.Range(p + 1, n - s)
+        tr.Replace Mid$(newText, p + 1, m - p - s)
+    End If
 End Sub
 
 Private Function Field(ByVal obj As Object, ByVal name As String) As String
