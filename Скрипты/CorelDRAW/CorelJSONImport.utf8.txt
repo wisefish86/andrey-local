@@ -1,0 +1,362 @@
+Attribute VB_Name = "CorelJSONImport"
+' Название: Импорт исправлений текста из JSON
+' Модуль: CorelJSONImport
+' Запуск: Main_ImportCorelJSON
+' Назначение: Точечные текстовые исправления по StaticID.
+' Использование: сохраните CDR, положите патч JSON в data, запустите импорт.
+' Условия: сначала проверка, затем резервная копия и одна операция отмены.
+Option Explicit
+
+Private mInput As String
+Private mPos As Long
+
+Public Sub Main_ImportCorelJSON()
+    Dim doc As Document, folder As String, patchPath As String
+    Dim data As Object, changes As Collection, record As Object
+    Dim shapes As Object, duplicates As Object, items As ShapeRange
+    Dim pg As Page, sh As Shape, id As String, key As String
+    Dim oldText As String, newText As String, nowText As String
+    Dim i As Long, ready As Long, skipped As Long, changed As Long
+    Dim reasons As String, backup As String, logPath As String
+    Dim commandOpen As Boolean, errText As String, saveState As Variant
+    Dim planned As Collection, work As Object, report As String
+
+    If Application.Documents.Count = 0 Then
+        MsgBox "Откройте сохранённый CDR.", vbExclamation: Exit Sub
+    End If
+    Set doc = ActiveDocument
+    If Len(doc.FilePath) = 0 Or Len(doc.FileName) = 0 Then
+        MsgBox "Сначала сохраните CDR.", vbExclamation: Exit Sub
+    End If
+    On Error GoTo Fatal
+    saveState = CallByName(doc, "Dirty", VbGet)
+    If CBool(saveState) Then
+        MsgBox "Сначала сохраните последние изменения CDR (Ctrl+S).", vbExclamation: Exit Sub
+    End If
+    folder = doc.FilePath
+    If Right$(folder, 1) <> "\" Then folder = folder & "\"
+    folder = folder & "data"
+    If Len(Dir$(folder, vbDirectory)) = 0 Then MkDir folder
+    patchPath = folder & "\CorelJSONPatch.json"
+    If Len(Dir$(patchPath)) = 0 Then
+        MsgBox "Не найден патч: " & patchPath, vbExclamation: Exit Sub
+    End If
+
+    mInput = ReadUtf8(patchPath)
+    mPos = 1
+    Set data = JsonObject()
+    WhiteSpace
+    If mPos <= Len(mInput) Then Err.Raise 5, , "Лишние данные после JSON"
+    If Field(data, "schema") <> "coreldraw-text-patch/v1" Then Err.Raise 5, , "Неверная схема JSON"
+    If StrComp(Field(data, "sourceFile"), doc.FileName, vbBinaryCompare) <> 0 Then
+        Err.Raise 5, , "Патч создан для другого документа"
+    End If
+    If Not data.Exists("changes") Then Err.Raise 5, , "Нет массива changes"
+    If TypeName(data("changes")) <> "Collection" Then Err.Raise 5, , "changes должен быть массивом"
+    Set changes = data("changes")
+    If changes.Count = 0 Or changes.Count > 2500 Then Err.Raise 5, , "Количество исправлений вне диапазона 1..2500"
+
+    Set shapes = CreateObject("Scripting.Dictionary")
+    Set duplicates = CreateObject("Scripting.Dictionary")
+    For Each pg In doc.Pages
+        Set items = pg.FindShapes(Type:=cdrTextShape, Recursive:=True)
+        For Each sh In items
+            id = CStr(sh.StaticID)
+            If shapes.Exists(id) Then
+                duplicates(id) = True
+            Else
+                shapes.Add id, sh
+            End If
+        Next sh
+    Next pg
+
+    Set planned = New Collection
+    Set work = CreateObject("Scripting.Dictionary")
+    For i = 1 To changes.Count
+        If TypeName(changes(i)) <> "Dictionary" Then Err.Raise 5, , "Элемент changes должен быть объектом"
+        Set record = changes(i)
+        id = Field(record, "id")
+        oldText = Field(record, "old")
+        newText = Field(record, "new")
+        If Len(id) = 0 Or oldText = newText Then
+            skipped = skipped + 1: reasons = reasons & "Строка " & i & ": пустой ID или нет изменений" & vbCrLf
+        ElseIf work.Exists(id) Then
+            skipped = skipped + 1: reasons = reasons & id & ": повторяющийся ID в патче" & vbCrLf
+        ElseIf duplicates.Exists(id) Then
+            skipped = skipped + 1: reasons = reasons & id & ": ID не уникален" & vbCrLf
+        ElseIf Not shapes.Exists(id) Then
+            skipped = skipped + 1: reasons = reasons & id & ": объект не найден" & vbCrLf
+        Else
+            Set sh = shapes(id)
+            nowText = sh.Text.Story.Text
+            If StrComp(nowText, oldText, vbBinaryCompare) <> 0 Then
+                skipped = skipped + 1: reasons = reasons & id & ": текст изменился после экспорта" & vbCrLf
+            ElseIf Not SafeChange(oldText, newText) Then
+                skipped = skipped + 1: reasons = reasons & id & ": сложная замена / переносы строк" & vbCrLf
+            Else
+                planned.Add record
+                work.Add id, True
+                ready = ready + 1
+            End If
+        End If
+    Next i
+
+    report = "Готово к исправлению: " & ready & vbCrLf & _
+             "Пропущено: " & skipped & vbCrLf & vbCrLf & _
+             "Создать резервную копию и применить исправления?"
+    If ready = 0 Then
+        MsgBox report & vbCrLf & reasons, vbInformation: Exit Sub
+    End If
+    If MsgBox(report, vbYesNo + vbQuestion, "Проверка JSON-патча") <> vbYes Then Exit Sub
+
+    backup = folder & "\backup_" & Format$(Now, "yyyymmdd_hhnnss") & ".cdr"
+    If Len(Dir$(backup)) <> 0 Then Err.Raise 5, , "Имя резервной копии занято"
+    FileCopy doc.FilePath & doc.FileName, backup
+    doc.BeginCommandGroup "Корректура текста через JSON"
+    commandOpen = True
+    For i = 1 To planned.Count
+        Set record = planned(i)
+        id = Field(record, "id")
+        Set sh = shapes(id)
+        oldText = Field(record, "old")
+        newText = Field(record, "new")
+        On Error GoTo ChangeFailed
+        If StrComp(sh.Text.Story.Text, oldText, vbBinaryCompare) <> 0 Then Err.Raise 5, , "Текст объекта изменился"
+        ApplyOne sh.Text, oldText, newText
+        If StrComp(sh.Text.Story.Text, newText, vbBinaryCompare) <> 0 Then Err.Raise 5, , "Проверка нового текста не прошла"
+        changed = changed + 1
+NextChange:
+        On Error GoTo Fatal
+    Next i
+    doc.EndCommandGroup
+    commandOpen = False
+    report = "Исправлено: " & changed & vbCrLf & "Пропущено: " & skipped & vbCrLf & _
+             "Резервная копия: " & backup & vbCrLf & _
+             "Проверьте переполнение текста и сохраните CDR вручную."
+    logPath = folder & "\CorelJSONImport_report.txt"
+    WriteUtf8 logPath, report & vbCrLf & reasons
+    MsgBox report, vbInformation
+    Exit Sub
+
+ChangeFailed:
+    skipped = skipped + 1
+    reasons = reasons & id & ": ошибка " & Err.Description & vbCrLf
+    Err.Clear
+    Resume NextChange
+
+Fatal:
+    errText = Err.Description
+    On Error Resume Next
+    If commandOpen Then doc.EndCommandGroup
+    MsgBox "Импорт остановлен: " & errText & vbCrLf & _
+           "Если текст изменился, отмените операцию (Ctrl+Z).", vbCritical
+End Sub
+
+Private Function SafeChange(ByVal oldText As String, ByVal newText As String) As Boolean
+    Dim p As Long, s As Long, n As Long, m As Long, a As String, b As String
+    n = Len(oldText): m = Len(newText)
+    If n = 0 Or m = 0 Then Exit Function
+    Do While p < n And p < m
+        If Mid$(oldText, p + 1, 1) <> Mid$(newText, p + 1, 1) Then Exit Do
+        p = p + 1
+    Loop
+    Do While s < n - p And s < m - p
+        If Mid$(oldText, n - s, 1) <> Mid$(newText, m - s, 1) Then Exit Do
+        s = s + 1
+    Loop
+    a = Mid$(oldText, p + 1, n - p - s)
+    b = Mid$(newText, p + 1, m - p - s)
+    If Len(a) = 0 Or Len(b) = 0 Then Exit Function
+    If InStr(a, vbCr) Or InStr(a, vbLf) Or InStr(b, vbCr) Or InStr(b, vbLf) Then Exit Function
+    SafeChange = True
+End Function
+
+Private Sub ApplyOne(ByVal t As Text, ByVal oldText As String, ByVal newText As String)
+    Dim p As Long, s As Long, n As Long, m As Long, tr As TextRange
+    n = Len(oldText): m = Len(newText)
+    Do While p < n And p < m
+        If Mid$(oldText, p + 1, 1) <> Mid$(newText, p + 1, 1) Then Exit Do
+        p = p + 1
+    Loop
+    Do While s < n - p And s < m - p
+        If Mid$(oldText, n - s, 1) <> Mid$(newText, m - s, 1) Then Exit Do
+        s = s + 1
+    Loop
+    Set tr = t.Range(p + 1, n - s)
+    tr.Replace Mid$(newText, p + 1, m - p - s)
+End Sub
+
+Private Function Field(ByVal obj As Object, ByVal name As String) As String
+    If Not obj.Exists(name) Then Err.Raise 5, , "Отсутствует поле " & name
+    If IsObject(obj(name)) Then Err.Raise 5, , "Поле не строковое: " & name
+    If IsNull(obj(name)) Then Err.Raise 5, , "Поле null: " & name
+    Field = CStr(obj(name))
+End Function
+
+Private Function ReadUtf8(ByVal filename As String) As String
+    Dim st As Object
+    Set st = CreateObject("ADODB.Stream")
+    st.Type = 2: st.Charset = "utf-8": st.Open
+    st.LoadFromFile filename
+    ReadUtf8 = st.ReadText(-1)
+    st.Close
+    If Len(ReadUtf8) > 2000000 Then Err.Raise 5, , "JSON слишком большой"
+    If Len(ReadUtf8) > 0 Then
+        If AscW(Left$(ReadUtf8, 1)) = &HFEFF Then ReadUtf8 = Mid$(ReadUtf8, 2)
+    End If
+End Function
+
+Private Sub WriteUtf8(ByVal filename As String, ByVal content As String)
+    Dim st As Object
+    Set st = CreateObject("ADODB.Stream")
+    st.Type = 2: st.Charset = "utf-8": st.Open
+    st.WriteText content
+    st.SaveToFile filename, 2
+    st.Close
+End Sub
+
+Private Sub WhiteSpace()
+    Do While mPos <= Len(mInput)
+        Select Case Mid$(mInput, mPos, 1)
+            Case " ", vbTab, vbCr, vbLf: mPos = mPos + 1
+            Case Else: Exit Do
+        End Select
+    Loop
+End Sub
+
+Private Sub Need(ByVal expected As String)
+    WhiteSpace
+    If Mid$(mInput, mPos, 1) <> expected Then Err.Raise 5, , "Ошибка JSON на позиции " & mPos
+    mPos = mPos + 1
+End Sub
+
+Private Function JsonObject() As Object
+    Dim d As Object, name As String, value As Variant
+    Set d = CreateObject("Scripting.Dictionary")
+    Need "{"
+    WhiteSpace
+    If Mid$(mInput, mPos, 1) = "}" Then mPos = mPos + 1: Set JsonObject = d: Exit Function
+    Do
+        name = JsonString()
+        Need ":"
+        value = JsonValue()
+        If d.Exists(name) Then Err.Raise 5, , "Повтор поля JSON: " & name
+        d.Add name, value
+        WhiteSpace
+        If Mid$(mInput, mPos, 1) = "}" Then mPos = mPos + 1: Exit Do
+        Need ","
+    Loop
+    Set JsonObject = d
+End Function
+
+Private Function JsonArray() As Collection
+    Dim c As New Collection, value As Variant
+    Need "["
+    WhiteSpace
+    If Mid$(mInput, mPos, 1) = "]" Then mPos = mPos + 1: Set JsonArray = c: Exit Function
+    Do
+        value = JsonValue()
+        c.Add value
+        WhiteSpace
+        If Mid$(mInput, mPos, 1) = "]" Then mPos = mPos + 1: Exit Do
+        Need ","
+    Loop
+    Set JsonArray = c
+End Function
+
+Private Function JsonValue() As Variant
+    Dim ch As String, start As Long, token As String
+    WhiteSpace
+    If mPos > Len(mInput) Then Err.Raise 5, , "Неожиданный конец JSON"
+    ch = Mid$(mInput, mPos, 1)
+    Select Case ch
+        Case "{": Set JsonValue = JsonObject()
+        Case "[": Set JsonValue = JsonArray()
+        Case """": JsonValue = JsonString()
+        Case Else
+            start = mPos
+            Do While mPos <= Len(mInput)
+                ch = Mid$(mInput, mPos, 1)
+                If InStr(1, ",]} " & vbCr & vbLf & vbTab, ch, vbBinaryCompare) > 0 Then Exit Do
+                mPos = mPos + 1
+            Loop
+            token = Mid$(mInput, start, mPos - start)
+            Select Case token
+                Case "true": JsonValue = True
+                Case "false": JsonValue = False
+                Case "null": JsonValue = Null
+                Case Else
+                    If Not ValidNumber(token) Then Err.Raise 5, , "Некорректное значение JSON"
+                    JsonValue = token
+            End Select
+    End Select
+End Function
+
+Private Function ValidNumber(ByVal token As String) As Boolean
+    Dim re As Object
+    Set re = CreateObject("VBScript.RegExp")
+    re.Pattern = "^-?(0|[1-9][0-9]*)(\.[0-9]+)?([Ee][+-]?[0-9]+)?$"
+    ValidNumber = re.Test(token)
+End Function
+
+Private Function JsonString() As String
+    Dim result As String, ch As String, escaped As String, code As String
+    Dim num As Long, highSurrogate As Long, lowSurrogate As Long
+    Need """"
+    Do While mPos <= Len(mInput)
+        ch = Mid$(mInput, mPos, 1)
+        mPos = mPos + 1
+        If ch = """" Then JsonString = result: Exit Function
+        If ch = "\" Then
+            If mPos > Len(mInput) Then Exit Do
+            escaped = Mid$(mInput, mPos, 1): mPos = mPos + 1
+            Select Case escaped
+                Case """", "\", "/": result = result & escaped
+                Case "b": result = result & ChrW$(8)
+                Case "f": result = result & ChrW$(12)
+                Case "n": result = result & vbLf
+                Case "r": result = result & vbCr
+                Case "t": result = result & vbTab
+                Case "u"
+                    If mPos + 3 > Len(mInput) Then Err.Raise 5, , "Короткий Unicode escape"
+                    code = Mid$(mInput, mPos, 4)
+                    If Not Hex4(code) Then Err.Raise 5, , "Неверный Unicode escape"
+                    num = CLng("&H" & code): mPos = mPos + 4
+                    If num >= 55296 And num <= 56319 Then
+                        If Mid$(mInput, mPos, 2) <> "\u" Then Err.Raise 5, , "Отсутствует low surrogate"
+                        mPos = mPos + 2
+                        code = Mid$(mInput, mPos, 4)
+                        If Not Hex4(code) Then Err.Raise 5, , "Неверный low surrogate"
+                        lowSurrogate = CLng("&H" & code)
+                        If lowSurrogate < 56320 Or lowSurrogate > 57343 Then Err.Raise 5, , "Неверная Unicode пара"
+                        mPos = mPos + 4
+                        result = result & UChar(num) & UChar(lowSurrogate)
+                    ElseIf num >= 56320 And num <= 57343 Then
+                        Err.Raise 5, , "Одиночный low surrogate"
+                    Else
+                        result = result & UChar(num)
+                    End If
+                Case Else: Err.Raise 5, , "Неверное экранирование JSON"
+            End Select
+        Else
+            If AscW(ch) >= 0 And AscW(ch) < 32 Then Err.Raise 5, , "Управляющий символ в JSON"
+            result = result & ch
+        End If
+    Loop
+    Err.Raise 5, , "Незакрытая строка JSON"
+End Function
+
+Private Function UChar(ByVal code As Long) As String
+    If code > 32767 Then code = code - 65536
+    UChar = ChrW$(code)
+End Function
+
+Private Function Hex4(ByVal value As String) As Boolean
+    Dim i As Long, ch As String
+    If Len(value) <> 4 Then Exit Function
+    For i = 1 To 4
+        ch = Mid$(value, i, 1)
+        If InStr(1, "0123456789abcdefABCDEF", ch, vbBinaryCompare) = 0 Then Exit Function
+    Next i
+    Hex4 = True
+End Function
