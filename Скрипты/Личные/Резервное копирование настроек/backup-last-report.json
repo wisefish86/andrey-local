@@ -1,16 +1,16 @@
 ﻿{
-    "Started":  "2026-11-10T21:00:03.9213931+03:00",
-    "Finished":  "2026-11-10T21:00:07.1635621+03:00",
+    "Started":  "2026-11-14T14:22:44.9147755+03:00",
+    "Finished":  "2026-11-14T14:22:52.2521033+03:00",
     "Destination":  "D:\\YandexDisk\\Архив\\Backup\\Программы",
-    "Copied":  1,
-    "Unchanged":  32,
-    "Deferred":  1,
+    "Copied":  4,
+    "Unchanged":  30,
+    "Deferred":  0,
     "Failed":  0,
     "Files":  [
                   {
                       "Name":  "Flow Launcher",
                       "File":  "Flow Launcher\\Favorites.conf",
-                      "Status":  "Copied",
+                      "Status":  "Unchanged",
                       "Error":  ""
                   },
                   {
@@ -27,9 +27,9 @@
                   },
                   {
                       "Name":  "CorelDRAW GMS",
-                      "File":  "*.gms",
-                      "Status":  "Deferred",
-                      "Error":  "Application is running; wait until it closes."
+                      "File":  "CorelDRAW\\CorelDRAW Graphics Suite 2026\\Draw\\GlobalMacros.gms",
+                      "Status":  "Unchanged",
+                      "Error":  ""
                   },
                   {
                       "Name":  "Adobe Photoshop",
@@ -40,7 +40,7 @@
                   {
                       "Name":  "Adobe Photoshop",
                       "File":  "Photoshop\\Adobe Photoshop 2025\\Adobe Photoshop 2025 Settings\\Adobe Photoshop 2025 Prefs.psp",
-                      "Status":  "Unchanged",
+                      "Status":  "Copied",
                       "Error":  ""
                   },
                   {
@@ -82,13 +82,13 @@
                   {
                       "Name":  "Adobe Photoshop",
                       "File":  "Photoshop\\Adobe Photoshop 2025\\Adobe Photoshop 2025 Settings\\LaunchEndFlag.psp",
-                      "Status":  "Unchanged",
+                      "Status":  "Copied",
                       "Error":  ""
                   },
                   {
                       "Name":  "Adobe Photoshop",
                       "File":  "Photoshop\\Adobe Photoshop 2025\\Adobe Photoshop 2025 Settings\\MachinePrefs.psp",
-                      "Status":  "Unchanged",
+                      "Status":  "Copied",
                       "Error":  ""
                   },
                   {
@@ -130,7 +130,7 @@
                   {
                       "Name":  "Adobe Photoshop",
                       "File":  "Photoshop\\Adobe Photoshop 2025\\Adobe Photoshop 2025 Settings\\QuitEndFlag.psp",
-                      "Status":  "Unchanged",
+                      "Status":  "Copied",
                       "Error":  ""
                   },
                   {
