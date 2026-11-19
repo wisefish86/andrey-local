@@ -1,16 +1,16 @@
 ﻿{
-    "Started":  "2026-11-16T21:00:03.5774880+03:00",
-    "Finished":  "2026-11-16T21:00:06.7168659+03:00",
+    "Started":  "2026-11-19T10:06:51.5767376+03:00",
+    "Finished":  "2026-11-19T10:07:25.6387760+03:00",
     "Destination":  "D:\\YandexDisk\\Архив\\Backup\\Программы",
-    "Copied":  4,
-    "Unchanged":  29,
-    "Deferred":  1,
+    "Copied":  8,
+    "Unchanged":  26,
+    "Deferred":  0,
     "Failed":  0,
     "Files":  [
                   {
                       "Name":  "Flow Launcher",
                       "File":  "Flow Launcher\\Favorites.conf",
-                      "Status":  "Unchanged",
+                      "Status":  "Copied",
                       "Error":  ""
                   },
                   {
@@ -27,9 +27,9 @@
                   },
                   {
                       "Name":  "CorelDRAW GMS",
-                      "File":  "*.gms",
-                      "Status":  "Deferred",
-                      "Error":  "Application is running; wait until it closes."
+                      "File":  "CorelDRAW\\CorelDRAW Graphics Suite 2026\\Draw\\GlobalMacros.gms",
+                      "Status":  "Copied",
+                      "Error":  ""
                   },
                   {
                       "Name":  "Adobe Photoshop",
@@ -136,7 +136,7 @@
                   {
                       "Name":  "Adobe Photoshop",
                       "File":  "Photoshop\\Adobe Photoshop 2025\\Adobe Photoshop 2025 Settings\\Save for Web Prefs.psp",
-                      "Status":  "Unchanged",
+                      "Status":  "Copied",
                       "Error":  ""
                   },
                   {
@@ -160,7 +160,7 @@
                   {
                       "Name":  "Adobe Photoshop",
                       "File":  "Photoshop\\Adobe Photoshop 2025\\Adobe Photoshop 2025 Settings\\Workspace Prefs.psp",
-                      "Status":  "Unchanged",
+                      "Status":  "Copied",
                       "Error":  ""
                   },
                   {
