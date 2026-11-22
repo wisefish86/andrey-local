@@ -1,10 +1,10 @@
 ﻿{
-    "Started":  "2026-11-20T21:15:30.8718778+03:00",
-    "Finished":  "2026-11-20T21:15:34.7730588+03:00",
+    "Started":  "2026-11-21T21:00:02.0832918+03:00",
+    "Finished":  "2026-11-21T21:00:04.8473623+03:00",
     "Destination":  "D:\\YandexDisk\\Архив\\Backup\\Программы",
-    "Copied":  5,
-    "Unchanged":  28,
-    "Deferred":  1,
+    "Copied":  1,
+    "Unchanged":  33,
+    "Deferred":  0,
     "Failed":  0,
     "Files":  [
                   {
@@ -27,9 +27,9 @@
                   },
                   {
                       "Name":  "CorelDRAW GMS",
-                      "File":  "*.gms",
-                      "Status":  "Deferred",
-                      "Error":  "Application is running; wait until it closes."
+                      "File":  "CorelDRAW\\CorelDRAW Graphics Suite 2026\\Draw\\GlobalMacros.gms",
+                      "Status":  "Copied",
+                      "Error":  ""
                   },
                   {
                       "Name":  "Adobe Photoshop",
@@ -40,7 +40,7 @@
                   {
                       "Name":  "Adobe Photoshop",
                       "File":  "Photoshop\\Adobe Photoshop 2025\\Adobe Photoshop 2025 Settings\\Adobe Photoshop 2025 Prefs.psp",
-                      "Status":  "Copied",
+                      "Status":  "Unchanged",
                       "Error":  ""
                   },
                   {
@@ -82,13 +82,13 @@
                   {
                       "Name":  "Adobe Photoshop",
                       "File":  "Photoshop\\Adobe Photoshop 2025\\Adobe Photoshop 2025 Settings\\LaunchEndFlag.psp",
-                      "Status":  "Copied",
+                      "Status":  "Unchanged",
                       "Error":  ""
                   },
                   {
                       "Name":  "Adobe Photoshop",
                       "File":  "Photoshop\\Adobe Photoshop 2025\\Adobe Photoshop 2025 Settings\\MachinePrefs.psp",
-                      "Status":  "Copied",
+                      "Status":  "Unchanged",
                       "Error":  ""
                   },
                   {
@@ -136,7 +136,7 @@
                   {
                       "Name":  "Adobe Photoshop",
                       "File":  "Photoshop\\Adobe Photoshop 2025\\Adobe Photoshop 2025 Settings\\Save for Web Prefs.psp",
-                      "Status":  "Copied",
+                      "Status":  "Unchanged",
                       "Error":  ""
                   },
                   {
@@ -160,7 +160,7 @@
                   {
                       "Name":  "Adobe Photoshop",
                       "File":  "Photoshop\\Adobe Photoshop 2025\\Adobe Photoshop 2025 Settings\\Workspace Prefs.psp",
-                      "Status":  "Copied",
+                      "Status":  "Unchanged",
                       "Error":  ""
                   },
                   {
