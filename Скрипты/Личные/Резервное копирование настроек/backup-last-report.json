@@ -1,16 +1,16 @@
 ﻿{
-    "Started":  "2026-11-22T21:00:02.2203671+03:00",
-    "Finished":  "2026-11-22T21:00:03.0190103+03:00",
+    "Started":  "2026-11-23T21:00:03.1011993+03:00",
+    "Finished":  "2026-11-23T21:00:03.6242521+03:00",
     "Destination":  "D:\\YandexDisk\\Архив\\Backup\\Программы",
-    "Copied":  1,
-    "Unchanged":  3,
+    "Copied":  0,
+    "Unchanged":  4,
     "Deferred":  1,
     "Failed":  0,
     "Files":  [
                   {
                       "Name":  "Flow Launcher",
                       "File":  "Flow Launcher\\Favorites.conf",
-                      "Status":  "Copied",
+                      "Status":  "Unchanged",
                       "Error":  ""
                   },
                   {
